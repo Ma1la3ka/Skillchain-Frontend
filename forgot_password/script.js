@@ -9,7 +9,7 @@ const showStep = (stepNum) => {
 // Step 1: Request Code
 document.getElementById('btn-send-code').onclick = async () => {
     currentEmail = document.getElementById('reset-email').value;
-    const response = await fetch('http://127.0.0.1:5000/forgot-password', {
+    const response = await fetch('https://skillchain-backend-gce5.onrender.com/forgot-password', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ email: currentEmail })
@@ -40,7 +40,7 @@ document.getElementById('btn-finish-reset').onclick = async () => {
 
     if(password !== confirm) return alert("Passwords do not match");
 
-    const response = await fetch('http://127.0.0.1:5000/reset-password-final', {
+    const response = await fetch('https://skillchain-backend-gce5.onrender.com/reset-password-final', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ 

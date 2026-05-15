@@ -2,7 +2,7 @@
   'use strict';
 
   // ── Flask base URL — Live Server (5501) calls Flask (5000) ─────────────────
-  const FLASK_URL = 'http://127.0.0.1:5000';
+  const FLASK_URL = 'https://skillchain-backend-gce5.onrender.com';
 
   /* ── DOM refs ─────────────────────────────────────── */
   const workerRadio   = document.getElementById('role-worker');

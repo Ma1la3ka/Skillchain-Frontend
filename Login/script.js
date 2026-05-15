@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const FLASK_URL  = 'http://127.0.0.1:5000';
+  const FLASK_URL  = 'https://skillchain-backend-gce5.onrender.com';
   const LOGIN_PAGE = 'http://127.0.0.1:5501/Login/index.html';
   const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
 

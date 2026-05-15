@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const FLASK       = 'http://127.0.0.1:5000';
+  const FLASK       = 'https://skillchain-backend-gce5.onrender.com';
   const LOGIN_PAGE  = 'http://127.0.0.1:5501/Login/index.html';
   const SESSION_DUR = 30 * 60 * 1000;
 
@@ -2020,7 +2020,7 @@ window.buildWorkerCredCard = buildWorkerCredCard;
 })();
 // Demo payment verification — bypasses real Squad for hackathon demo
 async function verifyPaymentDemo(jobId) {
-  const res  = await fetch('http://127.0.0.1:5000/api/dev/simulate-payment', {
+  const res  = await fetch('https://skillchain-backend-gce5.onrender.com/api/dev/simulate-payment', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -2032,7 +2032,7 @@ async function verifyPaymentDemo(jobId) {
     document.getElementById('modal-overlay').classList.remove('is-open');
     // Reload jobs so UI reflects funded status
     const stored = JSON.parse(localStorage.getItem('userData') || '{}');
-    const res2   = await fetch(`http://127.0.0.1:5000/api/client/jobs?user_id=${stored.id}`, { credentials: 'include' });
+    const res2   = await fetch(`https://skillchain-backend-gce5.onrender.com/api/client/jobs?user_id=${stored.id}`, { credentials: 'include' });
     const jobs   = await res2.json();
     // Trigger a page reload — simplest way to show updated state
     Swal.fire({
