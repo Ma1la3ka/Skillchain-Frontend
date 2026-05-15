@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/base/index.html" },
+    { "source": "/Client_dashboard", "destination": "/Client_dashboard/index.html" },
+    { "source": "/Worker_dashboard", "destination": "/Worker_dashboard/index.html" },
+    { "source": "/base/(.*)", "destination": "/base/$1" }
+  ]
+}
