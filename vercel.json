@@ -4,6 +4,10 @@
     { "source": "/", "destination": "/base/index.html" },
     { "source": "/Client_dashboard", "destination": "/Client_dashboard/index.html" },
     { "source": "/Worker_dashboard", "destination": "/Worker_dashboard/index.html" },
+    { "source": "/Complete_job", "destination": "/Complete_job/index.html" },
+    { "source": "/Login", "destination": "/Login/index.html" },
+    { "source": "/Register", "destination": "/Register/index.html" },
+    { "source": "/forgot_password", "destination": "/forgot_password/index.html" },
     { "source": "/base/(.*)", "destination": "/base/$1" }
   ]
 }
