@@ -2,7 +2,7 @@
   'use strict';
 
   const FLASK_URL  = 'https://skillchain-backend-gce5.onrender.com';
-  const LOGIN_PAGE = 'http://127.0.0.1:5501/Login/index.html';
+  const LOGIN_PAGE = '/Login/index.html';
   const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes
 
   const form          = document.getElementById('loginForm');
@@ -24,8 +24,8 @@
         // Valid session — redirect away from login immediately
         window.location.replace(
           parsed.role === 'worker'
-            ? 'http://127.0.0.1:5501/Worker_dashboard/index.html'
-            : 'http://127.0.0.1:5501/Client_dashboard/index.html'
+            ? '/Worker_dashboard/index.html'
+            : '/Client_dashboard/index.html'
         );
       } else {
         // Expired — clean up
@@ -47,8 +47,8 @@
           if (!expired) {
             window.location.replace(
               p.role === 'worker'
-                ? 'http://127.0.0.1:5501/Worker_dashboard/index.html'
-                : 'http://127.0.0.1:5501/Client_dashboard/index.html'
+                ? '/Worker_dashboard/index.html'
+                : '/Client_dashboard/index.html'
             );
             return;
           }
@@ -127,8 +127,8 @@
           // back arrow can't return here after redirect
           window.location.replace(
             data.user.role === 'worker'
-              ? 'http://127.0.0.1:5501/Worker_dashboard/index.html'
-              : 'http://127.0.0.1:5501/Client_dashboard/index.html'
+              ? '/Worker_dashboard/index.html'
+              : '/Client_dashboard/index.html'
           );
         }, 1800);
 

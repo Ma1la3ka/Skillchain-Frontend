@@ -2,7 +2,7 @@
   'use strict';
 
   const FLASK       = 'https://skillchain-backend-gce5.onrender.com';
-  const LOGIN_PAGE  = 'http://127.0.0.1:5501/Login/index.html';
+  const LOGIN_PAGE  = '/Login/index.html';
   const SESSION_DUR = 30 * 60 * 1000;
 
   let allJobs      = [];

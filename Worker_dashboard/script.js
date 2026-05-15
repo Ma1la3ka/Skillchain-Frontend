@@ -2,7 +2,7 @@
   'use strict';
 
   const FLASK       = 'https://skillchain-backend-gce5.onrender.com';
-  const LOGIN_PAGE  = 'http://127.0.0.1:5501/Login/index.html';
+  const LOGIN_PAGE  = '/Login/index.html';
   const SESSION_DUR = 30 * 60 * 1000;
 
   let allMyJobs  = [];  // jobs assigned to this worker
@@ -612,7 +612,7 @@ if (job.status === 'assigned') {
     // Redirect to proof-of-presence page
     document.getElementById('modal-complete-btn')?.addEventListener('click', () => {
       const jobId = document.getElementById('modal-complete-btn').dataset.jobId;
-      window.location.href = `http://127.0.0.1:5501/Complete_job/index.html?job_id=${jobId}`;
+      window.location.href = `/Complete_job/index.html?job_id=${jobId}`;
     });
   }
 
