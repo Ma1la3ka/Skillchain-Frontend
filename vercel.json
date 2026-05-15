@@ -1,0 +1,11 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "./",
+  "public": "./",
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}
