@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillChain - Login</title>
+    <link rel="stylesheet" href="/Login/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><!-- SweetAlert2 Library -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo-container">
+             <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+            <span class="logo-text">SkillChain</span>
+        </div>
+        <nav class="nav-links">
+            <a href="/Register/index.html">Find Workers</a>
+            <a href="/Login/index.html">Log in</a>
+            <a href="/Register/index.html" class="btn-signup">Sign up</a>
+        </nav>
+
+    </header>
+
+    <main class="login-container">
+        <div class="welcome-section">
+      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+            <h1>Welcome back</h1>
+            <p>Log in to your SkillChain account</p>
+        </div>
+
+        <div class="login-card">
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="name@example.com" required>
+                </div>
+
+             <div class="form-group">
+  <label for="password">Password</label>
+  <div style="position:relative">
+    <input type="password" id="password" name="password" required
+      style="width:100%;padding-right:42px;box-sizing:border-box">
+    <button type="button" id="toggle-pw"
+      style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+             background:none;border:none;cursor:pointer;font-size:1.1rem;
+             color:#a09890;padding:0;line-height:1">
+      👁
+    </button>
+  </div>
+</div>
+                <button type="submit" class="btn-signin">Sign In</button>
+            </form>
+            <p class="signup-link">Don't have an account? <a href="/Register/index.html">Sign up</a></p>
+             <a href="/forgot_password/index.html" class="form-footer__forgot" style="color: var(--text-gray); font-weight: 400; font-size: 0.82rem; transition: color var(--transition);">
+            Forgot password?
+        </a>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-logo">
+             <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+            <span>SkillChain</span>
+        </div>
+       
+        <p>Marketplace for informal workers. Proof of Life verification unlocks payment.</p>
+        <p>© 2026 SkillChain. All rights reserved.</p>
+    </footer>
+
+    <script src="/Login/script.js"></script>
+</body>
+</html>

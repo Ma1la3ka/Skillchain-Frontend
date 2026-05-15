@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkillChain — The Gig Economy, Verified</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/base/style.css">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      SkillChain
+    </a>
+    <div class="nav-links">
+      <a href="#how" class="nav-link">How it works</a>
+      <a href="/Login/index.html" class="nav-link">Log in</a>
+      <a href="/Register/index.html" class="btn btn--orange btn--sm">Sign up</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="hero__inner">
+      <div class="hero__badge">
+        <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
+          <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Challenge 01: Proof of Life — GPS-Verified Payouts
+      </div>
+
+      <h1 class="hero__title">
+        Work. Verify. <em class="hero__title--accent">Get Paid.</em>
+      </h1>
+
+      <p class="hero__sub">
+        SkillChain uses GPS + video to prove you were at the job site — then releases escrow funds automatically via Squad.
+      </p>
+
+      <div class="hero__actions">
+        <a href="/Register/index.html" class="btn btn--orange btn--lg">I'm a Worker →</a>
+        <a href="/Register/index.html?role=client" class="btn btn--ghost btn--lg">I Need Work Done →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS BAR -->
+  <section class="stats-bar">
+    <div class="stats-bar__inner">
+      <div class="stat-item">
+        <span class="stat-item__val" id="stat-workers">0</span>
+        <span class="stat-item__lbl">Verified Workers</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-item__val" id="stat-jobs">0</span>
+        <span class="stat-item__lbl">GPS-Verified Jobs</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-item__val" id="stat-paid">₦0</span>
+        <span class="stat-item__lbl">Total Paid Out</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section" id="how">
+    <div class="section-inner">
+      <span class="eyebrow">HOW IT WORKS</span>
+      <h2 class="section-title">How the Intelligent Economy Works</h2>
+      <p class="section-sub">No middlemen. No disputes. GPS math is the only judge.</p>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-card__icon">🔒</div>
+          <div class="feature-card__num">1</div>
+          <h3 class="feature-card__title">Escrow Lock</h3>
+          <p class="feature-card__desc">Client posts a job and locks funds in Squad escrow. Money is safe — no upfront risk for either party.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">📡</div>
+          <div class="feature-card__num">2</div>
+          <h3 class="feature-card__title">Proof of Life</h3>
+          <p class="feature-card__desc">Worker records a 10-second video on-site. GPS is captured at that exact moment. No presence, no proof.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">💸</div>
+          <div class="feature-card__num">3</div>
+          <h3 class="feature-card__title">Instant Payout</h3>
+          <p class="feature-card__desc">Geofence passes? Squad transfers funds directly to the worker's virtual account. Automatic, zero delays.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card__icon">⭐</div>
+          <div class="feature-card__num">4</div>
+          <h3 class="feature-card__title">Trust Score</h3>
+          <p class="feature-card__desc">Every verified job builds your score — a digital reputation more powerful than any paper certificate.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEPS -->
+  <section class="steps-section">
+    <div class="section-inner">
+      <span class="eyebrow">THE FLOW</span>
+      <h2 class="section-title section-title--light">Five steps to getting paid.</h2>
+
+      <ol class="steps-ol">
+        <li class="steps-ol__item">
+          <span class="steps-ol__num">01</span>
+          <div class="steps-ol__body">
+            <strong>Client posts a job</strong>
+            <p>Pins the exact GPS coordinates of the job site — the geofence anchor that cannot be faked.</p>
+          </div>
+        </li>
+        <li class="steps-ol__item">
+          <span class="steps-ol__num">02</span>
+          <div class="steps-ol__body">
+            <strong>Worker accepts & travels on-site</strong>
+            <p>Browse open jobs, accept one, and head to the physical location to start work.</p>
+          </div>
+        </li>
+        <li class="steps-ol__item">
+          <span class="steps-ol__num">03</span>
+          <div class="steps-ol__body">
+            <strong>Proof of Presence captured</strong>
+            <p>Record a 10-second video. Your GPS coordinates are locked at that exact moment automatically.</p>
+          </div>
+        </li>
+        <li class="steps-ol__item">
+          <span class="steps-ol__num">04</span>
+          <div class="steps-ol__body">
+            <strong>Geofence verified in seconds</strong>
+            <p>Within 100m of the anchor? Job marked Verified — mathematical, automatic, no human judgement needed.</p>
+          </div>
+        </li>
+        <li class="steps-ol__item">
+          <span class="steps-ol__num">05</span>
+          <div class="steps-ol__body">
+            <strong>Squad releases payment</strong>
+            <p>Funds move instantly from escrow to your Squad virtual account. Money in hand, job done.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="section-inner cta-section__inner">
+      <div class="cta-section__glow" aria-hidden="true"></div>
+      <h2 class="cta-section__title">Ready to get verified?</h2>
+      <p class="cta-section__sub">Join skilled workers building trusted reputations across Nigeria — one verified job at a time.</p>
+      <a href="/Register/index.html" class="btn btn--orange btn--lg">Create your account →</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <a href="/" class="nav-logo footer__logo">
+        <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        SkillChain
+      </a>
+      <p class="footer__copy">© 2026 SkillChain | Developed by <strong>HAMZ Labs</strong></p>
+    </div>
+  </footer>
+
+  <script src="/base/script.js"></script>
+</body>
+</html>

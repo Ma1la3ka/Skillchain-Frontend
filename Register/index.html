@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — SkillChain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="/Register/style.css">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      SkillChain
+    </a>
+    <a href="/Login/index.html" class="nav-login">Already have an account? <span>Log in →</span></a>
+  </nav>
+
+  <!-- PAGE WRAPPER -->
+  <main class="page">
+
+    <!-- LEFT PANEL -->
+    <aside class="panel panel--left">
+      <div class="panel__content">
+        <div class="panel__badge">
+          <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+            <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Proof of Life · GPS Verified
+        </div>
+
+        <h2 class="panel__title">Your skills.<br>Your proof.<br><em>Your money.</em></h2>
+        <p class="panel__sub">Join workers building verified reputations across Nigeria — one GPS-confirmed job at a time.</p>
+
+        <ul class="panel__perks">
+          <li class="perk">
+            <span class="perk__icon">🏦</span>
+            <div>
+              <strong>Free Squad Wallet</strong>
+              <p>Auto-created on signup. Receive payments directly, no bank stress.</p>
+            </div>
+          </li>
+          <li class="perk">
+            <span class="perk__icon">📡</span>
+            <div>
+              <strong>GPS Trust Score</strong>
+              <p>Every verified job builds a score that speaks louder than any certificate.</p>
+            </div>
+          </li>
+          <li class="perk">
+            <span class="perk__icon">💸</span>
+            <div>
+              <strong>Instant Payouts</strong>
+              <p>Geofence passes? Money hits your wallet automatically. Zero waiting.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="panel__glow" aria-hidden="true"></div>
+    </aside>
+
+    <section class="panel panel--right">
+      <div class="form-wrap">
+
+        <div class="form-header">
+          <h1 class="form-header__title">Create account</h1>
+          <p class="form-header__sub">Join the trust economy for skilled workers.</p>
+        </div>
+
+        <!-- PROGRESS STEPS -->
+        <div class="progress-steps" aria-label="Form progress">
+          <div class="progress-step is-active" data-step="1">
+            <span class="progress-step__dot">1</span>
+            <span class="progress-step__label">Role</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="2">
+            <span class="progress-step__dot">2</span>
+            <span class="progress-step__label">Details</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="3">
+            <span class="progress-step__dot">3</span>
+            <span class="progress-step__label">Security</span>
+          </div>
+        </div>
+
+        <!-- NOTE: action="register" — connect to Flask route when backend is ready -->
+        <form method="POST" action="/register" id="register-form" novalidate>
+
+          <!-- STEP 1: ROLE -->
+          <div class="form-step is-active" id="step-1">
+            <p class="step-label">Who are you joining as?</p>
+
+            <div class="role-grid">
+              <label class="role-card" id="card-worker">
+                <input type="radio" name="role" value="worker" id="role-worker" required>
+                <div class="role-card__inner" id="box-worker">
+                  <span class="role-card__icon">🔧</span>
+                  <strong class="role-card__title">I'm a Worker</strong>
+                  <p class="role-card__sub">Mechanic, plumber, electrician, tailor…</p>
+                  <span class="role-card__check" aria-hidden="true">✓</span>
+                </div>
+              </label>
+
+              <label class="role-card" id="card-client">
+                <input type="radio" name="role" value="client" id="role-client" required>
+                <div class="role-card__inner" id="box-client">
+                  <span class="role-card__icon">🏠</span>
+                  <strong class="role-card__title">I'm a Client</strong>
+                  <p class="role-card__sub">I need reliable skilled help for a job.</p>
+                  <span class="role-card__check" aria-hidden="true">✓</span>
+                </div>
+              </label>
+            </div>
+
+            <div class="wallet-notice" id="wallet-notice">
+              <span class="wallet-notice__icon">🏦</span>
+              <div>
+                <strong>Squad Wallet included</strong>
+                <p>A virtual bank account is auto-created when you sign up as a Worker — ready to receive payments immediately.</p>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn--orange btn--full" id="next-1">
+              Continue <span>→</span>
+            </button>
+          </div>
+
+          <!-- STEP 2: PERSONAL DETAILS -->
+          <div class="form-step" id="step-2">
+            <p class="step-label">Tell us about yourself</p>
+
+            <div class="field-group">
+              <div class="field">
+                <label class="field__label" for="name">Full name</label>
+                <div class="field__wrap">
+                  <span class="field__icon">👤</span>
+                  <input class="field__input" type="text" name="name" id="name"
+                         placeholder="Emeka Okafor" required autocomplete="name">
+                </div>
+                <p class="field__error" id="err-name"></p>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="email">Email address</label>
+                <div class="field__wrap">
+                  <span class="field__icon">✉️</span>
+                  <input class="field__input" type="email" name="email" id="email"
+                         placeholder="emeka@example.com" required autocomplete="email">
+                </div>
+                <p class="field__error" id="err-email"></p>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="phone">Phone number</label>
+                <div class="field__wrap">
+                  <span class="field__icon">📱</span>
+                  <input class="field__input" type="tel" name="phone" id="phone"
+                         placeholder="08012345678" autocomplete="tel">
+                </div>
+                <p class="field__error" id="err-phone"></p>
+              </div>
+
+              <!-- Trade — shown only for workers -->
+              <div class="field trade-field" id="trade-field">
+                <label class="field__label" for="trade">Your trade</label>
+                <div class="field__wrap field__wrap--select">
+                  <span class="field__icon">⚙️</span>
+                  <select class="field__input field__input--select" name="trade" id="trade">
+                    <option value="">Select your trade…</option>
+                    <option>Mechanic</option>
+                    <option>Electrician</option>
+                    <option>Plumber</option>
+                    <option>Carpenter</option>
+                    <option>Painter</option>
+                    <option>Welder</option>
+                    <option>Tailor</option>
+                    <option>Mason</option>
+                    <option>HVAC Technician</option>
+                    <option>Other</option>
+                  </select>
+                  <span class="field__chevron" aria-hidden="true">▾</span>
+                </div>
+              </div>
+              <p class="field__error" id="err-trade"></p>
+            </div>
+
+            <div class="step-btns">
+              <button type="button" class="btn btn--ghost" id="back-2">← Back</button>
+              <button type="button" class="btn btn--orange" id="next-2">Continue →</button>
+            </div>
+          </div>
+
+          <!-- STEP 3: SECURITY -->
+          <div class="form-step" id="step-3">
+            <p class="step-label">Secure your account</p>
+
+            <div class="field-group">
+
+              <!-- Password -->
+              <div class="field">
+                <label class="field__label" for="password">Password</label>
+                <div class="field__wrap">
+                  <span class="field__icon">🔒</span>
+                  <input class="field__input" type="password" name="password" id="password"
+                         placeholder="Min 6 characters" minlength="6" required
+                         autocomplete="new-password">
+                  <button type="button" class="field__toggle" id="toggle-pw"
+                          aria-label="Show password">👁</button>
+                </div>
+                <p class="field__error" id="err-pw"></p>
+
+                <!-- Password strength -->
+                <div class="pw-strength">
+                  <div class="pw-strength__bars">
+                    <span class="pw-bar" id="pw-bar-1"></span>
+                    <span class="pw-bar" id="pw-bar-2"></span>
+                    <span class="pw-bar" id="pw-bar-3"></span>
+                    <span class="pw-bar" id="pw-bar-4"></span>
+                  </div>
+                  <span class="pw-strength__label" id="pw-label">Enter a password</span>
+                </div>
+              </div>
+
+              <!-- Confirm password — NEW -->
+              <div class="field">
+                <label class="field__label" for="confirm-password">Confirm password</label>
+                <div class="field__wrap">
+                  <span class="field__icon">🔑</span>
+                  <input class="field__input" type="password" id="confirm-password"
+                         placeholder="Repeat your password" autocomplete="new-password">
+                  <button type="button" class="field__toggle" id="toggle-confirm"
+                          aria-label="Show confirm password">👁</button>
+                </div>
+                <p class="field__error" id="err-confirm"></p>
+              </div>
+
+            </div>
+
+            <!-- Summary card -->
+            <div class="summary-card">
+              <p class="summary-card__label">ACCOUNT SUMMARY</p>
+              <div class="summary-row">
+                <span class="summary-key">Role</span>
+                <span class="summary-val" id="sum-role">—</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-key">Name</span>
+                <span class="summary-val" id="sum-name">—</span>
+              </div>
+              <div class="summary-row">
+                <span class="summary-key">Email</span>
+                <span class="summary-val" id="sum-email">—</span>
+              </div>
+              <div class="summary-row" id="sum-trade-row">
+                <span class="summary-key">Trade</span>
+                <span class="summary-val" id="sum-trade">—</span>
+              </div>
+            </div>
+
+            <div class="step-btns">
+              <button type="button" class="btn btn--ghost" id="back-3">← Back</button>
+              <button type="submit" class="btn btn--orange" id="submit-btn">
+                <span id="submit-text">Create account →</span>
+                <span id="submit-spinner" class="spinner" style="display:none"></span>
+              </button>
+            </div>
+          </div>
+
+        </form>
+
+        <!-- UPDATED footer with forgot password link -->
+        <p class="form-footer">
+          Already have an account? <a href="/Login/index.html">Log in</a>
+          &nbsp;·&nbsp;
+          <a href="/forgot-password" class="form-footer__forgot">Forgot password?</a>
+        </p>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/Register/script.js"></script>
+</body>
+</html>

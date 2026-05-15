@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Password — SkillChain</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Syne:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/forgot_password/style.css">
+</head>
+<body>
+    <main class="auth-container">
+        <div class="auth-card">
+            <div class="brand">
+                <span class="logo-icon">🛡️</span>
+                <span class="logo-text">SkillChain</span>
+            </div>
+
+            <div id="step-1" class="form-step active">
+                <h1>Forgot password?</h1>
+                <p>Enter your email to receive a 6-digit verification code.</p>
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="reset-email" placeholder="name@example.com">
+                </div>
+                <button class="btn-primary" id="btn-send-code">Send Code →</button>
+            </div>
+
+            <div id="step-2" class="form-step">
+                <h1>Verify Code</h1>
+                <p>We sent a code to <strong id="display-email"></strong>. It expires in 5 minutes.</p>
+                <div class="input-group">
+                    <label>6-Digit Token</label>
+                    <input type="text" id="reset-token" maxlength="6" placeholder="000000" style="letter-spacing: 10px; text-align: center; font-size: 1.5rem;">
+                </div>
+                <button class="btn-primary" id="btn-verify-token">Verify Token →</button>
+            </div>
+
+            <div id="step-3" class="form-step">
+                <h1>New Password</h1>
+                <p>Create a strong password to secure your account.</p>
+                <div class="input-group">
+                    <label>New Password</label>
+                    <input type="password" id="new-password" placeholder="••••••••">
+                </div>
+                <div class="input-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirm-password" placeholder="••••••••">
+                </div>
+                <button class="btn-primary" id="btn-finish-reset">Reset Password →</button>
+            </div>
+
+            <a href="/Login/index.html" class="back-link">← Back to login</a>
+        </div>
+    </main>
+    <script src="/forgot_password/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Dashboard — SkillChain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Leaflet map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ── SIDEBAR ──────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__logo">
+      <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
+        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z"
+              stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>SkillChain</span>
+    </div>
+
+    <nav class="sidebar__nav">
+      <a class="nav-item is-active" data-view="overview" href="#">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>
+        Overview
+      </a>
+      <a class="nav-item" data-view="post-job" href="#">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Post a Job
+      </a>
+      <a class="nav-item" data-view="find-workers" href="#">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Find Workers
+      </a>
+      <a class="nav-item" data-view="my-jobs" href="#">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        My Jobs
+      </a>
+      <a class="nav-item" data-view="payments" href="#">
+        <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><rect x="2" y="6" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M2 10h20" stroke="currentColor" stroke-width="2"/><path d="M6 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Payments
+      </a>
+      <a class="nav-item" data-view="bargains" href="#">
+  <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+    <path d="M8 12h8M8 8h5M6 20l-3-3 3-3M18 4l3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  Bargains
+  <span class="bargain-badge" id="bargain-badge" style="
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:18px;height:18px;border-radius:99px;
+    background:#e85c00;color:#fff;font-size:.65rem;font-weight:700;
+    margin-left:auto;padding:0 5px;
+  "></span>
+</a>
+    </nav>
+
+    <div class="sidebar__bottom">
+      <div class="user-pill">
+        <div class="user-pill__avatar" id="nav-avatar">C</div>
+        <div class="user-pill__info">
+          <span class="user-pill__name" id="nav-name">Client</span>
+          <span class="user-pill__role">Client</span>
+        </div>
+      </div>
+      <a href="#" class="logout-btn" id="logout-btn">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── MOBILE TOP BAR ──────────────────────────────── -->
+  <header class="topbar">
+    <button class="topbar__burger" id="burger"><span></span><span></span><span></span></button>
+    <span class="topbar__title">SkillChain</span>
+    <div class="topbar__avatar" id="topbar-avatar">C</div>
+  </header>
+
+  <!-- ── MAIN ────────────────────────────────────────── -->
+  <main class="main" id="main">
+
+    <!-- ══ OVERVIEW ══════════════════════════════════ -->
+    <section class="view is-active" id="view-overview">
+   <div class="page-header">
+  <div>
+    <p class="page-header__eyebrow">New Job</p>
+    <h1 class="page-header__title">Post a Job</h1>
+  </div>
+</div>
+        <button class="btn btn--orange" data-view="post-job">+ Post a Job</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><span class="stat-card__icon">📋</span><div><p class="stat-card__label">Total Jobs</p><p class="stat-card__val" id="stat-total">—</p></div></div>
+        <div class="stat-card"><span class="stat-card__icon">⏳</span><div><p class="stat-card__label">In Progress</p><p class="stat-card__val" id="stat-active">—</p></div></div>
+        <div class="stat-card"><span class="stat-card__icon">✅</span><div><p class="stat-card__label">Completed</p><p class="stat-card__val" id="stat-done">—</p></div></div>
+        <div class="stat-card"><span class="stat-card__icon">💸</span><div><p class="stat-card__label">Total Paid</p><p class="stat-card__val" id="stat-paid">—</p></div></div>
+      </div>
+        <!-- Pending worker review notifications -->
+<div id="pending-workers-banner" style="display:none;margin-bottom:16px"></div>
+      <div class="section-block">
+        <div class="section-block__header">
+          <h2 class="section-block__title">Recent Jobs</h2>
+          <a href="#" class="section-block__link" data-view="my-jobs">View all →</a>
+        </div>
+        <div class="jobs-list" id="recent-jobs-list">
+          <div class="empty-state" id="recent-empty"><span>📭</span><p>No jobs yet. Post your first job!</p></div>
+        </div>
+      </div>
+    </section>
+<section class="view" id="view-post-job">
+  <div class="page-header">
+    <div>
+      <p class="page-header__eyebrow">New Job</p>
+      <h1 class="page-header__title">Post a Job</h1>
+    </div>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="pj-steps">
+    <div class="pj-step pj-step--active" id="pj-step-1">
+      <span class="pj-step__num">1</span>
+      <span class="pj-step__label">Job Details</span>
+    </div>
+    <div class="pj-step__connector"></div>
+    <div class="pj-step" id="pj-step-2">
+      <span class="pj-step__num">2</span>
+      <span class="pj-step__label">Location</span>
+    </div>
+    <div class="pj-step__connector"></div>
+    <div class="pj-step" id="pj-step-3">
+      <span class="pj-step__num">3</span>
+      <span class="pj-step__label">Media</span>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <form id="post-job-form" novalidate enctype="multipart/form-data">
+
+      <!-- ── SECTION 1: JOB DETAILS ─────────────────── -->
+      <div class="pj-section" id="pj-section-details">
+        <div class="pj-section__head">
+          <span class="pj-section__icon">📋</span>
+          <div>
+            <h3 class="pj-section__title">Job Details</h3>
+            <p class="pj-section__sub">Describe what you need done</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="field__label" for="job-title">Job Title <span class="field__req">*</span></label>
+            <input class="field__input" type="text" id="job-title" name="title"
+                   placeholder="e.g. Fix kitchen sink leak" required>
+            <p class="field__error" id="err-title"></p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="field__label" for="job-desc">Problem Description</label>
+            <textarea class="field__input field__input--ta" id="job-desc" name="description"
+                      rows="3" placeholder="Give as much detail as possible about what needs fixing…"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row form-row--2">
+          <div class="field">
+            <label class="field__label" for="job-trade">Trade Required</label>
+            <div class="field__wrap field__wrap--select" style="font-color:black">
+              <select class="field__input field__input--select" id="job-trade" name="trade">
+                <option value="">Select trade…</option>
+                <option>Mechanic</option>
+                <option>Electrician</option>
+                <option>Plumber</option>
+                <option>Carpenter</option>
+                <option>Painter</option>
+                <option>Welder</option>
+                <option>Tailor</option>
+                <option>Mason</option>
+                <option>HVAC Technician</option>
+                <option>Other</option>
+              </select>
+              <span class="field__chevron">▾</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field__label" for="job-amount">Budget (₦) <span class="field__req">*</span></label>
+            <div class="field__wrap field__wrap--prefix">
+              <span class="field__prefix">₦</span>
+              <input class="field__input field__input--prefixed" type="number"
+                     id="job-amount" name="amount"
+                     placeholder="15,000" min="100" required>
+            </div>
+            <p class="field__hint">Minimum ₦100</p>
+            <p class="field__error" id="err-amount"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DIVIDER ─────────────────────────────────── -->
+      <div class="pj-divider">
+        <span>📍</span>
+      </div>
+
+      <!-- ── SECTION 2: LOCATION ────────────────────── -->
+      <div class="pj-section" id="pj-section-location">
+        <div class="pj-section__head">
+          <span class="pj-section__icon">🗺️</span>
+          <div>
+            <h3 class="pj-section__title">Job Site Location <span class="field__req">*</span></h3>
+            <p class="pj-section__sub">This sets the GPS geofence — workers must be within 100m</p>
+          </div>
+        </div>
+
+        <!-- Search box -->
+        <div class="location-search">
+          <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input type="text" class="location-search__input" id="location-search-input"
+                 placeholder="Search an address or area in Nigeria…" autocomplete="off">
+          <div class="location-search__results" id="location-results"></div>
+        </div>
+
+        <!-- Map -->
+        <div class="map-wrap">
+          <div id="job-map"></div>
+          <div class="map-overlay-hint is-hidden" id="map-hint">📍 Click on the map or search above to pin the job site</div>
+          <button type="button" class="map-my-loc" id="btn-my-loc" title="Use my current location">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Address result card (auto-filled) -->
+        <div class="address-display" id="address-display" style="display:none">
+          <span class="address-display__icon">📍</span>
+          <div class="address-display__body">
+            <p class="address-display__val"   id="address-display-text">—</p>
+            <p class="address-display__coords" id="address-display-coords">—</p>
+          </div>
+          <button type="button" class="address-display__clear" id="clear-location" title="Clear location">✕</button>
+        </div>
+
+        <!-- Geofence info chip -->
+        <div class="geofence-chip">
+          <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 8v4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Workers must be within <strong>100 metres</strong> of this pin to get paid
+        </div>
+
+        <!-- Hidden inputs -->
+        <input type="hidden" name="site_address" id="job-address">
+        <input type="hidden" name="site_lat"     id="job-lat">
+        <input type="hidden" name="site_lng"     id="job-lng">
+        <p class="field__error" id="err-address"></p>
+      </div>
+
+      <!-- ── DIVIDER ─────────────────────────────────── -->
+      <div class="pj-divider">
+        <span>📸</span>
+      </div>
+
+      <!-- ── SECTION 3: MEDIA ───────────────────────── -->
+      <div class="pj-section" id="pj-section-media">
+        <div class="pj-section__head">
+          <span class="pj-section__icon">📎</span>
+          <div>
+            <h3 class="pj-section__title">Photos / Videos <span class="field__optional">Optional</span></h3>
+            <p class="pj-section__sub">Help workers understand the job before arriving</p>
+          </div>
+        </div>
+
+        <div class="media-upload" id="media-upload-zone">
+          <input type="file" id="media-files" name="media" multiple
+                 accept="image/*,video/*" style="display:none">
+          <div class="media-upload__prompt" id="media-prompt">
+            <span class="media-upload__icon">📁</span>
+            <p class="media-upload__text">Drag & drop or <span class="media-upload__link">browse files</span></p>
+            <p class="media-upload__hint">JPG · PNG · MP4 &nbsp;·&nbsp; Max 10MB per file &nbsp;·&nbsp; Up to 5 files</p>
+          </div>
+          <div class="media-previews" id="media-previews"></div>
+        </div>
+      </div>
+
+   <div class="pj-submit">
+  <div class="pj-submit__info">
+    <svg viewBox="0 0 24 24" fill="none" width="15" height="15">
+      <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z"
+            stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Funds will be held in escrow until work is GPS-verified
+  </div>
+  <div style="display:flex;gap:10px;width:100%">
+    <button type="button" id="cancel-post-job"
+      style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+             color:#a09890;border-radius:10px;padding:14px;font-size:.9rem;
+             font-weight:600;cursor:pointer;transition:background .15s"
+      onmouseover="this.style.background='rgba(255,255,255,.08)'"
+      onmouseout="this.style.background='rgba(255,255,255,.04)'">
+      Cancel
+    </button>
+    <button type="submit" class="btn btn--orange btn--wide pj-submit__btn" id="post-job-btn"
+      style="flex:2">
+      <span id="post-job-text">Post Job →</span>
+      <span id="post-job-spinner" class="spinner" style="display:none"></span>
+    </button>
+  </div>
+</div>
+</section>
+    <!-- ══ FIND WORKERS (NEW) ═════════════════════════ -->
+    <section class="view" id="view-find-workers">
+      <div class="page-header">
+        <div><p class="page-header__eyebrow">Search</p><h1 class="page-header__title">Find Workers</h1></div>
+      </div>
+
+      <!-- Search controls -->
+      <div class="worker-search-bar">
+        <div class="wsearch-field wsearch-field--grow">
+          <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input type="text" id="worker-search-text" placeholder="Search by name or keyword…">
+        </div>
+        <div class="wsearch-field">
+          <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <select id="worker-search-trade">
+            <option value="">All trades</option>
+            <option>Mechanic</option><option>Electrician</option>
+            <option>Plumber</option><option>Carpenter</option>
+            <option>Painter</option><option>Welder</option>
+            <option>Tailor</option><option>Mason</option>
+            <option>HVAC Technician</option>
+          </select>
+        </div>
+        <button class="btn btn--orange" id="btn-search-workers">Search</button>
+      </div>
+
+      <!-- Results -->
+      <div class="workers-grid" id="workers-grid">
+        <div class="empty-state workers-empty">
+          <span>🔍</span>
+          <p>Search for workers above, or browse all by leaving fields empty.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ MY JOBS ════════════════════════════════════ -->
+    <section class="view" id="view-my-jobs">
+      <div class="page-header">
+        <div><p class="page-header__eyebrow">All Jobs</p><h1 class="page-header__title">My Jobs</h1></div>
+        <button class="btn btn--orange" data-view="post-job">+ Post a Job</button>
+      </div>
+      <div class="filter-tabs" id="job-filters">
+        <button class="filter-tab is-active" data-filter="all">All</button>
+        <button class="filter-tab" data-filter="open">Open</button>
+        <button class="filter-tab" data-filter="assigned">Assigned</button>
+        <button class="filter-tab" data-filter="verified">Verified</button>
+        <button class="filter-tab" data-filter="paid">Paid</button>
+      </div>
+      <div class="jobs-list" id="all-jobs-list">
+        <div class="skeleton-list"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+      </div>
+    </section>
+
+    <!-- ══ BARGAINS ═══════════════════════════════════ -->
+<section class="view" id="view-bargains">
+  <div class="page-header">
+    <div>
+      <p class="page-header__eyebrow">Offers</p>
+      <h1 class="page-header__title">Worker Bargains</h1>
+    </div>
+  </div>
+  <p style="font-size:.85rem;color:#5a5550;margin-bottom:16px">
+    Workers can counter-offer your listed price. Review and respond below.
+  </p>
+  <div class="jobs-list" id="bargains-list">
+    <div class="empty-state"><span>🤝</span><p>No pending offers right now.</p></div>
+  </div>
+</section>
+
+    <!-- ══ PAYMENTS ═══════════════════════════════════ -->
+    <section class="view" id="view-payments">
+      <div class="page-header">
+        <div><p class="page-header__eyebrow">Finance</p><h1 class="page-header__title">Payment History</h1></div>
+      </div>
+      <div class="payment-summary">
+        <div class="pay-sum-card"><p class="pay-sum-card__label">Total Spent</p><p class="pay-sum-card__val" id="pay-total">₦0</p></div>
+        <div class="pay-sum-card"><p class="pay-sum-card__label">Jobs Paid</p><p class="pay-sum-card__val" id="pay-count">0</p></div>
+        <div class="pay-sum-card"><p class="pay-sum-card__label">In Escrow</p><p class="pay-sum-card__val" id="pay-escrow">₦0</p></div>
+      </div>
+      <div class="section-block">
+        <h2 class="section-block__title">Transactions</h2>
+        <div class="payments-list" id="payments-list">
+          <div class="empty-state"><span>💳</span><p>No transactions yet.</p></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── JOB DETAIL MODAL ─────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="job-modal">
+      <button class="modal__close" id="modal-close">✕</button>
+      <div class="modal__body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ── WORKER PROFILE MODAL ─────────────────────── -->
+  <div class="modal-overlay" id="worker-modal-overlay">
+    <div class="modal" id="worker-modal">
+      <button class="modal__close" id="worker-modal-close">✕</button>
+      <div class="modal__body" id="worker-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
