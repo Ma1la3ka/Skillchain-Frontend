@@ -151,6 +151,45 @@
         text:  'Could not reach the server. Is Flask running on port 5000?',
       });
     }
+
+
   });
+
+const hamburger = document.getElementById('sc-hamburger');
+const navLinks = document.querySelector('.nav-links');
+
+// Toggle menu when hamburger is clicked
+hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    navLinks.classList.toggle('open');
+});
+
+// Close menu when a link inside it is clicked
+navLinks.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+        hamburger.classList.remove('open');
+        navLinks.classList.remove('open');
+    });
+});
+
+// 1. Close menu when pressing the Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && navLinks.classList.contains('open')) {
+        hamburger.classList.remove('open');
+        navLinks.classList.remove('open');
+    }
+});
+
+// 2. Close menu when clicking outside the dropdown and hamburger
+document.addEventListener('click', (e) => {
+    // Only run if the menu is actually open
+    if (navLinks.classList.contains('open')) {
+        // Check if the clicked target is OUTSIDE both the hamburger and the nav links
+        if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+            hamburger.classList.remove('open');
+            navLinks.classList.remove('open');
+        }
+    }
+});
 
 })();

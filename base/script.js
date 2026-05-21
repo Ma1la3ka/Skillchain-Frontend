@@ -110,6 +110,21 @@ function initScrollReveal() {
   });
 }
 
+const hamburger = document.getElementById('sc-hamburger');
+const navLinks = document.querySelector('.nav-links');
+
+hamburger.addEventListener('click', () => {
+    hamburger.classList.toggle('open');
+    navLinks.classList.toggle('open');
+});
+
+navLinks.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+        hamburger.classList.remove('open');
+        navLinks.classList.remove('open');
+    });
+});
+
 // Trigger reveal class
 document.addEventListener('DOMContentLoaded', () => {
   // Inject revealed state via JS (cleaner than adding keyframes per element)
