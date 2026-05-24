@@ -1,28 +1,20 @@
 /* ═══════════════════════════════════════════════════
-   SKILLCHAIN — Landing Page JS  (index_new.js)
+   SKILLCHAIN — Landing Page JS
 ═══════════════════════════════════════════════════ */
 
 /**
  * Animate a number counter from 0 to target
- * @param {HTMLElement} el  - The element to update
- * @param {number}      end - Target number
- * @param {string}      prefix - e.g. "₦"
- * @param {number}      duration - ms
  */
 function animateCounter(el, end, prefix = '', duration = 1800) {
   if (!el || end === 0) return;
-  const start     = 0;
   const startTime = performance.now();
 
   function step(now) {
     const elapsed  = now - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    // Ease out cubic
     const eased    = 1 - Math.pow(1 - progress, 3);
     const current  = Math.floor(eased * end);
-
     el.textContent = prefix + current.toLocaleString();
-
     if (progress < 1) requestAnimationFrame(step);
   }
 
@@ -40,15 +32,8 @@ function initStatsCounter() {
   const jobsEl   = document.getElementById('stat-jobs');
   const paidEl   = document.getElementById('stat-paid');
 
-  // These would come from the backend in production.
-  // For the hackathon demo we animate from 0 to showcase the UI.
-  const targets = {
-    workers: 0,
-    jobs:    0,
-    paid:    0
-  };
+  const targets = { workers: 0, jobs: 0, paid: 0 };
 
-  // Try to fetch live stats from Flask (optional endpoint)
   fetch('/api/stats')
     .then(r => r.json())
     .then(data => {
@@ -56,7 +41,7 @@ function initStatsCounter() {
       targets.jobs    = data.jobs    || 0;
       targets.paid    = data.paid    || 0;
     })
-    .catch(() => { /* sandbox — no stats endpoint yet, stays 0 */ })
+    .catch(() => {})
     .finally(() => {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -100,38 +85,61 @@ function initScrollReveal() {
       entry.target.classList.add('is-revealed');
       observer.unobserve(entry.target);
     });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.12 });
 
   items.forEach(item => {
     item.style.opacity = '0';
-    item.style.transform = 'translateY(18px)';
-    item.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    item.style.transform = 'translateY(16px)';
+    item.style.transition = 'opacity 0.48s ease, transform 0.48s ease';
     observer.observe(item);
   });
 }
 
-const hamburger = document.getElementById('sc-hamburger');
-const navLinks = document.querySelector('.nav-links');
+/**
+ * Mobile nav — dropdown (open/close)
+ */
+function initMobileNav() {
+  const hamburger = document.getElementById('sc-hamburger');
+  const navLinks  = document.getElementById('sc-nav-links');
+  if (!hamburger || !navLinks) return;
 
-hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('open');
-    navLinks.classList.toggle('open');
-});
+  function closeMenu() {
+    hamburger.classList.remove('open');
+    navLinks.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+  }
 
-navLinks.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-        hamburger.classList.remove('open');
-        navLinks.classList.remove('open');
-    });
-});
+  hamburger.addEventListener('click', () => {
+    const isOpen = navLinks.classList.toggle('open');
+    hamburger.classList.toggle('open', isOpen);
+    hamburger.setAttribute('aria-expanded', String(isOpen));
+  });
 
-// Trigger reveal class
+  // Close when any link inside is tapped
+  navLinks.querySelectorAll('a, button').forEach(el => {
+    el.addEventListener('click', closeMenu);
+  });
+
+  // Close on outside tap
+  document.addEventListener('click', (e) => {
+    if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+      closeMenu();
+    }
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Inject revealed state via JS (cleaner than adding keyframes per element)
+  // Inject is-revealed class
   const style = document.createElement('style');
   style.textContent = `.is-revealed { opacity: 1 !important; transform: translateY(0) !important; }`;
   document.head.appendChild(style);
 
+  initMobileNav();
   initStatsCounter();
   initSmoothScroll();
   initScrollReveal();
