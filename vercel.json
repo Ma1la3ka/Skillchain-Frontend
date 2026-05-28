@@ -1,11 +1,13 @@
 {
-  "buildCommand": "",
   "outputDirectory": "./",
   "public": true,
   "rewrites": [
-    {
-      "source": "/:path*",
-      "destination": "/index.html"
-    }
+    { "source": "/", "destination": "/base/index.html" },
+    { "source": "/login", "destination": "/Login/index.html" },
+    { "source": "/register", "destination": "/Register/index.html" },
+    { "source": "/client", "destination": "/Client_dashboard/index.html" },
+    { "source": "/worker", "destination": "/Worker_dashboard/index.html" },
+    { "source": "/complete-job", "destination": "/Complete_job/index.html" },
+    { "source": "/forgot-password", "destination": "/forgot_password/index.html" }
   ]
 }
