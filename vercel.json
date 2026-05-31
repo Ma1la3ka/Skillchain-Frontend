@@ -9,5 +9,16 @@
     { "source": "/worker", "destination": "/Worker_dashboard/index.html" },
     { "source": "/complete-job", "destination": "/Complete_job/index.html" },
     { "source": "/forgot-password", "destination": "/forgot_password/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
   ]
 }
