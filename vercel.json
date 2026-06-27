@@ -1,6 +1,5 @@
 {
   "outputDirectory": "./",
-  "public": true,
   "rewrites": [
     { "source": "/", "destination": "/base/index.html" },
     { "source": "/login", "destination": "/Login/index.html" },
