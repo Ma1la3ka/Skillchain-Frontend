@@ -134,6 +134,98 @@ function initActiveCard() {
     current = (current + 1) % cards.length;
     cards[current].classList.add('artisan-card--active');
   }
+  
+// ── Contact Modal ─────────────────────────────────────────────
+const overlay = document.getElementById('modal-overlay');
+const openBtns = [
+    document.getElementById('open-contact'),
+    document.getElementById('footer-contact')
+];
+const closeBtn = document.getElementById('modal-close');
+
+function openModal() {
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+openBtns.forEach(btn => btn && btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal();
+}));
+
+closeBtn.addEventListener('click', closeModal);
+
+overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+});
+
+
+const form = document.getElementById('contact-form');
+const submitBtn = document.getElementById('submit-btn');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const name = form.querySelector('input[name="name"]').value;
+    const message = form.querySelector('textarea[name="message"]').value;
+
+    if (name.length < 3) {
+        result.textContent = "Please enter your full name.";
+        result.style.color = "#ff4d4d";
+        return;
+    }
+
+    if (message.length < 10) {
+        result.textContent = "Message is too short. Please give more detail.";
+        result.style.color = "#ff4d4d";
+        return;
+    }
+
+    const formData = new FormData(form);
+    const json = JSON.stringify(Object.fromEntries(formData));
+
+    result.textContent = "Sending...";
+    result.style.color = "#6366f1";
+    submitBtn.disabled = true;
+
+    fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: json
+    })
+    .then(async response => {
+        const data = await response.json();
+        if (response.status === 200) {
+            result.textContent = "✓ Message sent successfully!";
+            result.style.color = "#00DFD8";
+            form.reset();
+        } else {
+            result.textContent = data.message || "Something went wrong.";
+            result.style.color = "#ff4d4d";
+        }
+    })
+    .catch(() => {
+        result.textContent = "Network error. Please try again.";
+        result.style.color = "#ff4d4d";
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        setTimeout(() => { result.textContent = ""; }, 5000);
+    });
+});
+
 
   // Don't start until cards are in view
   const obs = new IntersectionObserver((entries) => {
