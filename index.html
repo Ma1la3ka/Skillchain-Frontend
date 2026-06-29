@@ -3,188 +3,492 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkillChain — The Gig Economy, Verified</title>
+  <title>SkillChain — Verified Artisans, Zero Middlemen</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/base/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <!-- NAV -->
-  <nav class="nav">
+  <nav class="nav" id="sc-nav">
     <a href="/" class="nav-logo">
-      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      SkillChain
+      <span class="nav-logo__mark">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="28" height="28" rx="7" fill="#E85C00"/>
+          <path d="M7 9h6M7 14h10M7 19h8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M18 7l3 3-3 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="nav-logo__text">SkillChain</span>
     </a>
-    <!-- Desktop nav -->
     <div class="nav-links" id="sc-nav-links">
-      <a href="#how" class="nav-link">How it works</a>
+      <a href="#how" class="nav-link">How it Works</a>
+      <a href="#trades" class="nav-link">Trades</a>
+      <a href="#artisans" class="nav-link">Find Artisans</a>
+      <div class="nav-sep"></div>
       <a href="/login" class="nav-link">Log in</a>
-      <a href="/register" class="btn btn--orange btn--sm">Sign up</a>
+      <a href="/register" class="btn btn--orange btn--sm">Get started</a>
     </div>
-    <!-- Hamburger (mobile only) -->
-    <button class="nav-hamburger" id="sc-hamburger" aria-label="Menu" aria-expanded="false" aria-controls="sc-nav-links">
+    <button class="nav-hamburger" id="sc-hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="sc-nav-links">
       <span></span><span></span><span></span>
     </button>
   </nav>
 
   <!-- HERO -->
   <section class="hero">
-    <div class="hero__glow" aria-hidden="true"></div>
-    <div class="hero__inner">
+    <div class="hero__bg-lines" aria-hidden="true"></div>
+
+    <div class="hero__left">
       <div class="hero__badge">
-        <svg viewBox="0 0 24 24" fill="none" width="13" height="13">
-          <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Challenge 01: Proof of Life — GPS-Verified Payouts
+        <svg viewBox="0 0 10 10" width="7" height="7"><circle cx="5" cy="5" r="5" fill="#22c55e"/></svg>
+        GPS-Verified · Escrow Protected · Nigeria
       </div>
 
       <h1 class="hero__title">
-        Work. Verify. <em class="hero__title--accent">Get Paid.</em>
+        Hire skilled hands.<br>
+        Cut every<br>
+        <em class="hero__accent">middleman out.</em>
       </h1>
 
       <p class="hero__sub">
-        SkillChain uses GPS + video to prove you were at the job site — then releases escrow funds automatically via Squad.
+        SkillChain puts you directly in contact with verified plumbers, electricians, welders and more. GPS confirms they showed up. Escrow confirms you paid fairly.
       </p>
 
       <div class="hero__actions">
-        <a href="/register" class="btn btn--orange btn--lg">I'm a Worker →</a>
-        <a href="/register?role=client" class="btn btn--ghost btn--lg">I Need Work Done →</a>
+        <a href="/register?role=client" class="btn btn--orange btn--lg">
+          Hire an Artisan
+          <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="/register?role=artisan" class="btn btn--outline btn--lg">
+          Join as Artisan
+        </a>
+      </div>
+
+      <div class="hero__trust">
+        <div class="hero__trust-item">
+          <span class="hero__trust-val">12K+</span>
+          <span class="hero__trust-lbl">Verified artisans</span>
+        </div>
+        <div class="hero__trust-dot"></div>
+        <div class="hero__trust-item">
+          <span class="hero__trust-val">₦840M+</span>
+          <span class="hero__trust-lbl">Paid out to workers</span>
+        </div>
+        <div class="hero__trust-dot"></div>
+        <div class="hero__trust-item">
+          <span class="hero__trust-val">4.9★</span>
+          <span class="hero__trust-lbl">Platform rating</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__right">
+      <div class="hero__card-stack">
+
+        <!-- Live job ticker at top -->
+        <div class="job-ticker">
+          <div class="job-ticker__dot"></div>
+          <span class="job-ticker__label">3 jobs matched in Ikeja in the last hour</span>
+        </div>
+
+        <div class="artisan-list">
+          <div class="artisan-card artisan-card--active" data-index="0">
+            <div class="artisan-card__avatar ac-plumber"></div>
+            <div class="artisan-card__info">
+              <span class="artisan-card__name">Chukwuemeka Eze</span>
+              <span class="artisan-card__trade">⚡ Electrician · Lagos</span>
+              <span class="artisan-card__meta">
+                <span class="dot dot--green"></span>
+                Online now · ★ 4.9 · 138 jobs
+              </span>
+            </div>
+            <div class="artisan-card__aside">
+              <span class="artisan-card__rate">₦8k<span>/day</span></span>
+              <span class="artisan-card__dist">0.8km</span>
+            </div>
+          </div>
+          <div class="artisan-card" data-index="1">
+            <div class="artisan-card__avatar ac-welder"></div>
+            <div class="artisan-card__info">
+              <span class="artisan-card__name">Aminu Garba</span>
+              <span class="artisan-card__trade">🔧 Plumber · Abuja</span>
+              <span class="artisan-card__meta">
+                <span class="dot dot--green"></span>
+                Online now · ★ 5.0 · 92 jobs
+              </span>
+            </div>
+            <div class="artisan-card__aside">
+              <span class="artisan-card__rate">₦6k<span>/day</span></span>
+              <span class="artisan-card__dist">1.2km</span>
+            </div>
+          </div>
+          <div class="artisan-card" data-index="2">
+            <div class="artisan-card__avatar ac-mason"></div>
+            <div class="artisan-card__info">
+              <span class="artisan-card__name">Taiwo Adeyemi</span>
+              <span class="artisan-card__trade">🧱 Mason · Ibadan</span>
+              <span class="artisan-card__meta">
+                <span class="dot dot--green"></span>
+                Online now · ★ 4.8 · 201 jobs
+              </span>
+            </div>
+            <div class="artisan-card__aside">
+              <span class="artisan-card__rate">₦7k<span>/day</span></span>
+              <span class="artisan-card__dist">2.1km</span>
+            </div>
+          </div>
+          <div class="artisan-card" data-index="3">
+            <div class="artisan-card__avatar ac-carpenter"></div>
+            <div class="artisan-card__info">
+              <span class="artisan-card__name">Biodun Okafor</span>
+              <span class="artisan-card__trade">🪵 Carpenter · PH</span>
+              <span class="artisan-card__meta">
+                <span class="dot dot--amber"></span>
+                Away · ★ 4.7 · 74 jobs
+              </span>
+            </div>
+            <div class="artisan-card__aside">
+              <span class="artisan-card__rate">₦9k<span>/day</span></span>
+              <span class="artisan-card__dist">3.4km</span>
+            </div>
+          </div>
+          <div class="artisan-card" data-index="4">
+            <div class="artisan-card__avatar ac-painter"></div>
+            <div class="artisan-card__info">
+              <span class="artisan-card__name">Ngozi Obi</span>
+              <span class="artisan-card__trade">🎨 Painter · Enugu</span>
+              <span class="artisan-card__meta">
+                <span class="dot dot--green"></span>
+                Online now · ★ 4.9 · 56 jobs
+              </span>
+            </div>
+            <div class="artisan-card__aside">
+              <span class="artisan-card__rate">₦5k<span>/day</span></span>
+              <span class="artisan-card__dist">4.7km</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPS proof badge that pulses -->
+        <div class="proof-badge">
+          <div class="proof-badge__pulse" aria-hidden="true"></div>
+          <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M8 2a4 4 0 0 1 4 4c0 3-4 8-4 8S4 9 4 6a4 4 0 0 1 4-4z" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/></svg>
+          GPS-confirmed on-site
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- STATS BAR -->
-  <section class="stats-bar">
-    <div class="stats-bar__inner">
-      <div class="stat-item">
-        <span class="stat-item__val" id="stat-workers">0</span>
-        <span class="stat-item__lbl">Verified Workers</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <span class="stat-item__val" id="stat-jobs">0</span>
-        <span class="stat-item__lbl">GPS-Verified Jobs</span>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <span class="stat-item__val" id="stat-paid">₦0</span>
-        <span class="stat-item__lbl">Total Paid Out</span>
-      </div>
+  <!-- TRADES MARQUEE -->
+  <div class="marquee-wrap" aria-label="Supported trades">
+    <div class="marquee-track" aria-hidden="true">
+      <span>ELECTRICIAN</span><span class="mq-sep">·</span>
+      <span>PLUMBER</span><span class="mq-sep">·</span>
+      <span>WELDER</span><span class="mq-sep">·</span>
+      <span>MASON</span><span class="mq-sep">·</span>
+      <span>CARPENTER</span><span class="mq-sep">·</span>
+      <span>PAINTER</span><span class="mq-sep">·</span>
+      <span>TILER</span><span class="mq-sep">·</span>
+      <span>AC TECHNICIAN</span><span class="mq-sep">·</span>
+      <span>GENERATOR REPAIR</span><span class="mq-sep">·</span>
+      <span>BOREHOLE DRILLING</span><span class="mq-sep">·</span>
+      <span>ROOFING</span><span class="mq-sep">·</span>
+      <span>ELECTRICIAN</span><span class="mq-sep">·</span>
+      <span>PLUMBER</span><span class="mq-sep">·</span>
+      <span>WELDER</span><span class="mq-sep">·</span>
+      <span>MASON</span><span class="mq-sep">·</span>
+      <span>CARPENTER</span><span class="mq-sep">·</span>
+      <span>PAINTER</span><span class="mq-sep">·</span>
+      <span>TILER</span><span class="mq-sep">·</span>
+      <span>AC TECHNICIAN</span><span class="mq-sep">·</span>
+      <span>GENERATOR REPAIR</span><span class="mq-sep">·</span>
     </div>
-  </section>
+  </div>
 
-  <!-- HOW IT WORKS -->
+  <!-- HOW IT WORKS — the core logic, explained honestly -->
   <section class="how-section" id="how">
-    <div class="section-inner">
-      <span class="eyebrow">HOW IT WORKS</span>
-      <h2 class="section-title">How the Intelligent Economy Works</h2>
-      <p class="section-sub">No middlemen. No disputes. GPS math is the only judge.</p>
+    <div class="how-section__inner">
+      <div class="how-head">
+        <span class="eyebrow">THE FLOW</span>
+        <h2 class="how-title">Five steps. No surprises.</h2>
+        <p class="how-sub">Every job on SkillChain follows the same sequence. You know exactly what happens next, at every point.</p>
+      </div>
 
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-card__icon">🔒</div>
-          <div class="feature-card__num">1</div>
-          <h3 class="feature-card__title">Escrow Lock</h3>
-          <p class="feature-card__desc">Client posts a job and locks funds in Squad escrow. Money is safe — no upfront risk for either party.</p>
+      <div class="how-flow">
+        <div class="how-step js-howstep">
+          <div class="how-step__connector" aria-hidden="true"></div>
+          <div class="how-step__num-wrap">
+            <span class="how-step__num">1</span>
+          </div>
+          <div class="how-step__body">
+            <strong>Post the job</strong>
+            <p>Drop a pin, describe the work. Takes under 3 minutes. We match you to nearby verified artisans — usually within the hour.</p>
+          </div>
         </div>
-        <div class="feature-card">
-          <div class="feature-card__icon">📡</div>
-          <div class="feature-card__num">2</div>
-          <h3 class="feature-card__title">Proof of Life</h3>
-          <p class="feature-card__desc">Worker records a 10-second video on-site. GPS is captured at that exact moment. No presence, no proof.</p>
+        <div class="how-step js-howstep">
+          <div class="how-step__connector" aria-hidden="true"></div>
+          <div class="how-step__num-wrap">
+            <span class="how-step__num">2</span>
+          </div>
+          <div class="how-step__body">
+            <strong>Lock payment in escrow</strong>
+            <p>Money moves into escrow before any work starts — via Squad. Neither party can touch it until the job is confirmed complete.</p>
+          </div>
         </div>
-        <div class="feature-card">
-          <div class="feature-card__icon">💸</div>
-          <div class="feature-card__num">3</div>
-          <h3 class="feature-card__title">Instant Payout</h3>
-          <p class="feature-card__desc">Geofence passes? Squad transfers funds directly to the worker's virtual account. Automatic, zero delays.</p>
+        <div class="how-step js-howstep">
+          <div class="how-step__connector" aria-hidden="true"></div>
+          <div class="how-step__num-wrap">
+            <span class="how-step__num">3</span>
+          </div>
+          <div class="how-step__body">
+            <strong>Artisan arrives on-site</strong>
+            <p>The artisan travels to your pinned location. You get notified when they're approaching — no waiting in the dark.</p>
+          </div>
         </div>
-        <div class="feature-card">
-          <div class="feature-card__icon">⭐</div>
-          <div class="feature-card__num">4</div>
-          <h3 class="feature-card__title">Trust Score</h3>
-          <p class="feature-card__desc">Every verified job builds your score — a digital reputation more powerful than any paper certificate.</p>
+        <div class="how-step js-howstep">
+          <div class="how-step__connector" aria-hidden="true"></div>
+          <div class="how-step__num-wrap">
+            <span class="how-step__num">4</span>
+          </div>
+          <div class="how-step__body">
+            <strong>GPS proof recorded</strong>
+            <p>They record a 10-second video. GPS locks to that exact moment. Within 100m of your pin? Presence is verified. No match, no payout.</p>
+          </div>
+        </div>
+        <div class="how-step js-howstep">
+          <div class="how-step__num-wrap">
+            <span class="how-step__num how-step__num--done">✓</span>
+          </div>
+          <div class="how-step__body">
+            <strong>Escrow releases automatically</strong>
+            <p>Geofence passes, payment moves to the artisan's virtual account — instantly. No delays. No intermediaries counting their cut.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="how-cta">
+        <a href="/register" class="btn btn--orange btn--lg">
+          Post a Job
+          <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <span class="how-cta__note">Most jobs matched within 2 hours</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY SKILLCHAIN — three real distinctions, no buzzword padding -->
+  <section class="diff-section">
+    <div class="diff-section__inner">
+      <div class="diff-head">
+        <h2 class="diff-title">What actually makes this different.</h2>
+        <p class="diff-sub">Not a new coat of paint on the same old agency model. Three structural things that change how trust and payment work.</p>
+      </div>
+
+      <div class="diff-grid">
+        <div class="diff-item js-diffitem">
+          <div class="diff-item__mark">
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="diff-item__content">
+            <h3>Reputation earned, not self-declared</h3>
+            <p>Every artisan's rating is assembled from GPS-confirmed jobs, client reviews, and peer vouches. You cannot buy your way to a good score here — you earn it job by job.</p>
+          </div>
+        </div>
+
+        <div class="diff-item js-diffitem">
+          <div class="diff-item__mark diff-item__mark--orange">
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><path d="M12 2a5 5 0 0 1 5 5c0 4-5 11-5 11S7 11 7 7a5 5 0 0 1 5-5z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7" r="2" fill="currentColor"/></svg>
+          </div>
+          <div class="diff-item__content">
+            <h3>Proof of presence, not a promise</h3>
+            <p>The artisan records video on-site with GPS locked at that exact moment. If the coordinates don't match your pin, payment doesn't move. There's no override, no argument — it's mathematical.</p>
+          </div>
+        </div>
+
+        <div class="diff-item js-diffitem">
+          <div class="diff-item__mark">
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </div>
+          <div class="diff-item__content">
+            <h3>Payment moves when work is confirmed</h3>
+            <p>Escrow sits untouched until GPS proof passes. Then it moves automatically, in seconds, into the artisan's virtual account. Neither party has to trust the other to follow through.</p>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- STEPS -->
-  <section class="steps-section">
-    <div class="section-inner">
-      <span class="eyebrow">THE FLOW</span>
-      <h2 class="section-title section-title--light">Five steps to getting paid.</h2>
+  <!-- ARTISANS GRID -->
+  <section class="talent-section" id="artisans">
+    <div class="talent-section__inner">
+      <div class="talent-head">
+        <h2 class="talent-title">Verified. Available. Ready.</h2>
+        <a href="/explore" class="talent-browse">
+          Browse all 12K+ artisans
+          <svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
 
-      <ol class="steps-ol">
-        <li class="steps-ol__item">
-          <span class="steps-ol__num">01</span>
-          <div class="steps-ol__body">
-            <strong>Client posts a job</strong>
-            <p>Pins the exact GPS coordinates of the job site — the geofence anchor that cannot be faked.</p>
+      <div class="talent-grid">
+
+        <div class="talent-card js-talentcard">
+          <div class="talent-card__top">
+            <div class="talent-card__avatar" style="background:#c8b8a8;"></div>
+            <span class="avail-badge">AVAILABLE</span>
           </div>
-        </li>
-        <li class="steps-ol__item">
-          <span class="steps-ol__num">02</span>
-          <div class="steps-ol__body">
-            <strong>Worker accepts & travels on-site</strong>
-            <p>Browse open jobs, accept one, and head to the physical location to start work.</p>
+          <div class="talent-card__name">Chukwuemeka Eze</div>
+          <div class="talent-card__trade">⚡ Electrician</div>
+          <div class="talent-card__location">📍 Ikeja, Lagos</div>
+          <div class="talent-card__tags"><span>Wiring</span><span>Solar</span><span>Inverter</span></div>
+          <div class="talent-card__foot">
+            <span class="talent-rating">★ 4.9 · 138 jobs</span>
+            <span class="talent-rate">₦8k/day</span>
           </div>
-        </li>
-        <li class="steps-ol__item">
-          <span class="steps-ol__num">03</span>
-          <div class="steps-ol__body">
-            <strong>Proof of Presence captured</strong>
-            <p>Record a 10-second video. Your GPS coordinates are locked at that exact moment automatically.</p>
+        </div>
+
+        <div class="talent-card talent-card--featured js-talentcard">
+          <div class="talent-card__top">
+            <div class="talent-card__avatar" style="background:#a8b8c8;"></div>
+            <span class="avail-badge">AVAILABLE</span>
           </div>
-        </li>
-        <li class="steps-ol__item">
-          <span class="steps-ol__num">04</span>
-          <div class="steps-ol__body">
-            <strong>Geofence verified in seconds</strong>
-            <p>Within 100m of the anchor? Job marked Verified — mathematical, automatic, no human judgement needed.</p>
+          <div class="talent-card__name">Aminu Garba</div>
+          <div class="talent-card__trade">🔧 Plumber</div>
+          <div class="talent-card__location">📍 Wuse, Abuja</div>
+          <div class="talent-card__tags"><span>Pipes</span><span>Borehole</span><span>Tanks</span></div>
+          <div class="talent-card__foot">
+            <span class="talent-rating">★ 5.0 · 92 jobs</span>
+            <span class="talent-rate">₦6k/day</span>
           </div>
-        </li>
-        <li class="steps-ol__item">
-          <span class="steps-ol__num">05</span>
-          <div class="steps-ol__body">
-            <strong>Squad releases payment</strong>
-            <p>Funds move instantly from escrow to your Squad virtual account. Money in hand, job done.</p>
+        </div>
+
+        <div class="talent-card js-talentcard">
+          <div class="talent-card__top">
+            <div class="talent-card__avatar" style="background:#b8a8c8;"></div>
+            <span class="avail-badge">AVAILABLE</span>
           </div>
-        </li>
-      </ol>
+          <div class="talent-card__name">Taiwo Adeyemi</div>
+          <div class="talent-card__trade">🧱 Mason</div>
+          <div class="talent-card__location">📍 Ring Road, Ibadan</div>
+          <div class="talent-card__tags"><span>Blocks</span><span>Plastering</span></div>
+          <div class="talent-card__foot">
+            <span class="talent-rating">★ 4.8 · 201 jobs</span>
+            <span class="talent-rate">₦7k/day</span>
+          </div>
+        </div>
+
+        <div class="talent-card js-talentcard">
+          <div class="talent-card__top">
+            <div class="talent-card__avatar" style="background:#b8c8a8;"></div>
+            <span class="avail-badge">AVAILABLE</span>
+          </div>
+          <div class="talent-card__name">Biodun Okafor</div>
+          <div class="talent-card__trade">🪵 Carpenter</div>
+          <div class="talent-card__location">📍 GRA, Port Harcourt</div>
+          <div class="talent-card__tags"><span>Furniture</span><span>Roofing</span></div>
+          <div class="talent-card__foot">
+            <span class="talent-rating">★ 4.7 · 74 jobs</span>
+            <span class="talent-rate">₦9k/day</span>
+          </div>
+        </div>
+
+        <div class="talent-card js-talentcard">
+          <div class="talent-card__top">
+            <div class="talent-card__avatar" style="background:#c8a8b8;"></div>
+            <span class="avail-badge">AVAILABLE</span>
+          </div>
+          <div class="talent-card__name">Ngozi Obi</div>
+          <div class="talent-card__trade">🎨 Painter</div>
+          <div class="talent-card__location">📍 Independence Layout, Enugu</div>
+          <div class="talent-card__tags"><span>Interior</span><span>Exterior</span></div>
+          <div class="talent-card__foot">
+            <span class="talent-rating">★ 4.9 · 56 jobs</span>
+            <span class="talent-rate">₦5k/day</span>
+          </div>
+        </div>
+
+        <div class="talent-card talent-card--featured js-talentcard">
+          <div class="talent-card__top">
+            <div class="talent-card__avatar" style="background:#a8c8b8;"></div>
+            <span class="avail-badge">AVAILABLE</span>
+          </div>
+          <div class="talent-card__name">Suleiman Yusuf</div>
+          <div class="talent-card__trade">❄️ AC Technician</div>
+          <div class="talent-card__location">📍 Kano Municipal</div>
+          <div class="talent-card__tags"><span>Install</span><span>Repair</span><span>Gas Refill</span></div>
+          <div class="talent-card__foot">
+            <span class="talent-rating">★ 5.0 · 113 jobs</span>
+            <span class="talent-rate">₦10k/day</span>
+          </div>
+        </div>
+
+      </div>
     </div>
   </section>
 
-  <!-- CTA -->
-  <section class="cta-section">
-    <div class="section-inner cta-section__inner">
-      <div class="cta-section__glow" aria-hidden="true"></div>
-      <h2 class="cta-section__title">Ready to get verified?</h2>
-      <p class="cta-section__sub">Join skilled workers building trusted reputations across Nigeria — one verified job at a time.</p>
-      <a href="/register" class="btn btn--orange btn--lg">Create your account →</a>
+  <!-- DARK CTA -->
+  <section class="cta-dark">
+    <div class="cta-dark__inner">
+      <h2 class="cta-dark__title">
+        Your next artisan is<br>
+        <em class="cta-dark__accent">already in the chain.</em>
+      </h2>
+      <p class="cta-dark__sub">Post a job in under 3 minutes. We match you to a GPS-verified artisan near you — usually within the hour.</p>
+      <div class="cta-dark__actions">
+        <a href="/register" class="btn btn--orange btn--lg">
+          Post a Job
+          <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="/register?role=artisan" class="btn btn--dark-outline btn--lg">Join as Artisan</a>
+      </div>
     </div>
   </section>
 
   <!-- FOOTER -->
   <footer class="footer">
     <div class="footer__inner">
-      <a href="/" class="nav-logo footer__logo">
-        <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        SkillChain
-      </a>
-      <p class="footer__copy">© 2026 SkillChain | Developed by <strong>HAMZ Labs</strong></p>
+      <div class="footer__brand">
+        <a href="/" class="nav-logo">
+          <span class="nav-logo__mark">
+            <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#E85C00"/><path d="M7 9h6M7 14h10M7 19h8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M18 7l3 3-3 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="nav-logo__text footer-logo-text">SkillChain</span>
+        </a>
+        <p class="footer__tagline">The verified artisan platform.<br>No middlemen. No inflated fees.</p>
+        <div class="footer__social">
+          <a href="#" class="footer__social-pill">Twitter</a>
+          <a href="#" class="footer__social-pill">LinkedIn</a>
+          
+        </div>
+      </div>
+      <div class="footer__cols">
+        <div class="footer__col">
+          <span class="footer__col-label">PLATFORM</span>
+          <a href="/register">Find Artisans</a>
+          <a href="/register">Post a Job</a>
+          <a href="/register">How it Works</a>
+          <a href="/register">For Businesses</a>
+        </div>
+        <div class="footer__col">
+          <span class="footer__col-label">COMPANY</span>
+          <a href="Hamzlabs.com">About</a>
+          <a href="Hamzlabs.com">Blog</a>
+        </div>
+        <div class="footer__col">
+          <span class="footer__col-label">SUPPORT</span>
+          <a href="">Help Center</a>
+          <a href="#">Trust & Safety</a>
+          <a href="#">Terms</a>
+          <a href="#">Privacy</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© 2026 SkillChain · Built by <strong>HAMZ Labs</strong></span>
     </div>
   </footer>
 
-  <script src="/base/script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
