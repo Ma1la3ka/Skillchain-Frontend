@@ -1,108 +1,143 @@
 (function () {
   'use strict';
 
-  const FLASK       = 'https://skillchain-backend-gce5.onrender.com';
-  const LOGIN_PAGE  = '/Login/index.html';
+  const FLASK      = 'https://skillchain-backend-gce5.onrender.com';
+  const RETRY_HOST = 'https://bullion-crushing-trickster.ngrok-free.dev';
+  const LOGIN_PAGE = '/Login/index.html';
   const SESSION_DUR = 30 * 60 * 1000;
 
   let allJobs      = [];
-  let activeFilter = 'all';
-  let user         = null;
+  let activeFilter  = 'all';
+  let user          = null;
 
-  // ── Map state ─────────────────────────────────────
-  let map         = null;
-  let marker      = null;
-  let mapReady    = false;
-  let selectedLat = null;
-  let selectedLng = null;
+  // ── Map state ──
+  let map = null, marker = null, mapReady = false;
+  let selectedLat = null, selectedLng = null;
 
-  // ── Media state ───────────────────────────────────
+  // ── Media state ──
   let mediaFiles = [];
 
-  // ── DOM ───────────────────────────────────────────
+  // ── DOM refs ──
   const sidebar            = document.getElementById('sidebar');
-  const burger             = document.getElementById('burger');
-  const navItems           = document.querySelectorAll('.nav-item');
-  const views              = document.querySelectorAll('.view');
-  const filterBtns         = document.querySelectorAll('.filter-tab');
-  const modalOverlay       = document.getElementById('modal-overlay');
-  const modalClose         = document.getElementById('modal-close');
-  const modalBody          = document.getElementById('modal-body');
-  const workerModalOverlay = document.getElementById('worker-modal-overlay');
-  const workerModalClose   = document.getElementById('worker-modal-close');
-  const workerModalBody    = document.getElementById('worker-modal-body');
-  const DEV_MODE = true;  // set to false in production
-  
-  // ── Modal close handlers ──────────────────────────
-modalClose?.addEventListener('click', () => modalOverlay.classList.remove('is-open'));
-modalOverlay?.addEventListener('click', e => {
-  if (e.target === modalOverlay) modalOverlay.classList.remove('is-open');
-});
+  const sidebarScrim       = document.getElementById('sidebar-scrim');
+  const burger              = document.getElementById('burger');
+  const navItems            = document.querySelectorAll('.nav-item');
+  const views                = document.querySelectorAll('.view');
+  const filterBtns           = document.querySelectorAll('.filter-tab');
+  const modalOverlay        = document.getElementById('modal-overlay');
+  const modalClose           = document.getElementById('modal-close');
+  const modalBody             = document.getElementById('modal-body');
+  const workerModalOverlay  = document.getElementById('worker-modal-overlay');
+  const workerModalClose    = document.getElementById('worker-modal-close');
+  const workerModalBody     = document.getElementById('worker-modal-body');
 
-workerModalClose?.addEventListener('click', () => workerModalOverlay.classList.remove('is-open'));
-workerModalOverlay?.addEventListener('click', e => {
-  if (e.target === workerModalOverlay) workerModalOverlay.classList.remove('is-open');
-});
+  /* ══════════════════════════════════════════════
+     ICON LIBRARY — small stroke-based SVGs, replaces emoji
+  ══════════════════════════════════════════════ */
+  const ICON = {
+    check:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    x:          '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    clock:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    alert:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>',
+    shield:     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    pin:        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="2"/></svg>',
+    user:       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    card:       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M2 10h20" stroke="currentColor" stroke-width="2"/></svg>',
+    refresh:    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 4v5h5M20 20v-5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15A8 8 0 0020 12M18.5 9A8 8 0 004 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    copy:       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" stroke="currentColor" stroke-width="2"/></svg>',
+    heart:      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.35-9.5-8.6C1 8.2 2.7 5 6 5c2 0 3.4 1.1 4 2.3.6-1.2 2-2.3 4-2.3 3.3 0 5 3.2 3.5 6.4C19 15.65 12 20 12 20z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    heartFill:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20s-7-4.35-9.5-8.6C1 8.2 2.7 5 6 5c2 0 3.4 1.1 4 2.3.6-1.2 2-2.3 4-2.3 3.3 0 5 3.2 3.5 6.4C19 15.65 12 20 12 20z"/></svg>',
+    comment:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12H8l-4 4V4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    box:        '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 7l8-4 8 4M4 7v10l8 4 8-4V7M4 7l8 4 8-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    trash:      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    search:     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    handshake:  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M8 12h8M8 8h5M6 20l-3-3 3-3M18 4l3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    wallet:     '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/></svg>',
+    star:       '★', starEmpty: '☆'
+  };
+  function ic(name){ return ICON[name] || ''; }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    modalOverlay?.classList.remove('is-open');
-    workerModalOverlay?.classList.remove('is-open');
+  const TRADE_ICON = {
+    Mechanic:  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a4 4 0 00-5.6 5.1L3 17.5V21h3.5l6.1-6.1a4 4 0 005.1-5.6l-2.6 2.6-2-2 2.6-2.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    Electrician:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    Plumber:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 4h6v6a4 4 0 004 4h2v6h-6v-6a4 4 0 00-4-4H6V4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    Carpenter: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21l7-7M14 3l7 7-9 9-7-7 9-9z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    Painter:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3c4 0 8 2 8 6 0 2-1.5 3-3 3h-2a2 2 0 000 4 2 2 0 010 4c-5 0-9-4-9-9a8 8 0 016-8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    Welder:    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M8 3s-3 3-3 6a3 3 0 006 0c0-1-1-2-1-3 1 1 3 2 3 4a5 5 0 01-10 0c0-4 5-7 5-7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+    Tailor:    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="7" cy="17" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M20 5L5 15M9 9l11 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    Mason:     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="10" width="7" height="5" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="10" width="7" height="5" stroke="currentColor" stroke-width="1.6"/><rect x="8.5" y="5" width="7" height="5" stroke="currentColor" stroke-width="1.6"/></svg>',
+    'HVAC Technician':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5L4.2 17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    Other:     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/></svg>'
+  };
+  function tradeIcon(trade){ return TRADE_ICON[trade] || TRADE_ICON.Other; }
+
+  /* ══════════════════════════════════════════════
+     THEME
+  ══════════════════════════════════════════════ */
+  const themeToggle      = document.getElementById('theme-toggle');
+  const themeToggleLabel = document.getElementById('theme-toggle-label');
+
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('sc-theme', theme);
+    if (themeToggleLabel) themeToggleLabel.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
   }
-});
-  // re
-window.retryPaymentAccount = function(jobId) {
-    console.log("Button clicked! Attempting to generate account for job:", jobId);
-    
-    const btn = event.target;
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
+
+  themeToggle?.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  function swalTheme(){
+    const styles = getComputedStyle(document.documentElement);
+    return {
+      background: styles.getPropertyValue('--surface').trim(),
+      color:      styles.getPropertyValue('--text').trim()
+    };
+  }
+
+  // ── Modal close handlers ──
+  modalClose?.addEventListener('click', () => modalOverlay.classList.remove('is-open'));
+  modalOverlay?.addEventListener('click', e => { if (e.target === modalOverlay) modalOverlay.classList.remove('is-open'); });
+  workerModalClose?.addEventListener('click', () => workerModalOverlay.classList.remove('is-open'));
+  workerModalOverlay?.addEventListener('click', e => { if (e.target === workerModalOverlay) workerModalOverlay.classList.remove('is-open'); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { modalOverlay?.classList.remove('is-open'); workerModalOverlay?.classList.remove('is-open'); }
+  });
+
+  // ── Retry payment account generation ──
+  window.retryPaymentAccount = function (jobId) {
+    const btn = event.target.closest('button');
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = "⌛ Processing...";
+    btn.innerHTML = `${ic('refresh')} Processing…`;
 
-    fetch(`https://bullion-crushing-trickster.ngrok-free.dev/api/client/retry-payment/${jobId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+    fetch(`${RETRY_HOST}/api/client/retry-payment/${jobId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
     })
-    .then(response => response.json())
-    .then(res => {
-        // MATCHING THE BACKEND LOG: status 200 and success true
+      .then(r => r.json())
+      .then(res => {
         if (res.status === 200 || res.success === true) {
-            
-            // If the backend sent a checkout_url, let's go there!
-            if (res.data && res.data.checkout_url) {
-                Swal.fire({
-                    title: 'Redirecting to Payment...',
-                    text: 'Squad link generated successfully.',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false,
-                    background: '#181614', color: '#f0ede8'
-                }).then(() => {
-                    window.location.href = res.data.checkout_url;
-                });
-            } else {
-                alert("Success! Account generated. Reloading dashboard...");
-                location.reload(); 
-            }
+          if (res.data && res.data.checkout_url) {
+            Swal.fire({ title: 'Redirecting to payment…', text: 'Checkout link generated.', icon: 'success', timer: 1800, showConfirmButton: false, ...swalTheme() })
+              .then(() => { window.location.href = res.data.checkout_url; });
+          } else {
+            Swal.fire({ title: 'Account generated', text: 'Reloading dashboard…', icon: 'success', ...swalTheme() }).then(() => location.reload());
+          }
         } else {
-            // This captures the "Squad API still returning error" message
-            alert("Squad Error: " + (res.message || "Check KYC/Bank settings."));
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+          Swal.fire({ title: 'Payment provider error', text: res.message || 'Check your bank details and try again.', icon: 'error', ...swalTheme() });
+          btn.disabled = false; btn.innerHTML = originalText;
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert("Network error. Make sure your Flask backend and ngrok are both running.");
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    });
-};
-  
-  
-  // ── Auth guard ────────────────────────────────────
+      })
+      .catch(() => {
+        Swal.fire({ title: 'Network error', text: 'Could not reach the payment server.', icon: 'error', ...swalTheme() });
+        btn.disabled = false; btn.innerHTML = originalText;
+      });
+  };
 
-
+  // ── Auth guard ──
   window.addEventListener('pageshow', () => {
     const stored = localStorage.getItem('userData');
     if (!stored) { window.location.replace(LOGIN_PAGE); return; }
@@ -113,25 +148,19 @@ window.retryPaymentAccount = function(jobId) {
     }
   });
 
-  // ── Navigation ────────────────────────────────────
+  // ── Navigation ──
   function showView(viewId) {
     views.forEach(v => v.classList.remove('is-active'));
     const el = document.getElementById(`view-${viewId}`);
     if (el) el.classList.add('is-active');
     navItems.forEach(n => n.classList.toggle('is-active', n.dataset.view === viewId));
     sidebar.classList.remove('is-open');
+    sidebarScrim?.classList.remove('is-open');
 
-    // FIX: Initialise map AFTER the view is visible in DOM
     if (viewId === 'post-job') {
       if (!mapReady) {
-        // Use rAF to guarantee the view is painted before Leaflet measures it
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            initMap();
-          });
-        });
+        requestAnimationFrame(() => requestAnimationFrame(initMap));
       } else {
-        // Already initialised — just fix sizing in case container changed
         map.invalidateSize();
       }
     }
@@ -140,38 +169,35 @@ window.retryPaymentAccount = function(jobId) {
     if (viewId === 'payments')     renderPayments();
     if (viewId === 'find-workers') searchWorkers();
     if (viewId === 'bargains')     loadBargains();
-      }
+  }
 
-  navItems.forEach(item => {
-    item.addEventListener('click', e => { e.preventDefault(); showView(item.dataset.view); });
-  });
-
+  navItems.forEach(item => item.addEventListener('click', e => { e.preventDefault(); showView(item.dataset.view); }));
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-view]');
     if (t && !t.classList.contains('nav-item')) { e.preventDefault(); showView(t.dataset.view); }
   });
 
-  burger?.addEventListener('click', () => sidebar.classList.toggle('is-open'));
+  burger?.addEventListener('click', () => { sidebar.classList.toggle('is-open'); sidebarScrim?.classList.toggle('is-open'); });
+  sidebarScrim?.addEventListener('click', () => { sidebar.classList.remove('is-open'); sidebarScrim.classList.remove('is-open'); });
 
-  // ── Logout ────────────────────────────────────────
+  // ── Logout ──
   document.getElementById('logout-btn')?.addEventListener('click', e => {
     e.preventDefault();
     Swal.fire({
       title: 'Log out?', text: 'You will need to log back in.',
       icon: 'question', showCancelButton: true,
-      confirmButtonColor: '#e85c00', cancelButtonColor: '#333',
-      confirmButtonText: 'Yes, log out', cancelButtonText: 'Stay here',
-      background: '#181614', color: '#f0ede8'
+      confirmButtonColor: '#E85C00', cancelButtonColor: '#9A968E',
+      confirmButtonText: 'Log out', cancelButtonText: 'Stay signed in',
+      ...swalTheme()
     }).then(r => {
       if (r.isConfirmed) {
         localStorage.removeItem('userData');
-        fetch(`${FLASK}/logout-api`, { method: 'POST', credentials: 'include' })
-          .finally(() => window.location.replace(LOGIN_PAGE));
+        fetch(`${FLASK}/logout-api`, { method: 'POST', credentials: 'include' }).finally(() => window.location.replace(LOGIN_PAGE));
       }
     });
   });
 
-  // ── Load user ─────────────────────────────────────
+  // ── Load user ──
   function loadUser() {
     const stored = localStorage.getItem('userData');
     if (!stored) { window.location.replace(LOGIN_PAGE); return false; }
@@ -183,19 +209,24 @@ window.retryPaymentAccount = function(jobId) {
     }
     user.loginTime = Date.now();
     localStorage.setItem('userData', JSON.stringify(user));
+
     const welcomeEl = document.getElementById('welcome-name');
+    const dateEl    = document.getElementById('overview-date');
     const navNameEl = document.getElementById('nav-name');
     const navAvatar = document.getElementById('nav-avatar');
     const topAvatar = document.getElementById('topbar-avatar');
 
-    if (welcomeEl) welcomeEl.textContent  = `Welcome, ${user.name}`;
-    if (navNameEl) navNameEl.textContent  = user.name;
-    if (navAvatar) navAvatar.textContent  = user.name[0].toUpperCase();
-    if (topAvatar) topAvatar.textContent  = user.name[0].toUpperCase();
+    const hr = new Date().getHours();
+    const greeting = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+    if (welcomeEl) welcomeEl.textContent = `${greeting}, ${user.name.split(' ')[0]}`;
+    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+    if (navNameEl) navNameEl.textContent = user.name;
+    if (navAvatar) navAvatar.textContent = user.name[0].toUpperCase();
+    if (topAvatar) topAvatar.textContent = user.name[0].toUpperCase();
     return true;
   }
 
-  // ── Load jobs ─────────────────────────────────────
+  // ── Load jobs ──
   async function loadJobs() {
     try {
       const res = await fetch(`${FLASK}/api/client/jobs?user_id=${user.id}`, { credentials: 'include' });
@@ -204,77 +235,56 @@ window.retryPaymentAccount = function(jobId) {
       allJobs = data.jobs || [];
       renderStats(allJobs);
       renderRecentJobs(allJobs.slice(0, 5));
+      renderTrackList(allJobs);
     } catch (e) { console.error('loadJobs:', e); }
   }
-// cancel post job — shared by both header and form cancel buttons
+
   function cancelPostJob() {
-  document.getElementById('post-job-form').reset();
-  clearLocation();
-  mediaFiles = [];
-  renderMediaPreviews();
-  ['err-title','err-amount','err-address'].forEach(id => {
-    document.getElementById(id).textContent = '';
-  });
-  showView('overview');
-}
-document.getElementById('cancel-post-job')?.addEventListener('click', cancelPostJob);
-document.getElementById('cancel-post-job-header')?.addEventListener('click', cancelPostJob);
+    document.getElementById('post-job-form').reset();
+    clearLocation();
+    mediaFiles = [];
+    renderMediaPreviews();
+    ['err-title', 'err-amount', 'err-address'].forEach(id => { document.getElementById(id).textContent = ''; });
+    showView('overview');
+  }
+  document.getElementById('cancel-post-job')?.addEventListener('click', cancelPostJob);
 
-  // ── Stats ─────────────────────────────────────────
-function renderStats(jobs) {
-  document.getElementById('stat-total').textContent  = jobs.length;
-document.getElementById('stat-active').textContent = jobs.filter(j => ['open','assigned','pending_review','pending_verification'].includes(j.status)).length;
-  document.getElementById('stat-done').textContent   = jobs.filter(j => ['verified','paid'].includes(j.status)).length;
-  document.getElementById('stat-paid').textContent   = '₦' + jobs
-    .filter(j => j.status === 'paid')
-    .reduce((s, j) => s + Number(j.amount || 0), 0)
-    .toLocaleString();
-}
-  // ── Job card helpers ──────────────────────────────
-  const TRADE_ICONS = {
-    Mechanic: '🔧', Electrician: '⚡', Plumber: '🔩', Carpenter: '🪚',
-    Painter: '🖌️', Welder: '🔥', Tailor: '🧵', Mason: '🧱',
-    'HVAC Technician': '❄️', Other: '🛠️'
-  };
+  // ── Stats ──
+  function renderStats(jobs) {
+    document.getElementById('stat-total').textContent  = jobs.length;
+    document.getElementById('stat-active').textContent = jobs.filter(j => ['open', 'assigned', 'pending_review', 'pending_verification'].includes(j.status)).length;
+    document.getElementById('stat-done').textContent   = jobs.filter(j => ['verified', 'paid'].includes(j.status)).length;
+    document.getElementById('stat-paid').textContent   = '₦' + jobs.filter(j => j.status === 'paid').reduce((s, j) => s + Number(j.amount || 0), 0).toLocaleString();
+  }
 
-function statusBadge(status) {
-  const labels = {
-    open: 'Open',
-    pending_review: 'Awaiting Approval',  // ← ADD
-    assigned: 'Assigned',
-    pending_verification: 'Pending',
-    verified: 'Verified',
-    paid: 'Paid'
-  };
-  return `<span class="badge badge--${status}">${labels[status] || status}</span>`;
-}
+  function statusBadge(status) {
+    const labels = { open: 'Open', pending_review: 'Awaiting Approval', assigned: 'Assigned', pending_verification: 'Pending', verified: 'Verified', paid: 'Paid' };
+    return `<span class="badge badge--${status}">${labels[status] || status}</span>`;
+  }
 
-
-function jobCardHTML(job) {
-  const icon = TRADE_ICONS[job.trade] || '🛠️';
-  const date = new Date(job.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
-  const canDelete = job.status === 'open';
-
-  return `
-    <div class="job-card" data-job-id="${job.id}">
-      <div class="job-card__icon">${icon}</div>
-      <div class="job-card__info">
-        <p class="job-card__title">${job.title}</p>
-        <div class="job-card__meta">
-          ${statusBadge(job.status)}
-          <span>${job.worker_name ? '👷 ' + job.worker_name : 'No worker yet'}</span>
-          <span>📅 ${date}</span>
+  function jobCardHTML(job) {
+    const date = new Date(job.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+    const canDelete = job.status === 'open';
+    return `
+      <div class="job-card" data-job-id="${job.id}">
+        <div class="job-card__icon">${tradeIcon(job.trade)}</div>
+        <div class="job-card__info">
+          <p class="job-card__title">${job.title}</p>
+          <div class="job-card__meta">
+            ${statusBadge(job.status)}
+            <span>${ic('user')} ${job.worker_name || 'No worker yet'}</span>
+            <span>${date}</span>
+          </div>
         </div>
-      </div>
-      <div class="job-card__right">
-        <span class="job-card__amount">₦${Number(job.amount).toLocaleString()}</span>
-        ${canDelete ? `<button class="job-card__delete" data-job-id="${job.id}" title="Delete job">🗑</button>` : ''}
-      </div>
-    </div>`;
-}
+        <div class="job-card__right">
+          <span class="job-card__amount">₦${Number(job.amount).toLocaleString()}</span>
+          ${canDelete ? `<button class="job-card__delete" data-job-id="${job.id}" title="Delete job">${ic('trash')} Delete</button>` : ''}
+        </div>
+      </div>`;
+  }
 
   function renderRecentJobs(jobs) {
-    const el    = document.getElementById('recent-jobs-list');
+    const el = document.getElementById('recent-jobs-list');
     const empty = document.getElementById('recent-empty');
     if (!jobs.length) { if (empty) empty.style.display = 'block'; return; }
     if (empty) empty.style.display = 'none';
@@ -284,13 +294,10 @@ function jobCardHTML(job) {
 
   function renderJobsList(jobs) {
     const filtered = activeFilter === 'all' ? jobs
-      : jobs.filter(j => activeFilter === 'verified'
-          ? ['verified', 'paid'].includes(j.status)
-          : j.status === activeFilter);
+      : jobs.filter(j => activeFilter === 'verified' ? ['verified', 'paid'].includes(j.status) : j.status === activeFilter);
     const el = document.getElementById('all-jobs-list');
-    el.innerHTML = filtered.length
-      ? filtered.map(jobCardHTML).join('')
-      : `<div class="empty-state"><span>📭</span><p>No ${activeFilter === 'all' ? '' : activeFilter} jobs found.</p></div>`;
+    el.innerHTML = filtered.length ? filtered.map(jobCardHTML).join('')
+      : `<div class="empty-state"><div class="icon-sq">${ic('box')}</div><p>No ${activeFilter === 'all' ? '' : activeFilter} jobs found.</p></div>`;
     if (filtered.length) attachJobCardListeners(el);
   }
 
@@ -303,636 +310,498 @@ function jobCardHTML(job) {
     });
   });
 
-function attachJobCardListeners(container) {
-  container.querySelectorAll('.job-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      // Don't open modal if they clicked the delete button
-      if (e.target.closest('.job-card__delete')) return;
-      const job = allJobs.find(j => j.id === parseInt(card.dataset.jobId));
-      if (job) openJobModal(job);
+  function attachJobCardListeners(container) {
+    container.querySelectorAll('.job-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.job-card__delete')) return;
+        const job = allJobs.find(j => j.id === parseInt(card.dataset.jobId));
+        if (job) openJobModal(job);
+      });
     });
-  });
-
-  // Wire delete buttons separately
-  container.querySelectorAll('.job-card__delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteJob(parseInt(btn.dataset.jobId));
+    container.querySelectorAll('.job-card__delete').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); deleteJob(parseInt(btn.dataset.jobId)); });
     });
-  });
-}
- async function openJobModal(job) {
-  const icon     = TRADE_ICONS[job.trade] || '🛠️';
-  const created  = new Date(job.created_at).toLocaleString('en-NG');
-  const verified = job.verified_at ? new Date(job.verified_at).toLocaleString('en-NG') : '—';
- 
-  // Fetch live payment details (escrow status + collection account)
-  let paymentDetails = null;
-  try {
-    const pRes = await fetch(
-      `${FLASK}/api/job/payment-details?job_id=${job.id}&user_id=${user.id}`,
-      { credentials: 'include' }
-    );
-    if (pRes.ok) paymentDetails = await pRes.json();
-  } catch (e) { console.error('payment-details:', e); }
- 
-  // Fetch media for this job
-  let media = [];
-  try {
-    const mRes = await fetch(
-      `${FLASK}/api/job/media?job_id=${job.id}&user_id=${user.id}`,
-      { credentials: 'include' }
-    );
-    if (mRes.ok) { const md = await mRes.json(); media = md.media || []; }
-  } catch (e) {}
- 
-  // Fetch comments
-  let comments = [];
-  try {
-    const cRes = await fetch(`${FLASK}/api/job/comments?job_id=${job.id}`, { credentials: 'include' });
-    if (cRes.ok) { const cd = await cRes.json(); comments = cd.comments || []; }
-  } catch (e) {}
- 
-  const pd        = paymentDetails || job;
-  const escrowPaid= pd.escrow_paid || false;
-  const acctNum   = pd.collection_account_number || '';
-  const bankName  = pd.collection_bank_name || '';
-  const amount    = Number(pd.amount || job.amount || 0);
+  }
 
-  // review section — only for pending_review status
-let reviewSection = '';
-if (job.status === 'pending_review') {
-  reviewSection = `
-    <div style="background:#1a1200;border:1px solid rgba(245,158,11,.3);
-      border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <p style="font-size:.68rem;letter-spacing:.1em;color:#f59e0b;margin-bottom:6px">
-        ⏳ WORKER APPLICATION — AWAITING YOUR DECISION
-      </p>
-      <p style="font-size:.82rem;color:#a09890;margin-bottom:12px">
-        <strong style="color:#f0ede8">${job.worker_name || 'A worker'}</strong> 
-        has applied for this job. Approve to assign them, or decline to reopen.
-      </p>
-      <div style="display:flex;gap:10px">
-        <button onclick="reviewWorker(${job.id}, ${job.worker_id}, 'assign')"
-          style="flex:1;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);
-          color:#22c55e;border-radius:8px;padding:10px;font-size:.85rem;
-          font-weight:600;cursor:pointer">
-          ✅ Approve Worker
-        </button>
-        <button onclick="reviewWorker(${job.id}, ${job.worker_id}, 'decline')"
-          style="flex:1;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
-          color:#ef4444;border-radius:8px;padding:10px;font-size:.85rem;
-          font-weight:600;cursor:pointer">
-          ❌ Decline
-        </button>
-      </div>
-    </div>`;
-}
- 
-  // ── Escrow section ─────────────────────────────────────────────────
-// ── Escrow section — replaces the existing escrowSection block ─────
-let escrowSection = '';
+  /* ══════════════════════════════════════════════
+     ACTIVE PROJECT TRACKING (stepper)
+  ══════════════════════════════════════════════ */
+  const STEP_LABELS = ['Job Posted', 'Assigned', 'In Progress', 'Completed'];
+  const STATUS_STEP = { open: 0, pending_review: 1, assigned: 1, pending_verification: 2, verified: 3, paid: 3 };
 
-if (['open', 'assigned', 'pending_review'].includes(job.status)){
-  const hasAccount = !!(pd.collection_account_number);
-  const funded     = pd.escrow_paid || false;
+  function stepperHTML(status) {
+    const current = STATUS_STEP[status] ?? 0;
+    return `<div class="stepper">${STEP_LABELS.map((label, i) => {
+      const cls = i < current ? 'stepper__step--done' : i === current ? 'stepper__step--active' : '';
+      const content = i < current ? ic('check') : (i + 1);
+      const connector = i < STEP_LABELS.length - 1 ? `<div class="stepper__connector ${i < current ? 'is-done' : ''}"></div>` : '';
+      return `<div class="stepper__step ${cls}"><div class="stepper__dot">${content}</div><span class="stepper__label">${label}</span></div>${connector}`;
+    }).join('')}</div>`;
+  }
 
-  if (funded) {
-    // Already paid — green confirmation
-    escrowSection = `
-      <div style="background:#0a1f12;border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:1.2rem">✅</span>
-        <div>
-          <p style="font-size:.82rem;font-weight:600;color:#22c55e">Escrow Funded</p>
-          <p style="font-size:.72rem;color:#5a5550">₦${amount.toLocaleString()} received — worker can now complete job</p>
+  function trackCardHTML(job) {
+    const timeAgo = relativeTime(job.created_at);
+    return `
+      <div class="track-card" data-job-id="${job.id}">
+        <div class="track-card__head">
+          <span class="track-card__id">J-${String(job.id).padStart(4, '0')}</span>
+          <span class="track-card__title">${job.title}</span>
+          ${job.trade ? `<span class="trade-tag">${job.trade}</span>` : ''}
+        </div>
+        ${stepperHTML(job.status)}
+        <div class="track-card__foot">
+          <span class="track-worker">
+            ${job.worker_name
+              ? `<span class="track-worker__avatar">${job.worker_name[0].toUpperCase()}</span> ${job.worker_name}`
+              : `${ic('user')} No worker assigned yet`}
+          </span>
+          <span class="track-card__time">${timeAgo}</span>
         </div>
       </div>`;
-
-  } else if (hasAccount) {
-  const isCheckoutUrl = pd.collection_account_number?.startsWith('http');
-
-  escrowSection = isCheckoutUrl ? `
-    <div style="background:#1a0d00;border:1px solid rgba(232,92,0,.35);
-      border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <p style="font-size:.68rem;letter-spacing:.1em;color:#5a5550;margin-bottom:8px">
-        ⚠️ PAYMENT REQUIRED — FUND ESCROW TO UNLOCK JOB
-      </p>
-      <p style="font-size:.78rem;color:#ffb07a;margin-bottom:14px">
-        Pay exactly <strong>₦${amount.toLocaleString()}</strong> via Squad to fund escrow.
-        Worker can only start after payment is confirmed.
-      </p>
-      <a href="${pd.collection_account_number}" target="_blank"
-        style="display:block;width:100%;background:#e85c00;color:#fff;
-               border:none;border-radius:8px;padding:12px;font-size:.9rem;
-               font-weight:700;cursor:pointer;text-align:center;
-               text-decoration:none;margin-bottom:8px">
-        💳 Pay ₦${amount.toLocaleString()} via Squad →
-      </a>
-      <button onclick="verifyPaymentDemo(${job.id})"
-        style="width:100%;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);
-               color:#22c55e;border-radius:8px;padding:8px;font-size:.75rem;
-               font-weight:600;cursor:pointer;opacity:.7">
-        🧪 Verify Payment (Demo — Dev Only)
-      </button>
-    </div>` : `
-    <div style="background:#1a0d00;border:1px solid rgba(232,92,0,.35);
-      border-radius:10px;padding:14px 16px;margin-bottom:16px">
-      <p style="font-size:.68rem;letter-spacing:.1em;color:#5a5550;margin-bottom:8px">
-        ⚠️ AWAITING PAYMENT — TRANSFER TO FUND ESCROW
-      </p>
-      <div style="background:#111;border-radius:8px;padding:12px;margin-bottom:10px">
-        <p style="font-size:.68rem;color:#5a5550;letter-spacing:.08em;margin-bottom:4px">BANK</p>
-        <p style="font-size:.875rem;color:#a09890;margin-bottom:10px">
-          ${pd.collection_bank_name || 'GTBank'}
-        </p>
-        <p style="font-size:.68rem;color:#5a5550;letter-spacing:.08em;margin-bottom:4px">
-          ACCOUNT NUMBER
-        </p>
-        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;
-          letter-spacing:.07em;margin-bottom:2px">
-          ${pd.collection_account_number}
-        </p>
-      </div>
-      <button onclick="navigator.clipboard.writeText('${pd.collection_account_number}')
-        .then(()=>Swal.fire({title:'Copied!',icon:'success',timer:1500,
-        showConfirmButton:false,background:'#181614',color:'#f0ede8'}))"
-        style="width:100%;background:rgba(232,92,0,.1);border:1px solid rgba(232,92,0,.3);
-               color:#e85c00;border-radius:8px;padding:9px;font-size:.82rem;
-               font-weight:600;cursor:pointer;margin-bottom:8px">
-        📋 Copy Account Number
-      </button>
-      <button onclick="verifyPaymentDemo(${job.id})"
-        style="width:100%;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);
-               color:#22c55e;border-radius:8px;padding:8px;font-size:.75rem;
-               font-weight:600;cursor:pointer;opacity:.7">
-        🧪 Verify Payment (Demo — Dev Only)
-      </button>
-    </div>`;
-
-
-  } else {
-    // No account yet — Squad call failed on job post, show retry
-    escrowSection = `
-      <div style="background:#1a1208;border:1px solid rgba(232,92,0,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px">
-        <p style="font-size:.78rem;color:#a09890">Payment account not generated yet.</p>
-        <button onclick="retryPaymentAccount(${job.id})"
-          style="margin-top:8px;background:rgba(232,92,0,.1);border:1px solid rgba(232,92,0,.3);color:#e85c00;border-radius:6px;padding:7px 14px;font-size:.8rem;font-weight:600;cursor:pointer">
-          🔄 Generate Payment Account
-        </button>
-      </div>`;
   }
-}
- 
-  // ── Rating section (only after GPS-verified) ───────────────────────
-  const canRate      = ['verified','paid'].includes(job.status) &&
-                       job.distance_meters != null &&
-                       Number(job.distance_meters) <= 100;
-  const alreadyRated = job.client_rating != null;
- 
-  let ratingSection = '';
-  if (['verified','paid'].includes(job.status)) {
-    if (!canRate) {
-      ratingSection = `
-        <div style="background:#1a0a0a;border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px;margin-top:16px;font-size:.78rem;color:#f87171">
-          🚫 Rating is disabled — worker was not within the GPS boundary (${job.distance_meters ? Math.round(job.distance_meters) + 'm away' : 'no GPS data'}).
-        </div>`;
-    } else if (alreadyRated) {
-      ratingSection = `
-        <div style="background:#0a1f12;border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:12px;margin-top:16px">
-          <p style="font-size:.72rem;color:#5a5550;margin-bottom:4px">YOUR RATING</p>
-          <p style="color:#f59e0b;font-size:1.2rem">${'★'.repeat(job.client_rating)}${'☆'.repeat(5-job.client_rating)}</p>
-          ${job.client_rating_comment ? `<p style="font-size:.8rem;color:#a09890;margin-top:4px">"${job.client_rating_comment}"</p>` : ''}
-        </div>`;
-    } else {
-      ratingSection = `
-        <div style="background:#0a1f12;border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:14px 16px;margin-top:16px">
-          <p style="font-size:.68rem;letter-spacing:.1em;color:#22c55e;margin-bottom:8px">RATE THIS WORKER</p>
-          <div style="display:flex;gap:6px;margin-bottom:10px" id="star-row">
-            ${[1,2,3,4,5].map(n => `
-              <button onclick="selectStar(${n}, ${job.id})"
-                id="star-${n}"
-                style="font-size:1.6rem;background:none;border:none;cursor:pointer;filter:grayscale(1);transition:filter .1s,transform .1s"
-                title="${n} star${n>1?'s':''}">★</button>`).join('')}
-          </div>
-          <textarea id="rating-comment" placeholder="Optional comment…"
-            style="width:100%;background:#111;border:1px solid rgba(255,255,255,.07);border-radius:6px;color:#f0ede8;padding:8px 10px;font-family:inherit;font-size:.82rem;resize:vertical;min-height:60px;outline:none"></textarea>
-          <button class="btn btn--orange btn--wide" style="margin-top:10px" id="submit-rating-btn"
-            onclick="submitRating(${job.id}, ${job.worker_id || 0})">
-            Submit Rating
-          </button>
-        </div>`;
+
+  function relativeTime(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  }
+
+  function renderTrackList(jobs) {
+    const el = document.getElementById('track-list');
+    if (!el) return;
+    const active = jobs.filter(j => !['paid'].includes(j.status)).slice(0, 5);
+    if (!active.length) {
+      el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('clock')}</div><p>No active jobs being tracked right now.</p></div>`;
+      return;
     }
-  }
- 
-  // ── Media section ──────────────────────────────────────────────────
-  let mediaSection = '';
-  if (media.length > 0) {
-    mediaSection = `
-      <div class="modal-divider"></div>
-      <p class="modal-field__label" style="margin-bottom:8px">PROOF MEDIA</p>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${media.map(m => `
-          <div style="background:var(--bg3);border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-            ${m.media_type === 'video'
-              ? `<video src="${FLASK}/static/${m.file_path.replace('static/','')}" controls style="width:100%;max-height:220px;object-fit:cover"></video>`
-              : `<img src="${FLASK}/static/${m.file_path.replace('static/','')}" style="width:100%;max-height:220px;object-fit:cover">`}
-            <div style="padding:8px 12px;display:flex;align-items:center;gap:12px">
-              ${m.proof_lat ? `<span style="font-size:.72rem;color:#5a5550;font-family:monospace">📍 ${Number(m.proof_lat).toFixed(4)}, ${Number(m.proof_lng).toFixed(4)}</span>` : ''}
-              <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}"
-                style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:.82rem;color:${m.user_liked ? '#e85c00' : '#5a5550'}">
-                ${m.user_liked ? '❤️' : '🤍'} <span id="like-count-${m.id}">${m.likes}</span>
-              </button>
-              <button onclick="openMediaComments(${m.id})"
-                style="background:none;border:none;cursor:pointer;font-size:.82rem;color:#5a5550">
-                💬 ${m.comment_count}
-              </button>
-            </div>
-          </div>`).join('')}
-      </div>`;
-  }
- 
-  // ── Comments section ───────────────────────────────────────────────
-  const commentsSection = `
-    <div class="modal-divider"></div>
-    <p class="modal-field__label" style="margin-bottom:8px">COMMENTS</p>
-    <div id="job-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-      ${comments.length === 0
-        ? `<p style="font-size:.8rem;color:#5a5550">No comments yet.</p>`
-        : comments.map(c => `
-            <div style="background:var(--bg3);border-radius:8px;padding:8px 12px">
-              <p style="font-size:.72rem;font-weight:600;color:#a09890;margin-bottom:2px">${c.user_name || 'Anonymous'}</p>
-              <p style="font-size:.85rem">${c.body}</p>
-            </div>`).join('')}
-    </div>
-    <div style="display:flex;gap:8px">
-      <input type="text" id="job-comment-input" placeholder="Write a comment…"
-        style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 12px;font-family:inherit;font-size:.85rem;outline:none">
-      <button onclick="postJobComment(${job.id})"
-        class="btn btn--orange btn--sm">Send</button>
-    </div>`;
- 
-  // ── Assemble modal ─────────────────────────────────────────────────
-  modalBody.innerHTML = `
-    <p class="modal-title">${icon} ${job.title}</p>
-    <p class="modal-amount">₦${amount.toLocaleString()}</p>
-    ${statusBadge(job.status)}
-    ${reviewSection}
-    ${escrowSection}
- 
-    <div class="modal-divider"></div>
-    <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description || '—'}</p></div>
-    <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">📍 ${job.site_address || '—'}</p></div>
-    <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade || '—'}</p></div>
-    <div class="modal-field"><p class="modal-field__label">Worker</p><p class="modal-field__val">${job.worker_name
-      ? `👷 <a href="#" onclick="openWorkerPublicProfile(${job.worker_id})" style="color:var(--orange)">${job.worker_name}</a> · ⭐ ${job.worker_trust ?? '—'}`
-      : 'No worker assigned yet'}</p></div>
-    <div class="modal-divider"></div>
-    <div class="modal-field"><p class="modal-field__label">Posted</p><p class="modal-field__val">${created}</p></div>
-    <div class="modal-field"><p class="modal-field__label">Verified At</p><p class="modal-field__val">${verified}</p></div>
-    ${job.distance_meters != null
-      ? `<div class="modal-field"><p class="modal-field__label">GPS Distance</p><p class="modal-field__val">${Number(job.distance_meters).toFixed(0)}m from site</p></div>`
-      : ''}
-    ${job.transfer_reference
-      ? `<div class="modal-field"><p class="modal-field__label">Payout Ref</p><p class="modal-field__val" style="font-family:monospace;font-size:.8rem">${job.transfer_reference}</p></div>`
-      : ''}
- 
-    ${ratingSection}
-    ${mediaSection}
-    ${commentsSection}
-  `;
- 
-  // Store selected star for rating
-  window._selectedStar = job.client_rating || 0;
-  modalOverlay.classList.add('is-open');
-}
-
- function copyAccNum(num) {
-  navigator.clipboard.writeText(num).then(() => {
-    Swal.fire({ title: 'Copied!', text: num, icon: 'success', timer: 1500, showConfirmButton: false, background: '#181614', color: '#f0ede8' });
-  });
-}
- 
-async function simulatePayment(jobId) {
-  const res  = await fetch(`${FLASK}/api/dev/simulate-payment`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ job_id: jobId })
-  });
-  const data = await res.json();
-  if (data.success) {
-    modalOverlay.classList.remove('is-open');
-    await loadJobs();
-    Swal.fire({ title: '✅ Payment Simulated', text: data.message, icon: 'success', background: '#181614', color: '#f0ede8', confirmButtonColor: '#e85c00' });
-  } else {
-    Swal.fire('Error', data.error || 'Failed', 'error');
-  }
-}
- 
-function selectStar(n, jobId) {
-  window._selectedStar = n;
-  [1,2,3,4,5].forEach(i => {
-    const el = document.getElementById(`star-${i}`);
-    if (el) {
-      el.style.filter    = i <= n ? 'none' : 'grayscale(1)';
-      el.style.color     = i <= n ? '#f59e0b' : '';
-      el.style.transform = i === n ? 'scale(1.2)' : 'scale(1)';
-    }
-  });
-}
- 
-async function submitRating(jobId, workerId) {
-  const rating  = window._selectedStar || 0;
-  const comment = document.getElementById('rating-comment')?.value.trim() || '';
- 
-  if (!rating) {
-    Swal.fire({ title: 'Pick a star rating', icon: 'warning', background: '#181614', color: '#f0ede8', confirmButtonColor: '#e85c00' });
-    return;
-  }
- 
-  const btn = document.getElementById('submit-rating-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
- 
-  try {
-    const res  = await fetch(`${FLASK}/api/client/rate-worker`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ job_id: jobId, user_id: user.id, rating, comment })
+    el.innerHTML = active.map(trackCardHTML).join('');
+    el.querySelectorAll('.track-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const job = allJobs.find(j => j.id === parseInt(card.dataset.jobId));
+        if (job) openJobModal(job);
+      });
     });
-    const data = await res.json();
- 
-    if (data.success) {
-      modalOverlay.classList.remove('is-open');
-      await loadJobs();
-      Swal.fire({ title: '⭐ Rating Saved!', icon: 'success', background: '#181614', color: '#f0ede8', confirmButtonColor: '#e85c00' });
-    } else {
-      Swal.fire({ title: 'Cannot Rate', text: data.message, icon: 'error', background: '#181614', color: '#f0ede8' });
+  }
+
+  /* ══════════════════════════════════════════════
+     JOB DETAIL MODAL
+  ══════════════════════════════════════════════ */
+  async function openJobModal(job) {
+    const created  = new Date(job.created_at).toLocaleString('en-NG');
+    const verified = job.verified_at ? new Date(job.verified_at).toLocaleString('en-NG') : '—';
+
+    let paymentDetails = null;
+    try {
+      const pRes = await fetch(`${FLASK}/api/job/payment-details?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+      if (pRes.ok) paymentDetails = await pRes.json();
+    } catch (e) {}
+
+    let media = [];
+    try {
+      const mRes = await fetch(`${FLASK}/api/job/media?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+      if (mRes.ok) { const md = await mRes.json(); media = md.media || []; }
+    } catch (e) {}
+
+    let comments = [];
+    try {
+      const cRes = await fetch(`${FLASK}/api/job/comments?job_id=${job.id}`, { credentials: 'include' });
+      if (cRes.ok) { const cd = await cRes.json(); comments = cd.comments || []; }
+    } catch (e) {}
+
+    const pd     = paymentDetails || job;
+    const amount = Number(pd.amount || job.amount || 0);
+
+    // Review section
+    let reviewSection = '';
+    if (job.status === 'pending_review') {
+      reviewSection = `
+        <div class="notice notice--warning">
+          <p class="notice__label">${ic('clock')} Worker application — awaiting your decision</p>
+          <p><strong style="color:var(--text)">${job.worker_name || 'A worker'}</strong> has applied for this job. Approve to assign them, or decline to reopen it.</p>
+          <div class="notice__row">
+            <button class="btn btn--success" onclick="reviewWorker(${job.id}, ${job.worker_id}, 'assign')">${ic('check')} Approve Worker</button>
+            <button class="btn btn--danger" onclick="reviewWorker(${job.id}, ${job.worker_id}, 'decline')">${ic('x')} Decline</button>
+          </div>
+        </div>`;
+    }
+
+    // Escrow section
+    let escrowSection = '';
+    if (['open', 'assigned', 'pending_review'].includes(job.status)) {
+      const hasAccount = !!pd.collection_account_number;
+      const funded = pd.escrow_paid || false;
+
+      if (funded) {
+        escrowSection = `
+          <div class="notice notice--success" style="display:flex;align-items:center;gap:10px">
+            <span style="color:var(--success)">${ic('check')}</span>
+            <div><p style="font-weight:700;color:var(--success);font-size:.85rem">Escrow Funded</p>
+            <p style="font-size:.76rem;color:var(--text-3)">₦${amount.toLocaleString()} received — worker can now complete the job</p></div>
+          </div>`;
+      } else if (hasAccount) {
+        const isCheckoutUrl = pd.collection_account_number.startsWith('http');
+        escrowSection = isCheckoutUrl ? `
+          <div class="notice notice--warning">
+            <p class="notice__label">${ic('alert')} Payment required — fund escrow to unlock job</p>
+            <p style="margin-bottom:12px">Pay exactly <strong style="color:var(--text)">₦${amount.toLocaleString()}</strong> to fund escrow. The worker can only start after payment is confirmed.</p>
+            <a href="${pd.collection_account_number}" target="_blank" class="btn btn--primary btn--wide" style="margin-bottom:8px;text-decoration:none">Pay ₦${amount.toLocaleString()} now</a>
+            <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
+          </div>` : `
+          <div class="notice notice--warning">
+            <p class="notice__label">${ic('alert')} Awaiting payment — transfer to fund escrow</p>
+            <div class="acct-box">
+              <p class="acct-box__label">Bank</p>
+              <p class="acct-box__bank">${pd.collection_bank_name || 'GTBank'}</p>
+              <p class="acct-box__label">Account Number</p>
+              <p class="acct-box__num">${pd.collection_account_number}</p>
+            </div>
+            <button onclick="copyAccNum('${pd.collection_account_number}')" class="btn btn--secondary btn--wide btn--sm" style="margin-bottom:8px">${ic('copy')} Copy Account Number</button>
+            <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
+          </div>`;
+      } else {
+        escrowSection = `
+          <div class="notice notice--neutral">
+            <p style="color:var(--text-2)">Payment account not generated yet.</p>
+            <button onclick="retryPaymentAccount(${job.id})" class="btn btn--secondary btn--sm" style="margin-top:8px">${ic('refresh')} Generate Payment Account</button>
+          </div>`;
+      }
+    }
+
+    // Rating section
+    const canRate = ['verified', 'paid'].includes(job.status) && job.distance_meters != null && Number(job.distance_meters) <= 100;
+    const alreadyRated = job.client_rating != null;
+    let ratingSection = '';
+    if (['verified', 'paid'].includes(job.status)) {
+      if (!canRate) {
+        ratingSection = `
+          <div class="notice notice--danger" style="margin-top:16px">
+            <p style="color:var(--danger)">${ic('alert')} Rating is disabled — worker was not within the GPS boundary (${job.distance_meters ? Math.round(job.distance_meters) + 'm away' : 'no GPS data'}).</p>
+          </div>`;
+      } else if (alreadyRated) {
+        ratingSection = `
+          <div class="notice notice--success" style="margin-top:16px">
+            <p class="notice__label" style="color:var(--text-3)">Your Rating</p>
+            <p style="color:var(--warning);font-size:1.1rem;letter-spacing:2px">${ICON.star.repeat(job.client_rating)}${ICON.starEmpty.repeat(5 - job.client_rating)}</p>
+            ${job.client_rating_comment ? `<p style="font-size:.8rem;color:var(--text-2);margin-top:6px">"${job.client_rating_comment}"</p>` : ''}
+          </div>`;
+      } else {
+        ratingSection = `
+          <div class="notice notice--success" style="margin-top:16px">
+            <p class="notice__label">Rate This Worker</p>
+            <div class="star-row" id="star-row">
+              ${[1,2,3,4,5].map(n => `<button onclick="selectStar(${n})" id="star-${n}" class="star-btn" title="${n} star${n>1?'s':''}">★</button>`).join('')}
+            </div>
+            <textarea id="rating-comment" placeholder="Optional comment…" class="field__input field__input--ta" style="min-height:60px;margin-bottom:10px"></textarea>
+            <button class="btn btn--primary btn--wide" id="submit-rating-btn" onclick="submitRating(${job.id}, ${job.worker_id || 0})">Submit Rating</button>
+          </div>`;
+      }
+    }
+
+    // Media section
+    let mediaSection = '';
+    if (media.length) {
+      mediaSection = `
+        <div class="modal-divider"></div>
+        <p class="modal-field__label" style="margin-bottom:10px">Proof Media</p>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${media.map(m => `
+            <div class="proof-media">
+              ${m.media_type === 'video'
+                ? `<video src="${FLASK}/static/${m.file_path.replace('static/', '')}" controls></video>`
+                : `<img src="${FLASK}/static/${m.file_path.replace('static/', '')}">`}
+              <div class="proof-media__bar">
+                ${m.proof_lat ? `<span class="proof-media__coords">${ic('pin')} ${Number(m.proof_lat).toFixed(4)}, ${Number(m.proof_lng).toFixed(4)}</span>` : ''}
+                <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}" class="icon-btn ${m.user_liked ? 'is-liked' : ''}" style="margin-left:auto">
+                  ${m.user_liked ? ic('heartFill') : ic('heart')} <span id="like-count-${m.id}">${m.likes}</span>
+                </button>
+                <button onclick="openMediaComments(${m.id})" class="icon-btn">${ic('comment')} ${m.comment_count}</button>
+              </div>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    // Comments section
+    const commentsSection = `
+      <div class="modal-divider"></div>
+      <p class="modal-field__label" style="margin-bottom:10px">Comments</p>
+      <div id="job-comments-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        ${comments.length === 0 ? `<p style="font-size:.8rem;color:var(--text-3)">No comments yet.</p>` :
+          comments.map(c => `<div class="comment-row"><p class="comment-row__author">${c.user_name || 'Anonymous'}</p><p class="comment-row__body">${c.body}</p></div>`).join('')}
+      </div>
+      <div class="comment-input-row">
+        <input type="text" id="job-comment-input" placeholder="Write a comment…">
+        <button onclick="postJobComment(${job.id})" class="btn btn--primary btn--sm">Send</button>
+      </div>`;
+
+    modalBody.innerHTML = `
+      <p class="modal-title">${job.title}</p>
+      <p class="modal-amount">₦${amount.toLocaleString()}</p>
+      ${statusBadge(job.status)}
+      ${reviewSection}
+      ${escrowSection}
+
+      <div class="modal-divider"></div>
+      <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description || '—'}</p></div>
+      <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address || '—'}</p></div>
+      <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade || '—'}</p></div>
+      <div class="modal-field"><p class="modal-field__label">Worker</p><p class="modal-field__val">${job.worker_name
+        ? `<a href="#" onclick="openWorkerPublicProfile(${job.worker_id})">${job.worker_name}</a> · ${job.worker_trust ?? '—'} trust`
+        : 'No worker assigned yet'}</p></div>
+      <div class="modal-divider"></div>
+      <div class="modal-field"><p class="modal-field__label">Posted</p><p class="modal-field__val">${created}</p></div>
+      <div class="modal-field"><p class="modal-field__label">Verified At</p><p class="modal-field__val">${verified}</p></div>
+      ${job.distance_meters != null ? `<div class="modal-field"><p class="modal-field__label">GPS Distance</p><p class="modal-field__val">${Number(job.distance_meters).toFixed(0)}m from site</p></div>` : ''}
+      ${job.transfer_reference ? `<div class="modal-field"><p class="modal-field__label">Payout Ref</p><p class="modal-field__val" style="font-family:var(--font-mono);font-size:.8rem">${job.transfer_reference}</p></div>` : ''}
+
+      ${ratingSection}
+      ${mediaSection}
+      ${commentsSection}
+    `;
+
+    window._selectedStar = job.client_rating || 0;
+    modalOverlay.classList.add('is-open');
+  }
+
+  function copyAccNum(num) {
+    navigator.clipboard.writeText(num).then(() => {
+      Swal.fire({ title: 'Copied', text: num, icon: 'success', timer: 1400, showConfirmButton: false, ...swalTheme() });
+    });
+  }
+
+  function selectStar(n) {
+    window._selectedStar = n;
+    [1,2,3,4,5].forEach(i => {
+      const el = document.getElementById(`star-${i}`);
+      if (el) el.classList.toggle('is-active', i <= n);
+    });
+  }
+
+  async function submitRating(jobId, workerId) {
+    const rating  = window._selectedStar || 0;
+    const comment = document.getElementById('rating-comment')?.value.trim() || '';
+    if (!rating) { Swal.fire({ title: 'Pick a star rating', icon: 'warning', ...swalTheme() }); return; }
+
+    const btn = document.getElementById('submit-rating-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+    try {
+      const res  = await fetch(`${FLASK}/api/client/rate-worker`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ job_id: jobId, user_id: user.id, rating, comment })
+      });
+      const data = await res.json();
+      if (data.success) {
+        modalOverlay.classList.remove('is-open');
+        await loadJobs();
+        Swal.fire({ title: 'Rating saved', icon: 'success', ...swalTheme() });
+      } else {
+        Swal.fire({ title: 'Cannot rate', text: data.message, icon: 'error', ...swalTheme() });
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit Rating'; }
+      }
+    } catch (e) {
+      Swal.fire({ title: 'Network error', icon: 'error', ...swalTheme() });
       if (btn) { btn.disabled = false; btn.textContent = 'Submit Rating'; }
     }
-  } catch (e) {
-    Swal.fire('Error', 'Network issue', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Submit Rating'; }
   }
-}
- 
-async function toggleLikeMedia(mediaId) {
-  const res  = await fetch(`${FLASK}/api/media/like`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ media_id: mediaId, user_id: user.id })
-  });
-  const data = await res.json();
-  if (data.success) {
-    const btn   = document.getElementById(`like-media-${mediaId}`);
-    const count = document.getElementById(`like-count-${mediaId}`);
-    if (btn)   btn.style.color = data.liked ? '#e85c00' : '#5a5550';
-    if (count) count.textContent = data.count;
-    if (btn)   btn.innerHTML = `${data.liked ? '❤️' : '🤍'} <span id="like-count-${mediaId}">${data.count}</span>`;
-  }
-}
- 
-async function openMediaComments(mediaId) {
-  const res  = await fetch(`${FLASK}/api/media/comments?media_id=${mediaId}`, { credentials: 'include' });
-  const data = await res.json();
-  const comments = data.comments || [];
-  await Swal.fire({
-    title: '💬 Comments',
-    html: `
-      <div style="text-align:left;max-height:280px;overflow-y:auto;margin-bottom:12px">
-        ${comments.length === 0
-          ? '<p style="color:#5a5550;font-size:.85rem">No comments yet.</p>'
-          : comments.map(c => `
-              <div style="background:#222019;border-radius:8px;padding:8px 12px;margin-bottom:8px">
-                <p style="font-size:.72rem;font-weight:600;color:#a09890;margin-bottom:2px">${c.user_name || 'Anonymous'}</p>
-                <p style="font-size:.85rem;color:#f0ede8">${c.body}</p>
-              </div>`).join('')}
-      </div>
-      <input type="text" id="media-comment-input" placeholder="Write a comment…"
-        style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,.07);border-radius:6px;color:#f0ede8;padding:8px 12px;font-size:.85rem;outline:none">`,
-    showCancelButton: true,
-    confirmButtonText: 'Post Comment',
-    cancelButtonText:  'Close',
-    confirmButtonColor: '#e85c00',
-    cancelButtonColor: '#333',
-    background: '#181614', color: '#f0ede8',
-    preConfirm: () => document.getElementById('media-comment-input')?.value.trim()
-  }).then(async result => {
-    if (result.isConfirmed && result.value) {
-      await fetch(`${FLASK}/api/media/comment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ media_id: mediaId, user_id: user.id, user_name: user.name, body: result.value })
-      });
+
+  async function toggleLikeMedia(mediaId) {
+    const res  = await fetch(`${FLASK}/api/media/like`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ media_id: mediaId, user_id: user.id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const btn = document.getElementById(`like-media-${mediaId}`);
+      if (btn) {
+        btn.classList.toggle('is-liked', data.liked);
+        btn.innerHTML = `${data.liked ? ic('heartFill') : ic('heart')} <span id="like-count-${mediaId}">${data.count}</span>`;
+      }
     }
-  });
-}
- 
-async function postJobComment(jobId) {
-  const input = document.getElementById('job-comment-input');
-  const body  = input?.value.trim();
-  if (!body) return;
- 
-  input.value = '';
-  await fetch(`${FLASK}/api/job/comment`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ job_id: jobId, user_id: user.id, user_name: user.name, body })
-  });
- 
-  // Re-add comment to UI immediately
-  const list = document.getElementById('job-comments-list');
-  if (list) {
-    list.innerHTML += `
-      <div style="background:var(--bg3);border-radius:8px;padding:8px 12px">
-        <p style="font-size:.72rem;font-weight:600;color:#a09890;margin-bottom:2px">${user.name}</p>
-        <p style="font-size:.85rem">${body}</p>
-      </div>`;
   }
-}
- 
-async function openWorkerPublicProfile(workerId) {
-  if (!workerId) return;
-  modalOverlay.classList.remove('is-open');
- 
-  const res  = await fetch(`${FLASK}/api/worker/public-profile?worker_id=${workerId}&viewer_id=${user.id}`, { credentials: 'include' });
-  if (!res.ok) { Swal.fire('Error', 'Could not load profile.', 'error'); return; }
-  const data = await res.json();
- 
-  const w  = data.worker || {};
-  const rs = data.rating_summary || {};
-  const initials = w.name?.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase() || 'W';
- 
-  workerModalBody.innerHTML = `
-    <!-- Header -->
-    <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:16px">
-      <div style="width:64px;height:64px;border-radius:50%;background:rgba(232,92,0,.12);border:2px solid #e85c00;color:#e85c00;font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px">${initials}</div>
-      <p style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800">${w.name || '—'}</p>
-      <p style="color:#e85c00;font-size:.85rem;font-weight:500;margin:3px 0">${w.trade || 'General'}</p>
-      <p style="font-size:.75rem;color:#5a5550">${w.jobs_completed || 0} verified jobs</p>
-    </div>
- 
-    <!-- Stats -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
-      <div style="background:#222019;border-radius:8px;padding:10px;text-align:center">
-        <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#e85c00">${Number(w.trust_score||0).toFixed(1)}</p>
-        <p style="font-size:.68rem;color:#5a5550">Trust Score</p>
+
+  async function openMediaComments(mediaId) {
+    const res  = await fetch(`${FLASK}/api/media/comments?media_id=${mediaId}`, { credentials: 'include' });
+    const data = await res.json();
+    const comments = data.comments || [];
+    const theme = swalTheme();
+    await Swal.fire({
+      title: 'Comments',
+      html: `
+        <div style="text-align:left;max-height:280px;overflow-y:auto;margin-bottom:12px">
+          ${comments.length === 0 ? '<p style="color:var(--text-3);font-size:.85rem">No comments yet.</p>' :
+            comments.map(c => `<div class="comment-row" style="margin-bottom:8px"><p class="comment-row__author">${c.user_name || 'Anonymous'}</p><p class="comment-row__body">${c.body}</p></div>`).join('')}
+        </div>
+        <input type="text" id="media-comment-input" placeholder="Write a comment…" class="field__input">`,
+      showCancelButton: true, confirmButtonText: 'Post Comment', cancelButtonText: 'Close',
+      confirmButtonColor: '#E85C00', cancelButtonColor: '#9A968E', ...theme,
+      preConfirm: () => document.getElementById('media-comment-input')?.value.trim()
+    }).then(async result => {
+      if (result.isConfirmed && result.value) {
+        await fetch(`${FLASK}/api/media/comment`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ media_id: mediaId, user_id: user.id, user_name: user.name, body: result.value })
+        });
+      }
+    });
+  }
+
+  async function postJobComment(jobId) {
+    const input = document.getElementById('job-comment-input');
+    const body = input?.value.trim();
+    if (!body) return;
+    input.value = '';
+    await fetch(`${FLASK}/api/job/comment`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: jobId, user_id: user.id, user_name: user.name, body })
+    });
+    const list = document.getElementById('job-comments-list');
+    if (list) list.innerHTML += `<div class="comment-row"><p class="comment-row__author">${user.name}</p><p class="comment-row__body">${body}</p></div>`;
+  }
+
+  /* ══════════════════════════════════════════════
+     WORKER PUBLIC PROFILE
+  ══════════════════════════════════════════════ */
+  const AVATAR_PALETTE = ['#E85C00','#2563EB','#16A34A','#7C3AED','#DB2777','#0891B2','#CA8A04'];
+  function avatarColor(seed) {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+  }
+
+  async function openWorkerPublicProfile(workerId) {
+    if (!workerId) return;
+    modalOverlay.classList.remove('is-open');
+
+    const res = await fetch(`${FLASK}/api/worker/public-profile?worker_id=${workerId}&viewer_id=${user.id}`, { credentials: 'include' });
+    if (!res.ok) { Swal.fire({ title: 'Could not load profile', icon: 'error', ...swalTheme() }); return; }
+    const data = await res.json();
+
+    const w  = data.worker || {};
+    const rs = data.rating_summary || {};
+    const initials = w.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'W';
+    const color = avatarColor(w.name || 'W');
+
+    workerModalBody.innerHTML = `
+      <div style="text-align:center;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+        <div style="width:60px;height:60px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};font-family:var(--font-display);font-size:1.3rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px">${initials}</div>
+        <p style="font-family:var(--font-display);font-size:1.15rem;font-weight:800">${w.name || '—'}</p>
+        <p style="color:var(--accent);font-size:.84rem;font-weight:600;margin:3px 0">${w.trade || 'General'}</p>
+        <p style="font-size:.76rem;color:var(--text-3)">${w.jobs_completed || 0} verified jobs</p>
       </div>
-      <div style="background:#222019;border-radius:8px;padding:10px;text-align:center">
-        <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800">${rs.total_ratings || 0}</p>
-        <p style="font-size:.68rem;color:#5a5550">Ratings</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--accent)">${Number(w.trust_score || 0).toFixed(1)}</p><p style="font-size:.66rem;color:var(--text-3)">Trust Score</p></div>
+        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800">${rs.total_ratings || 0}</p><p style="font-size:.66rem;color:var(--text-3)">Ratings</p></div>
+        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--warning)">${rs.avg_rating ? Number(rs.avg_rating).toFixed(1) : '—'}</p><p style="font-size:.66rem;color:var(--text-3)">Avg Rating</p></div>
       </div>
-      <div style="background:#222019;border-radius:8px;padding:10px;text-align:center">
-        <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#f59e0b">
-          ${rs.avg_rating ? Number(rs.avg_rating).toFixed(1) : '—'}★
-        </p>
-        <p style="font-size:.68rem;color:#5a5550">Avg Rating</p>
-      </div>
-    </div>
- 
-    <!-- Rating breakdown -->
-    ${rs.total_ratings > 0 ? `
-    <div style="margin-bottom:16px">
-      ${[5,4,3,2,1].map(star => {
-        const count = Number(rs[`${['one','two','three','four','five'][star-1]}_star`] || (star===5?rs.five_star:star===4?rs.four_star:star===3?rs.three_star:rs.low_star) || 0);
-        const pct   = rs.total_ratings > 0 ? Math.round((count/rs.total_ratings)*100) : 0;
-        return `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <span style="font-size:.75rem;color:#f59e0b;width:20px">${star}★</span>
-            <div style="flex:1;height:6px;background:#222019;border-radius:99px;overflow:hidden">
-              <div style="width:${pct}%;height:100%;background:#f59e0b;border-radius:99px"></div>
-            </div>
-            <span style="font-size:.72rem;color:#5a5550;width:28px;text-align:right">${pct}%</span>
+
+      ${rs.total_ratings > 0 ? `
+      <div style="margin-bottom:18px">
+        ${[5,4,3,2,1].map(star => {
+          const key = ['one','two','three','four','five'][star - 1];
+          const count = Number(rs[`${key}_star`] || 0);
+          const pct = rs.total_ratings > 0 ? Math.round((count / rs.total_ratings) * 100) : 0;
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+            <span style="font-size:.74rem;color:var(--warning);width:20px">${star}★</span>
+            <div style="flex:1;height:6px;background:var(--surface-sunk);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--warning);border-radius:99px"></div></div>
+            <span style="font-size:.7rem;color:var(--text-3);width:28px;text-align:right">${pct}%</span>
           </div>`;
-      }).join('')}
-    </div>` : ''}
- 
-    <!-- Media posts -->
-    ${(data.media||[]).length > 0 ? `
-    <p style="font-size:.68rem;letter-spacing:.1em;color:#5a5550;margin-bottom:8px">PROOF MEDIA</p>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-      ${data.media.slice(0,4).map(m => `
-        <div style="background:#222019;border-radius:10px;overflow:hidden">
-          ${m.media_type==='video'
-            ? `<video src="${FLASK}/static/${m.file_path.replace('static/','')}" controls style="width:100%;max-height:180px;object-fit:cover"></video>`
-            : `<img src="${FLASK}/static/${m.file_path.replace('static/','')}" style="width:100%;max-height:180px;object-fit:cover">`}
-          <div style="padding:8px 12px;display:flex;align-items:center;gap:8px">
-            <span style="font-size:.75rem;color:#5a5550">${m.job_title || ''}</span>
-            <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}"
-              style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:.82rem;color:${m.viewer_liked?'#e85c00':'#5a5550'}">
-              ${m.viewer_liked?'❤️':'🤍'} <span id="like-count-${m.id}">${m.likes}</span>
-            </button>
-            <button onclick="openMediaComments(${m.id})"
-              style="background:none;border:none;cursor:pointer;font-size:.82rem;color:#5a5550">💬 ${m.comment_count}</button>
-          </div>
-        </div>`).join('')}
-    </div>` : ''}
- 
-    <!-- Job history -->
-    ${(data.job_history||[]).length > 0 ? `
-    <p style="font-size:.68rem;letter-spacing:.1em;color:#5a5550;margin-bottom:8px">JOB HISTORY</p>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${data.job_history.slice(0,5).map(h => `
-        <div style="background:#222019;border-radius:8px;padding:10px 12px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <p style="font-size:.85rem;font-weight:600">${h.title}</p>
-            <span style="font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:#e85c00">₦${Number(h.amount).toLocaleString()}</span>
-          </div>
-          <p style="font-size:.72rem;color:#5a5550;margin-top:2px">📍 ${h.site_address || '—'}</p>
-          ${h.client_rating ? `
-          <p style="font-size:.78rem;color:#f59e0b;margin-top:4px">${'★'.repeat(h.client_rating)}${'☆'.repeat(5-h.client_rating)} ${h.client_rating_comment ? `"${h.client_rating_comment}"` : ''}</p>` : ''}
-        </div>`).join('')}
-    </div>` : ''}
+        }).join('')}
+      </div>` : ''}
 
-    <!-- Credential Card -->
-    <div style="margin-top:16px">
-      <p style="font-size:.68rem;letter-spacing:.1em;color:#5a5550;margin-bottom:10px">SKILLCHAIN CERTIFICATE</p>
+      ${(data.media || []).length ? `
+      <p class="modal-field__label" style="margin-bottom:10px">Proof Media</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+        ${data.media.slice(0, 4).map(m => `
+          <div class="proof-media">
+            ${m.media_type === 'video'
+              ? `<video src="${FLASK}/static/${m.file_path.replace('static/', '')}" controls></video>`
+              : `<img src="${FLASK}/static/${m.file_path.replace('static/', '')}">`}
+            <div class="proof-media__bar">
+              <span style="font-size:.74rem;color:var(--text-3)">${m.job_title || ''}</span>
+              <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}" class="icon-btn ${m.viewer_liked ? 'is-liked' : ''}" style="margin-left:auto">${m.viewer_liked ? ic('heartFill') : ic('heart')} <span id="like-count-${m.id}">${m.likes}</span></button>
+              <button onclick="openMediaComments(${m.id})" class="icon-btn">${ic('comment')} ${m.comment_count}</button>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      ${(data.job_history || []).length ? `
+      <p class="modal-field__label" style="margin-bottom:10px">Job History</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+        ${data.job_history.slice(0, 5).map(h => `
+          <div class="acct-box">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <p style="font-size:.85rem;font-weight:600">${h.title}</p>
+              <span style="font-family:var(--font-display);font-size:.85rem;font-weight:700;color:var(--accent)">₦${Number(h.amount).toLocaleString()}</span>
+            </div>
+            <p style="font-size:.72rem;color:var(--text-3);margin-top:3px">${ic('pin')} ${h.site_address || '—'}</p>
+            ${h.client_rating ? `<p style="font-size:.78rem;color:var(--warning);margin-top:5px">${ICON.star.repeat(h.client_rating)}${ICON.starEmpty.repeat(5 - h.client_rating)} ${h.client_rating_comment ? `"${h.client_rating_comment}"` : ''}</p>` : ''}
+          </div>`).join('')}
+      </div>` : ''}
+
+      <p class="modal-field__label" style="margin-bottom:10px">SkillChain Certificate</p>
       ${buildWorkerCredCard(data)}
-    </div>
-  `;
-  workerModalOverlay.classList.add('is-open');
-}
+    `;
+    workerModalOverlay.classList.add('is-open');
+  }
 
-  // ── Payments ──────────────────────────────────────
+  // ── Payments ──
   function renderPayments() {
     const paid   = allJobs.filter(j => j.status === 'paid');
     const escrow = allJobs.filter(j => ['open', 'assigned', 'pending_verification'].includes(j.status));
-   // AFTER
     document.getElementById('pay-total').textContent  = '₦' + paid.reduce((s, j) => s + Number(j.amount || 0), 0).toLocaleString();
     document.getElementById('pay-escrow').textContent = '₦' + escrow.reduce((s, j) => s + Number(j.amount || 0), 0).toLocaleString();
     document.getElementById('pay-count').textContent  = paid.length;
-const list = document.getElementById('payments-list');
+
+    const list = document.getElementById('payments-list');
     list.innerHTML = paid.length ? paid.map(job => {
       const date = new Date(job.paid_at || job.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
       return `<div class="payment-row">
-        <div class="payment-row__icon">💸</div>
-        <div class="payment-row__info">
-          <p class="payment-row__title">${job.title}</p>
-          <p class="payment-row__date">${date} · ${job.transfer_reference || 'No ref'}</p>
-        </div>
+        <div class="payment-row__icon">${ic('card')}</div>
+        <div class="payment-row__info"><p class="payment-row__title">${job.title}</p><p class="payment-row__date">${date} · ${job.transfer_reference || 'No ref'}</p></div>
         <span class="payment-row__amount">₦${Number(job.amount).toLocaleString()}</span>
       </div>`;
-    }).join('') : `<div class="empty-state"><span>💳</span><p>No transactions yet.</p></div>`;
+    }).join('') : `<div class="empty-state"><div class="icon-sq">${ic('wallet')}</div><p>No transactions yet.</p></div>`;
   }
 
-  // ═══════════════════════════════════════════════════
-  // MAP PICKER — FIX: initMap called only after view is visible
-  // ═══════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════
+     MAP PICKER
+  ══════════════════════════════════════════════ */
   function initMap() {
     if (mapReady) return;
-
     const mapEl = document.getElementById('job-map');
-    if (!mapEl || mapEl.offsetWidth === 0) {
-      // Container still not visible — retry once more
-      setTimeout(initMap, 100);
-      return;
-    }
+    if (!mapEl || mapEl.offsetWidth === 0) { setTimeout(initMap, 100); return; }
 
     map = L.map('job-map', { zoomControl: true }).setView([6.5244, 3.3792], 12);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
 
     const orangeIcon = makeOrangeIcon();
-
-    map.on('click', async e => {
-      await setLocation(e.latlng.lat, e.latlng.lng, null, orangeIcon);
-    });
+    map.on('click', async e => { await setLocation(e.latlng.lat, e.latlng.lng, null, orangeIcon); });
 
     mapReady = true;
-
-    // FIX: Force Leaflet to recalculate tile grid now that container is measured
     setTimeout(() => map.invalidateSize(), 50);
-
     document.getElementById('map-hint').classList.remove('is-hidden');
   }
 
   function makeOrangeIcon() {
     return L.divIcon({
       className: '',
-      html: `<div style="width:26px;height:26px;background:#e85c00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.45)"></div>`,
-      iconSize: [26, 26],
-      iconAnchor: [13, 26],
-      popupAnchor: [0, -28]
+      html: `<div style="width:26px;height:26px;background:#E85C00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.35)"></div>`,
+      iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -28]
     });
   }
 
   async function setLocation(lat, lng, addressOverride, iconObj) {
-    selectedLat = lat;
-    selectedLng = lng;
-
+    selectedLat = lat; selectedLng = lng;
     const icon = iconObj || makeOrangeIcon();
-    if (marker) { marker.setLatLng([lat, lng]); }
-    else        { marker = L.marker([lat, lng], { icon }).addTo(map); }
-
+    if (marker) marker.setLatLng([lat, lng]); else marker = L.marker([lat, lng], { icon }).addTo(map);
     map.panTo([lat, lng]);
 
-    // Reverse geocode
     let address = addressOverride;
     if (!address) {
       try {
@@ -942,19 +811,18 @@ const list = document.getElementById('payments-list');
       } catch { address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
     }
 
-    document.getElementById('job-address').value         = address;
-    document.getElementById('job-lat').value             = lat.toFixed(6);
-    document.getElementById('job-lng').value             = lng.toFixed(6);
-    document.getElementById('address-display-text').textContent   = address;
+    document.getElementById('job-address').value = address;
+    document.getElementById('job-lat').value = lat.toFixed(6);
+    document.getElementById('job-lng').value = lng.toFixed(6);
+    document.getElementById('address-display-text').textContent = address;
     document.getElementById('address-display-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    document.getElementById('address-display').style.display      = 'flex';
+    document.getElementById('address-display').style.display = 'flex';
     document.getElementById('map-hint').classList.add('is-hidden');
-    document.getElementById('err-address').textContent            = '';
+    document.getElementById('err-address').textContent = '';
 
-    // Visual pulse on the address card
     const card = document.getElementById('address-display');
     card.classList.remove('address-display--pulse');
-    void card.offsetWidth; // reflow to restart animation
+    void card.offsetWidth;
     card.classList.add('address-display--pulse');
   }
 
@@ -965,28 +833,23 @@ const list = document.getElementById('payments-list');
     document.getElementById('address-display').style.display = 'none';
     document.getElementById('map-hint').classList.remove('is-hidden');
   }
-
   document.getElementById('clear-location')?.addEventListener('click', clearLocation);
 
   document.getElementById('btn-my-loc')?.addEventListener('click', () => {
-    if (!navigator.geolocation) { alert('Geolocation not supported'); return; }
+    if (!navigator.geolocation) { Swal.fire({ title: 'Geolocation not supported', icon: 'error', ...swalTheme() }); return; }
     const btn = document.getElementById('btn-my-loc');
     btn.style.opacity = '.5';
     navigator.geolocation.getCurrentPosition(
-      async pos => {
-        btn.style.opacity = '';
-        await setLocation(pos.coords.latitude, pos.coords.longitude);
-        map.setZoom(16);
-      },
-      err => { btn.style.opacity = ''; alert('Could not get location: ' + err.message); },
+      async pos => { btn.style.opacity = ''; await setLocation(pos.coords.latitude, pos.coords.longitude); map.setZoom(16); },
+      err => { btn.style.opacity = ''; Swal.fire({ title: 'Could not get location', text: err.message, icon: 'error', ...swalTheme() }); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   });
 
-  // ── Address search (Nominatim) ────────────────────
-  let searchTimeout   = null;
+  // ── Address search ──
+  let searchTimeout = null;
   const searchInput   = document.getElementById('location-search-input');
-  const searchResults = document.getElementById('location-results');
+  const searchResults  = document.getElementById('location-results');
 
   searchInput?.addEventListener('input', () => {
     clearTimeout(searchTimeout);
@@ -1000,20 +863,15 @@ const list = document.getElementById('payments-list');
         if (!results.length) { searchResults.classList.remove('is-open'); return; }
 
         searchResults.innerHTML = results.map((place, i) =>
-          `<div class="location-result" data-idx="${i}"
-                data-lat="${place.lat}" data-lng="${place.lon}"
-                data-name="${place.display_name}">
+          `<div class="location-result" data-idx="${i}" data-lat="${place.lat}" data-lng="${place.lon}" data-name="${place.display_name}">
              <strong>${place.display_name.split(',')[0]}</strong>
              <span>${place.display_name.split(',').slice(1, 3).join(',')}</span>
-           </div>`
-        ).join('');
+           </div>`).join('');
         searchResults.classList.add('is-open');
 
         searchResults.querySelectorAll('.location-result').forEach(item => {
           item.addEventListener('click', async () => {
-            const lat  = parseFloat(item.dataset.lat);
-            const lng  = parseFloat(item.dataset.lng);
-            const name = item.dataset.name;
+            const lat = parseFloat(item.dataset.lat), lng = parseFloat(item.dataset.lng), name = item.dataset.name;
             if (!mapReady) initMap();
             await setLocation(lat, lng, name);
             map.setView([lat, lng], 16);
@@ -1025,30 +883,21 @@ const list = document.getElementById('payments-list');
     }, 400);
   });
 
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.location-search')) searchResults.classList.remove('is-open');
-  });
+  document.addEventListener('click', e => { if (!e.target.closest('.location-search')) searchResults.classList.remove('is-open'); });
 
-  // ═══════════════════════════════════════════════════
-  // MEDIA UPLOAD
-  // ═══════════════════════════════════════════════════
+  /* ══════════════════════════════════════════════
+     MEDIA UPLOAD
+  ══════════════════════════════════════════════ */
   const mediaUploadZone = document.getElementById('media-upload-zone');
   const mediaFileInput  = document.getElementById('media-files');
   const mediaPreviewsEl = document.getElementById('media-previews');
   const mediaPrompt     = document.getElementById('media-prompt');
 
   mediaUploadZone?.addEventListener('click', e => {
-    if (!e.target.closest('.media-thumb__remove') && !e.target.closest('.media-thumb__add')) {
-      mediaFileInput.click();
-    }
+    if (!e.target.closest('.media-thumb__remove') && !e.target.closest('.media-thumb__add')) mediaFileInput.click();
   });
-
-  mediaFileInput?.addEventListener('change', () => {
-    handleNewFiles(Array.from(mediaFileInput.files));
-    mediaFileInput.value = '';
-  });
-
-  mediaUploadZone?.addEventListener('dragover',  e => { e.preventDefault(); mediaUploadZone.classList.add('media-upload--drag'); });
+  mediaFileInput?.addEventListener('change', () => { handleNewFiles(Array.from(mediaFileInput.files)); mediaFileInput.value = ''; });
+  mediaUploadZone?.addEventListener('dragover', e => { e.preventDefault(); mediaUploadZone.classList.add('media-upload--drag'); });
   mediaUploadZone?.addEventListener('dragleave', () => mediaUploadZone.classList.remove('media-upload--drag'));
   mediaUploadZone?.addEventListener('drop', e => {
     e.preventDefault();
@@ -1059,7 +908,7 @@ const list = document.getElementById('payments-list');
   function handleNewFiles(files) {
     const remaining = 5 - mediaFiles.length;
     files.slice(0, remaining).forEach(file => {
-      if (file.size > 10 * 1024 * 1024) { alert(`${file.name} is too large (max 10MB)`); return; }
+      if (file.size > 10 * 1024 * 1024) { Swal.fire({ title: 'File too large', text: `${file.name} exceeds the 10MB limit.`, icon: 'warning', ...swalTheme() }); return; }
       mediaFiles.push(file);
     });
     renderMediaPreviews();
@@ -1074,976 +923,464 @@ const list = document.getElementById('payments-list');
       const thumb = document.createElement('div');
       thumb.className = 'media-thumb';
       const url = URL.createObjectURL(file);
-      thumb.innerHTML = file.type.startsWith('image/')
-        ? `<img src="${url}" alt="${file.name}">`
-        : `<video src="${url}" muted></video>`;
+      thumb.innerHTML = file.type.startsWith('image/') ? `<img src="${url}" alt="${file.name}">` : `<video src="${url}" muted></video>`;
       const removeBtn = document.createElement('button');
-      removeBtn.className   = 'media-thumb__remove';
-      removeBtn.textContent = '✕';
-      removeBtn.type        = 'button';
-      removeBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        mediaFiles.splice(i, 1);
-        renderMediaPreviews();
-      });
+      removeBtn.className = 'media-thumb__remove';
+      removeBtn.type = 'button';
+      removeBtn.innerHTML = ic('x');
+      removeBtn.addEventListener('click', e => { e.stopPropagation(); mediaFiles.splice(i, 1); renderMediaPreviews(); });
       thumb.appendChild(removeBtn);
       mediaPreviewsEl.appendChild(thumb);
     });
 
     if (mediaFiles.length > 0 && mediaFiles.length < 5) {
       const addBtn = document.createElement('div');
-      addBtn.className   = 'media-thumb__add';
+      addBtn.className = 'media-thumb__add';
       addBtn.textContent = '+';
       addBtn.addEventListener('click', () => mediaFileInput.click());
       mediaPreviewsEl.appendChild(addBtn);
     }
   }
 
+  /* ══════════════════════════════════════════════
+     POST JOB FORM
+  ══════════════════════════════════════════════ */
   document.getElementById('post-job-form')?.addEventListener('submit', async e => {
     e.preventDefault();
-
     const title   = document.getElementById('job-title').value.trim();
     const amount  = document.getElementById('job-amount').value;
     const address = document.getElementById('job-address').value;
 
-    // Clear previous errors
-    ['err-title', 'err-amount', 'err-address'].forEach(id => {
-      document.getElementById(id).textContent = '';
-    });
-
+    ['err-title', 'err-amount', 'err-address'].forEach(id => { document.getElementById(id).textContent = ''; });
     let valid = true;
-    if (!title)                         { document.getElementById('err-title').textContent   = 'Job title is required.';            valid = false; }
-    if (!amount || Number(amount) < 100){ document.getElementById('err-amount').textContent  = 'Enter a valid amount (min ₦100).';  valid = false; }
-    if (!address)                       { document.getElementById('err-address').textContent = 'Please pick a location on the map.'; valid = false; }
+    if (!title) { document.getElementById('err-title').textContent = 'Job title is required.'; valid = false; }
+    if (!amount || Number(amount) < 100) { document.getElementById('err-amount').textContent = 'Enter a valid amount (min ₦100).'; valid = false; }
+    if (!address) { document.getElementById('err-address').textContent = 'Please pick a location on the map.'; valid = false; }
     if (!valid) return;
 
-    const btn  = document.getElementById('post-job-btn');
+    const btn = document.getElementById('post-job-btn');
     const text = document.getElementById('post-job-text');
     const spin = document.getElementById('post-job-spinner');
     text.style.display = 'none'; spin.style.display = 'inline-block'; btn.disabled = true;
 
-    // FIX: Build FormData from scratch — don't pass the form element
-    // (avoids accidentally sending blank hidden fields before they're filled)
     const formData = new FormData();
-    formData.append('user_id',      user.id);
-    formData.append('role',         'client');   // FIX: hardcode 'client' — Flask checks this exactly
-    formData.append('title',        title);
-    formData.append('description',  document.getElementById('job-desc').value.trim());
-    formData.append('trade',        document.getElementById('job-trade').value);
-    formData.append('amount',       amount);
+    formData.append('user_id', user.id);
+    formData.append('role', 'client');
+    formData.append('title', title);
+    formData.append('description', document.getElementById('job-desc').value.trim());
+    formData.append('trade', document.getElementById('job-trade').value);
+    formData.append('amount', amount);
     formData.append('site_address', address);
-    formData.append('site_lat',     document.getElementById('job-lat').value);
-    formData.append('site_lng',     document.getElementById('job-lng').value);
-
-    // Attach media
+    formData.append('site_lat', document.getElementById('job-lat').value);
+    formData.append('site_lng', document.getElementById('job-lng').value);
     mediaFiles.forEach((file, i) => formData.append(`media_${i}`, file));
 
     try {
-      const res  = await fetch(`${FLASK}/api/client/post-job`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
+      const res  = await fetch(`${FLASK}/api/client/post-job`, { method: 'POST', body: formData, credentials: 'include' });
       const data = await res.json();
 
+      if (data.success) {
+        document.getElementById('post-job-form').reset();
+        clearLocation();
+        mediaFiles = [];
+        renderMediaPreviews();
+        await loadJobs();
 
-  if (data.success) {
-    // Reset form
-    document.getElementById('post-job-form').reset();
-    clearLocation();
-    mediaFiles = [];
-    renderMediaPreviews();
-    await loadJobs();
- 
-    // ── Show payment instructions ──────────────────────────────────────
-    if (data.payment?.account_number) {
-      showView('my-jobs');
-      renderJobsList(allJobs);
- 
-      await Swal.fire({
-        title:              '🎉 Job Posted!',
-        html: `
-          <p style="margin-bottom:16px;color:#a09890">Now fund the escrow so workers can begin.</p>
-          <div style="background:#1a1a1a;border:1px solid rgba(232,92,0,.3);border-radius:10px;padding:16px;text-align:left">
-            <p style="font-size:.72rem;letter-spacing:.1em;color:#5a5550;margin-bottom:6px">TRANSFER EXACTLY</p>
-            <p style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:#e85c00">
-              ₦${Number(data.payment.amount).toLocaleString()}
-            </p>
-            <div style="height:1px;background:rgba(255,255,255,.07);margin:12px 0"></div>
-            <p style="font-size:.72rem;letter-spacing:.1em;color:#5a5550;margin-bottom:4px">TO THIS ACCOUNT</p>
-            <p style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:.06em">
-              ${data.payment.account_number}
-            </p>
-            <p style="font-size:.8rem;color:#a09890;margin-top:3px">${data.payment.bank_name}</p>
-            <div style="height:1px;background:rgba(255,255,255,.07);margin:12px 0"></div>
-            <p style="font-size:.75rem;color:#5a5550">
-              ⚠️ Transfer the <strong>exact</strong> amount. Any difference will be flagged.<br>
-              Workers can only start after your payment lands.
-            </p>
-          </div>`,
-        confirmButtonText:  'Got it — I\'ll transfer now',
-        confirmButtonColor: '#e85c00',
-        background:         '#181614',
-        color:              '#f0ede8',
-        width:              '480px'
-      });
-    } else {
-      // Squad account creation failed — still show success but warn
-      showView('my-jobs');
-      renderJobsList(allJobs);
-      Swal.fire({
-        title: 'Job Posted',
-        text:  'Payment account could not be generated right now. Check job details to retry.',
-        icon:  'warning',
-        confirmButtonColor: '#e85c00',
-        background: '#181614', color: '#f0ede8'
-      });
-    }    
-  } else {
+        if (data.payment?.account_number) {
+          showView('my-jobs'); renderJobsList(allJobs);
+          await Swal.fire({
+            title: 'Job Posted',
+            html: `
+              <p style="margin-bottom:16px;color:var(--text-2)">Now fund the escrow so workers can begin.</p>
+              <div class="acct-box" style="text-align:left">
+                <p class="acct-box__label">Transfer Exactly</p>
+                <p style="font-family:var(--font-display);font-size:1.5rem;font-weight:800;color:var(--accent)">₦${Number(data.payment.amount).toLocaleString()}</p>
+                <div style="height:1px;background:var(--border);margin:12px 0"></div>
+                <p class="acct-box__label">To This Account</p>
+                <p class="acct-box__num" style="font-size:1.2rem">${data.payment.account_number}</p>
+                <p style="font-size:.8rem;color:var(--text-2);margin-top:3px">${data.payment.bank_name}</p>
+                <div style="height:1px;background:var(--border);margin:12px 0"></div>
+                <p style="font-size:.75rem;color:var(--text-3)">Transfer the exact amount. Any difference will be flagged. Workers can only start after your payment lands.</p>
+              </div>`,
+            confirmButtonText: "I'll transfer now", confirmButtonColor: '#E85C00', width: '480px', ...swalTheme()
+          });
+        } else {
+          showView('my-jobs'); renderJobsList(allJobs);
+          Swal.fire({ title: 'Job Posted', text: 'Payment account could not be generated right now. Check job details to retry.', icon: 'warning', confirmButtonColor: '#E85C00', ...swalTheme() });
+        }
+      } else {
         const errs = data.errors || {};
         if (errs.title)   document.getElementById('err-title').textContent   = errs.title;
         if (errs.amount)  document.getElementById('err-amount').textContent  = errs.amount;
         if (errs.address) document.getElementById('err-address').textContent = errs.address;
-        if (errs.general) Swal.fire({ title: 'Error', text: errs.general, icon: 'error', background: '#181614', color: '#f0ede8' });
+        if (errs.general) Swal.fire({ title: 'Error', text: errs.general, icon: 'error', ...swalTheme() });
       }
     } catch (err) {
       console.error('Post job error:', err);
-      Swal.fire({ title: 'Network Error', text: 'Could not reach the server. Is Flask running?', icon: 'error', background: '#181614', color: '#f0ede8' });
+      Swal.fire({ title: 'Network error', text: 'Could not reach the server.', icon: 'error', ...swalTheme() });
     } finally {
       text.style.display = 'inline'; spin.style.display = 'none'; btn.disabled = false;
     }
   });
 
-  // ═══════════════════════════════════════════════════
-  // FIND WORKERS
-  // ═══════════════════════════════════════════════════
-async function searchWorkers() {
-  const query    = (document.getElementById('worker-search-text')?.value || '').trim();
-  const trade    = document.getElementById('worker-search-trade')?.value || '';
-  const radiusEl = document.getElementById('worker-radius');
-  const radius   = radiusEl ? radiusEl.value : '10';
-  const grid     = document.getElementById('workers-grid');
+  /* ══════════════════════════════════════════════
+     FIND WORKERS
+  ══════════════════════════════════════════════ */
+  async function searchWorkers() {
+    const query = (document.getElementById('worker-search-text')?.value || '').trim();
+    const trade = document.getElementById('worker-search-trade')?.value || '';
+    const grid  = document.getElementById('workers-grid');
 
-  grid.innerHTML = `<div class="skeleton-list" style="grid-column:1/-1">
-    <div class="skeleton-card"></div>
-    <div class="skeleton-card"></div>
-    <div class="skeleton-card"></div>
-  </div>`;
+    grid.innerHTML = `<div class="skeleton-list" style="grid-column:1/-1"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>`;
 
-  // Try to get user location silently
-  let userLat = null, userLng = null;
-  try {
-    const pos = await new Promise((resolve, reject) =>
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 4000, maximumAge: 120000, enableHighAccuracy: false
-      })
-    );
-    userLat = pos.coords.latitude;
-    userLng = pos.coords.longitude;
-  } catch { /* location denied — search without proximity */ }
+    let userLat = null, userLng = null;
+    try {
+      const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, maximumAge: 120000, enableHighAccuracy: false }));
+      userLat = pos.coords.latitude; userLng = pos.coords.longitude;
+    } catch {}
 
-  try {
-    const params = new URLSearchParams();
-    if (query)   params.append('q', query);
-    if (trade)   params.append('trade', trade);
-    if (userLat) params.append('lat', userLat);
-    if (userLng) params.append('lng', userLng);
-    if (userLat) params.append('radius_km', radius);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      if (trade) params.append('trade', trade);
+      if (userLat) { params.append('lat', userLat); params.append('lng', userLng); params.append('radius_km', '10'); }
 
-    const res = await fetch(`${FLASK}/api/workers/search?${params}`, { credentials: 'include' });
-    if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-
-    renderWorkers(grid, data.workers || [], !!userLat);
-  } catch (e) {
-    console.error('searchWorkers:', e);
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <span>😕</span><p>Could not reach server.</p>
-    </div>`;
+      const res = await fetch(`${FLASK}/api/workers/search?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      renderWorkers(grid, data.workers || [], !!userLat);
+    } catch (e) {
+      console.error('searchWorkers:', e);
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon-sq">${ic('alert')}</div><p>Could not reach the server.</p></div>`;
+    }
   }
-}
-
   document.getElementById('btn-search-workers')?.addEventListener('click', searchWorkers);
   document.getElementById('worker-search-text')?.addEventListener('keydown', e => { if (e.key === 'Enter') searchWorkers(); });
   document.getElementById('worker-search-trade')?.addEventListener('change', searchWorkers);
 
-function renderWorkersMock(grid, query, trade) {
-  // API failed — show empty state instead of crashing on undefined MOCK_WORKERS
-  grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-    <span>😕</span><p>Could not reach server. Is Flask running?</p>
-  </div>`;
-}
-  const WORKERS_CACHE = {};
-async function deleteJob(jobId) {
-  const result = await Swal.fire({
-    title: 'Delete this job?',
-    text: 'This cannot be undone. Only open jobs can be deleted.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#ef4444',
-    cancelButtonColor: '#333',
-    confirmButtonText: 'Yes, delete it',
-    cancelButtonText: 'Cancel',
-    background: '#181614',
-    color: '#f0ede8'
-  });
+  function workerCardHTML(w) {
+    const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const score = Number(w.trust_score || 0).toFixed(1);
+    const filled = Math.round(w.trust_score || 0);
+    const stars = ICON.star.repeat(filled) + ICON.starEmpty.repeat(5 - filled);
+    const color = avatarColor(w.name);
 
-  if (!result.isConfirmed) return;
-
-  try {
-    const res = await fetch(`${FLASK}/api/client/delete-job`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ job_id: jobId, user_id: user.id })
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      allJobs = allJobs.filter(j => j.id !== jobId);
-      renderStats(allJobs);
-      renderRecentJobs(allJobs.slice(0, 5));
-      renderJobsList(allJobs);
-      Swal.fire({
-        title: 'Deleted',
-        text: 'Job has been removed.',
-        icon: 'success',
-        confirmButtonColor: '#e85c00',
-        background: '#181614',
-        color: '#f0ede8'
-      });
+    let locationRow;
+    if (w.distance_km !== null && w.distance_km !== undefined) {
+      const label = w.distance_km < 1 ? `${Math.round(w.distance_km * 1000)}m away` : `${w.distance_km}km away`;
+      locationRow = `<span class="avail-dot"></span> ${label} <span class="avail-label">Available</span>`;
+    } else if (w.avg_lat) {
+      locationRow = `<span class="avail-dot"></span> Location known <span class="avail-label">Available</span>`;
     } else {
-      Swal.fire({
-        title: 'Cannot Delete',
-        text: data.message,
-        icon: 'error',
-        background: '#181614',
-        color: '#f0ede8'
-      });
+      locationRow = `<span class="avail-dot avail-dot--off"></span> No location yet <span class="avail-label avail-label--off">—</span>`;
     }
-  } catch (err) {
-    console.error('Delete error:', err);
-    Swal.fire('Network Error', 'Could not reach server.', 'error');
-  }
-}
-// Helper to generate worker card HTML with distance calculation
-  
-function workerCardHTML(w) {
-  const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const score    = Number(w.trust_score || 0).toFixed(1);
-  const filled   = Math.round(w.trust_score || 0);
-  const stars    = '★'.repeat(filled) + '☆'.repeat(5 - filled);
 
-  // Distance badge
-  let distBadge = '';
-  if (w.distance_km !== null && w.distance_km !== undefined) {
-    const label = w.distance_km < 1
-      ? `${Math.round(w.distance_km * 1000)}m away`
-      : `${w.distance_km}km away`;
-    distBadge = `<span style="
-      background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);
-      color:#22c55e;border-radius:99px;padding:2px 9px;
-      font-size:.65rem;font-weight:600;letter-spacing:.04em">
-      📍 ${label}
-    </span>`;
-  } else if (w.avg_lat) {
-    distBadge = `<span style="
-      background:rgba(90,85,80,.15);border:1px solid rgba(90,85,80,.3);
-      color:#5a5550;border-radius:99px;padding:2px 9px;font-size:.65rem">
-      📍 Location known
-    </span>`;
-  } else {
-    distBadge = `<span style="
-      background:rgba(90,85,80,.1);border:1px solid rgba(90,85,80,.2);
-      color:#5a5550;border-radius:99px;padding:2px 9px;font-size:.65rem">
-      📍 No location yet
-    </span>`;
-  }
-
-  return `
-    <div class="worker-card" data-worker-id="${w.id}">
-      <div class="worker-card__top">
-        <div class="worker-card__avatar">${initials}</div>
-        <div>
-          <p class="worker-card__name">${w.name}</p>
-          <p class="worker-card__trade">${w.trade || 'General'}</p>
+    return `
+      <div class="worker-card" data-worker-id="${w.id}">
+        <div class="worker-card__top">
+          <div class="worker-card__avatar" style="background:${color}18;border:2px solid ${color};color:${color}">${initials}</div>
+          <div class="worker-card__id">
+            <p class="worker-card__name">${w.name}</p>
+            <p class="worker-card__trade">${w.trade || 'General'}</p>
+          </div>
+          <span class="trust-pill">${score} Trust</span>
         </div>
-        <div class="worker-card__trust">
-          ${score}
-          <span class="worker-card__trust-label">Trust Score</span>
+        <div class="worker-card__rating"><span class="stars">${stars}</span> ${score} <span style="color:var(--text-3)">(${w.jobs_completed || 0} reviews)</span></div>
+        <div class="worker-card__stats">
+          <div class="worker-stat"><strong>${w.jobs_completed || 0}</strong>Jobs Done</div>
+          <div class="worker-stat"><strong>${score}</strong>Trust Score</div>
         </div>
-      </div>
-      <div class="worker-card__stats" style="flex-wrap:wrap;gap:8px">
-        <div class="worker-stat"><strong>${w.jobs_completed || 0}</strong>Jobs done</div>
-        <div class="worker-stat"><strong style="color:#f59e0b">${stars}</strong>Rating</div>
-      </div>
-      <div style="margin:8px 0 10px">${distBadge}</div>
-      <button class="worker-card__hire" data-worker-id="${w.id}">View & Contact →</button>
-    </div>`;
-}
-
-// Add this helper function inside the IIFE:
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2-lat1) * Math.PI/180;
-  const dLng = (lng2-lng1) * Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
- function renderWorkers(grid, workers, hasLocation) {
-  window._lastWorkerResults = workers;
-  if (!workers.length) {
-    const msg = hasLocation
-      ? 'No workers found nearby. Try increasing the search radius.'
-      : 'No workers found. Try a different search.';
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <span>🔍</span><p>${msg}</p>
-    </div>`;
-    return;
+        <div class="worker-card__location">${locationRow}</div>
+        <button class="worker-card__hire" data-worker-id="${w.id}">View Profile & Connect</button>
+      </div>`;
   }
-  grid.innerHTML = workers.map(w => workerCardHTML(w)).join('');
-  attachWorkerCardListeners(grid);
-}
+
+  function renderWorkers(grid, workers, hasLocation) {
+    window._lastWorkerResults = workers;
+    const sub = document.getElementById('workers-count-sub');
+    if (sub) sub.textContent = `${workers.length} artisan${workers.length === 1 ? '' : 's'} available`;
+    if (!workers.length) {
+      const msg = hasLocation ? 'No workers found nearby. Try increasing the search radius.' : 'No workers found. Try a different search.';
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon-sq">${ic('search')}</div><p>${msg}</p></div>`;
+      return;
+    }
+    grid.innerHTML = workers.map(workerCardHTML).join('');
+    attachWorkerCardListeners(grid);
+  }
 
   function attachWorkerCardListeners(grid) {
     grid.querySelectorAll('.worker-card__hire').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        // Get the real worker object from the workers array, not MOCK_WORKERS
         const workerId = parseInt(btn.dataset.workerId);
         const worker = (window._lastWorkerResults || []).find(w => w.id === workerId);
         if (worker) openWorkerModal(worker);
       });
     });
   }
-function openWorkerModal(w) {
-  if (!w) return;
 
-  const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const score    = Number(w.trust_score || 0).toFixed(1);
-  const filled   = Math.round(w.trust_score || 0);
-  const stars    = '★'.repeat(filled) + '☆'.repeat(5 - filled);
+  function openWorkerModal(w) {
+    if (!w) return;
+    const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const score = Number(w.trust_score || 0).toFixed(1);
+    const filled = Math.round(w.trust_score || 0);
+    const stars = ICON.star.repeat(filled) + ICON.starEmpty.repeat(5 - filled);
+    const color = avatarColor(w.name);
 
-  workerModalBody.innerHTML = `
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="width:60px;height:60px;border-radius:50%;background:var(--orange-dim);
-                  border:2px solid var(--orange);color:var(--orange);font-size:1.3rem;
-                  font-weight:700;display:grid;place-items:center;margin:0 auto 10px">
-        ${initials}
+    workerModalBody.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="width:60px;height:60px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};font-size:1.25rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px;font-family:var(--font-display)">${initials}</div>
+        <p style="font-family:var(--font-display);font-size:1.15rem;font-weight:800">${w.name}</p>
+        <p style="color:var(--accent);font-size:.84rem;font-weight:600">${w.trade || 'General'}</p>
       </div>
-      <p style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800">${w.name}</p>
-      <p style="color:var(--orange);font-size:.85rem;font-weight:500">${w.trade || 'General'}</p>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
-      <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
-        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--orange)">${score}</p>
-        <p style="font-size:.7rem;color:var(--text-3)">Trust Score</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.25rem;font-weight:800;color:var(--accent)">${score}</p><p style="font-size:.68rem;color:var(--text-3)">Trust Score</p></div>
+        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.25rem;font-weight:800">${w.jobs_completed || 0}</p><p style="font-size:.68rem;color:var(--text-3)">Jobs Done</p></div>
+        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.25rem;font-weight:800;color:var(--warning)">${stars}</p><p style="font-size:.68rem;color:var(--text-3)">Rating</p></div>
       </div>
-      <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
-        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800">${w.jobs_completed || 0}</p>
-        <p style="font-size:.7rem;color:var(--text-3)">Jobs Done</p>
-      </div>
-      <div style="background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
-        <p style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#f59e0b">${stars}</p>
-        <p style="font-size:.7rem;color:var(--text-3)">Rating</p>
-      </div>
-    </div>
+      <div class="modal-divider"></div>
+      ${w.phone ? `
+        <a href="tel:${w.phone}" class="btn btn--primary btn--wide" style="margin-bottom:10px">${ic('user')} Call ${w.name.split(' ')[0]}</a>
+        <a href="https://wa.me/234${w.phone.replace(/^0/, '')}" target="_blank" class="btn btn--wide" style="background:#25D366;color:#fff;margin-bottom:10px">${ic('comment')} WhatsApp</a>
+      ` : `<p style="text-align:center;color:var(--text-3);font-size:.85rem;margin-bottom:16px">No contact number on file for this worker.</p>`}
+      <button onclick="openWorkerPublicProfile(${w.id})" class="btn btn--secondary btn--wide">${ic('user')} View Full Profile</button>
+    `;
+    workerModalOverlay.classList.add('is-open');
+  }
 
-    <div class="modal-divider"></div>
+  /* ══════════════════════════════════════════════
+     DELETE JOB
+  ══════════════════════════════════════════════ */
+  async function deleteJob(jobId) {
+    const result = await Swal.fire({
+      title: 'Delete this job?', text: 'This cannot be undone. Only open jobs can be deleted.',
+      icon: 'warning', showCancelButton: true, confirmButtonColor: '#DC2626', cancelButtonColor: '#9A968E',
+      confirmButtonText: 'Delete', cancelButtonText: 'Cancel', ...swalTheme()
+    });
+    if (!result.isConfirmed) return;
 
-    ${w.phone ? `
-      <a href="tel:${w.phone}"
-         class="btn btn--orange btn--wide"
-         style="margin-bottom:10px;text-decoration:none;display:flex;justify-content:center">
-        📞 Call ${w.name.split(' ')[0]}
-      </a>
-      <a href="https://wa.me/234${w.phone.replace(/^0/, '')}"
-         target="_blank"
-         class="btn btn--wide"
-         style="background:#25d366;color:#fff;text-decoration:none;display:flex;
-                justify-content:center;margin-bottom:10px">
-        💬 WhatsApp
-      </a>
-    ` : `
-      <p style="text-align:center;color:#5a5550;font-size:.85rem;margin-bottom:16px">
-        No contact number on file for this worker.
-      </p>
-    `}
+    try {
+      const res = await fetch(`${FLASK}/api/client/delete-job`, {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ job_id: jobId, user_id: user.id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        allJobs = allJobs.filter(j => j.id !== jobId);
+        renderStats(allJobs); renderRecentJobs(allJobs.slice(0, 5)); renderJobsList(allJobs); renderTrackList(allJobs);
+        Swal.fire({ title: 'Deleted', text: 'Job has been removed.', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+      } else {
+        Swal.fire({ title: 'Cannot delete', text: data.message, icon: 'error', ...swalTheme() });
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      Swal.fire({ title: 'Network error', text: 'Could not reach the server.', icon: 'error', ...swalTheme() });
+    }
+  }
 
-    <button onclick="openWorkerPublicProfile(${w.id})"
-      style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-             color:#a09890;border-radius:8px;padding:10px;font-size:.85rem;
-             font-weight:600;cursor:pointer">
-      👤 View Full Profile
-    </button>
-  `;
+  /* ══════════════════════════════════════════════
+     CREDENTIAL / CERTIFICATE CARD
+  ══════════════════════════════════════════════ */
+  function getCertTier(jobsDone, avgRating) {
+    const score = (jobsDone || 0) + ((avgRating || 0) * 4);
+    if (score >= 40) return 'gold';
+    if (score >= 15) return 'silver';
+    return 'bronze';
+  }
+  function certVerificationId(workerId) { return `SC-${String(workerId).padStart(5, '0')}-${(Date.now() % 1000000).toString(36).toUpperCase()}`; }
 
-  workerModalOverlay.classList.add('is-open');
-}
+  function buildWorkerCredCard(workerData) {
+    const w = workerData.worker || workerData;
+    const rs = workerData.rating_summary || {};
+    const jobs = w.jobs_completed || 0;
+    const trust = parseFloat(w.trust_score || 0);
+    const avgRat = parseFloat(rs.avg_rating || trust);
+    const tier = getCertTier(jobs, avgRat);
+    const verId = certVerificationId(w.id);
+    const initials = (w.name || 'W').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const color = avatarColor(w.name || 'W');
+    const tierLabel = { bronze: 'Bronze Certified', silver: 'Silver Certified', gold: 'Gold Verified' }[tier];
 
-function buildWorkerCredCard(workerData) {
-  const w      = workerData.worker || workerData;
-  const rs     = workerData.rating_summary || {};
-  const jobs   = w.jobs_completed || 0;
-  const trust  = parseFloat(w.trust_score || 0);
-  const avgRat = parseFloat(rs.avg_rating || trust);
-  const tier   = getCertTier(jobs, avgRat);
-  const verId  = certVerificationId(w.id);
-  const initials = (w.name||'W').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-  const cardId = `cred-${w.id}`;
- 
-  const tierMeta = {
-    bronze: { label: 'Bronze Certified', color: 'var(--bronze-d)' },
-    silver: { label: 'Silver Certified', color: 'var(--silver-d)' },
-    gold:   { label: 'Gold Verified',    color: 'var(--gold-e)'   }
-  }[tier];
- 
-  const backHTML = buildCertHTML(
-    { ...w, top_skills: [w.trade||'General','GPS Verified','Squad Secured'] },
-    tier, verId, true
-  );
- 
-  return `
-    <div class="cred-card-wrap" id="${cardId}">
-      <div class="cred-card-inner">
- 
-        <!-- FRONT -->
-        <div class="cred-card-front cred-front-${tier}">
-          <div class="cred-squad-badge">Verified by Squad</div>
-          <div class="cred-tier-badge">${tierMeta.label}</div>
-          <div class="cred-mini">
-            <div class="cred-mini__avatar">${initials}</div>
-            <div class="cred-mini__info">
-              <div class="cred-mini__name">${w.name || '—'}</div>
-              <div class="cred-mini__trade">${w.trade || 'General'}</div>
-              <div class="cred-mini__stats">
-                <div class="cred-mini__stat">
-                  <span class="cred-mini__stat-val">${jobs}</span>
-                  <span class="cred-mini__stat-label">Jobs</span>
-                </div>
-                <div class="cred-mini__stat">
-                  <span class="cred-mini__stat-val">${trust.toFixed(1)}</span>
-                  <span class="cred-mini__stat-label">Trust</span>
-                </div>
-                <div class="cred-mini__stat">
-                  <span class="cred-mini__stat-val">${avgRat > 0 ? avgRat.toFixed(1)+'★' : '—'}</span>
-                  <span class="cred-mini__stat-label">Rating</span>
-                </div>
-              </div>
+    return `
+      <div class="cred-card">
+        <div class="cred-card__badges">
+          <span class="cred-tier-badge cred-tier-badge--${tier}">${tierLabel}</span>
+          <span class="cred-verified-badge">${ic('shield')} Verified</span>
+        </div>
+        <div class="cred-card__body">
+          <div class="cred-card__avatar" style="background:${color}18;border:2px solid ${color};color:${color}">${initials}</div>
+          <div>
+            <p class="cred-card__name">${w.name || '—'}</p>
+            <p class="cred-card__trade">${w.trade || 'General'} · Geofence-Verified</p>
+            <div class="cred-card__stats">
+              <div class="cred-stat"><span class="cred-stat__val">${jobs}</span><span class="cred-stat__label">Jobs</span></div>
+              <div class="cred-stat"><span class="cred-stat__val">${trust.toFixed(1)}</span><span class="cred-stat__label">Trust</span></div>
+              <div class="cred-stat"><span class="cred-stat__val">${avgRat > 0 ? avgRat.toFixed(1) : '—'}</span><span class="cred-stat__label">Rating</span></div>
             </div>
           </div>
-          <button class="cred-flip-btn" onclick="flipCredCard('${cardId}')">
-            View Credentials →
-          </button>
         </div>
- 
-        <!-- BACK -->
-        <div class="cred-card-back">
-          <button class="cred-back-close" onclick="flipCredCard('${cardId}')">← Back</button>
-          ${backHTML}
-        </div>
- 
-      </div>
-    </div>
-    <p style="font-size:.65rem;color:#5a5550;text-align:center;margin-top:6px;letter-spacing:.05em">
-      ID: ${verId} · Tap card to view full credentials
-    </p>`;
-}
- 
-function flipCredCard(cardId) {
-  document.getElementById(cardId)?.classList.toggle('is-flipped');
-}
-// Load and show any active bargains (offers from workers on open jobs)
-async function loadBargains() {
-  try {
-    const res = await fetch(`${FLASK}/api/client/bargains?user_id=${user.id}`, { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    const bargains = data.bargains || [];
-    renderBargainBadge(bargains.length); // show count on nav
-    renderBargainsList(bargains);        // render in a bargains view
-  } catch (e) { console.error('loadBargains:', e); }
-}
-
-function renderBargainBadge(count) {
-  const badge = document.getElementById('bargain-badge'); // add this element to your HTML
-  if (badge) badge.textContent = count > 0 ? count : '';
-}
-function renderBargainsList(bargains) {
-  const el = document.getElementById('bargains-list'); // add to HTML
-  if (!el) return;
-  if (!bargains.length) {
-    el.innerHTML = `<div class="empty-state"><span>🤝</span><p>No pending offers.</p></div>`;
-    return;
+        <p class="cred-card__id">ID ${verId} · GPS-authenticated · Escrow-secured</p>
+      </div>`;
   }
-  el.innerHTML = bargains.map(b => `
-    <div class="job-card" style="flex-direction:column;gap:10px">
-      <p class="job-card__title">${b.job_title}</p>
-      <p>Original: <strong>₦${Number(b.original_amount).toLocaleString()}</strong> → 
-         Worker offers: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong></p>
-      <p>👷 ${b.worker_name} · ⭐ ${Number(b.worker_trust).toFixed(1)} · ${b.worker_jobs} jobs</p>
-      ${b.message ? `<p style="color:var(--text-3);font-size:.82rem">"${b.message}"</p>` : ''}
-      <div style="display:flex;gap:10px">
-        <button class="btn btn--orange" onclick="respondBargain(${b.job_id}, 'accept')">✅ Accept ₦${Number(b.proposed_price).toLocaleString()}</button>
-        <button class="btn" onclick="respondBargain(${b.job_id}, 'reject')" style="background:rgba(239,68,68,.1);color:#ef4444;border-color:rgba(239,68,68,.3)">❌ Reject</button>
-      </div>
-    </div>`).join('');
-}
 
-async function respondBargain(jobId, action) {
-  const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ job_id: jobId, user_id: user.id, action })
-  });
-  const data = await res.json();
-  if (data.success) {
+  /* ══════════════════════════════════════════════
+     BARGAINS
+  ══════════════════════════════════════════════ */
+  async function loadBargains() {
+    try {
+      const res = await fetch(`${FLASK}/api/client/bargains?user_id=${user.id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const bargains = data.bargains || [];
+      renderBargainBadge(bargains.length);
+      renderBargainsList(bargains);
+    } catch (e) { console.error('loadBargains:', e); }
+  }
+
+  function renderBargainBadge(count) {
+    const badge = document.getElementById('bargain-badge');
+    if (!badge) return;
+    badge.textContent = count > 0 ? count : '';
+    badge.classList.toggle('is-visible', count > 0);
+  }
+
+  function renderBargainsList(bargains) {
+    const el = document.getElementById('bargains-list');
+    if (!el) return;
+    if (!bargains.length) { el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('handshake')}</div><p>No pending offers.</p></div>`; return; }
+    el.innerHTML = bargains.map(b => `
+      <div class="bargain-card">
+        <p class="bargain-card__title">${b.job_title}</p>
+        <p class="bargain-card__price">Original: <strong>₦${Number(b.original_amount).toLocaleString()}</strong> &rarr; Worker offers: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong></p>
+        <p class="bargain-card__worker">${ic('user')} ${b.worker_name} · ${Number(b.worker_trust).toFixed(1)} trust · ${b.worker_jobs} jobs</p>
+        ${b.message ? `<p class="bargain-card__msg">"${b.message}"</p>` : ''}
+        <div class="bargain-card__actions">
+          <button class="btn btn--success" onclick="respondBargain(${b.job_id}, 'accept')">${ic('check')} Accept ₦${Number(b.proposed_price).toLocaleString()}</button>
+          <button class="btn btn--danger" onclick="respondBargain(${b.job_id}, 'reject')">${ic('x')} Reject</button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function respondBargain(jobId, action) {
+    const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: jobId, user_id: user.id, action })
+    });
+    const data = await res.json();
+    if (data.success) {
+      await loadJobs(); await loadBargains();
+      if (action === 'accept' && data.payment?.account_number) {
+        Swal.fire({
+          title: 'Offer accepted',
+          html: `Transfer ₦${Number(data.payment.amount).toLocaleString()} to <strong>${data.payment.account_number}</strong> (${data.payment.bank_name}) to fund escrow.`,
+          icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme()
+        });
+      } else {
+        Swal.fire({ title: action === 'accept' ? 'Accepted' : 'Rejected', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+      }
+    } else {
+      Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+    }
+  }
+
+  /* ══════════════════════════════════════════════
+     WORKER APPLICATION REVIEW
+  ══════════════════════════════════════════════ */
+  async function reviewWorker(jobId, workerId, action) {
+    const res = await fetch(`${FLASK}/api/client/review-worker`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: jobId, user_id: user.id, worker_id: workerId, action })
+    });
+    const data = await res.json();
+    if (data.success) {
+      modalOverlay.classList.remove('is-open');
+      await loadJobs(); await loadPendingWorkers();
+      Swal.fire({
+        title: action === 'assign' ? 'Worker assigned' : 'Worker declined',
+        text: action === 'assign' ? 'Worker has been assigned and can now complete the job.' : 'Worker declined. They can no longer complete this job.',
+        icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme()
+      });
+    } else {
+      Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+    }
+  }
+
+  async function loadPendingWorkers() {
+    try {
+      const res = await fetch(`${FLASK}/api/client/job-applicants?user_id=${user.id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderPendingWorkersBanner(data.applicants || []);
+    } catch (e) { console.error('loadPendingWorkers:', e); }
+  }
+
+  function renderPendingWorkersBanner(applicants) {
+    const container = document.getElementById('pending-workers-banner');
+    if (!container) return;
+    if (!applicants.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    container.innerHTML = applicants.map(p => {
+      const initials = p.worker_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      return `
+        <div class="applicant-card">
+          <div class="applicant-card__avatar">${initials}</div>
+          <div class="applicant-card__body">
+            <p class="applicant-card__label">Worker applied for your job</p>
+            <p class="applicant-card__name">${p.worker_name}</p>
+            <p class="applicant-card__meta">${p.worker_trade || 'General'} · ${Number(p.worker_trust).toFixed(1)} trust · ${p.worker_jobs} jobs done</p>
+            <p class="applicant-card__job">For: <strong>${p.title}</strong></p>
+          </div>
+          <div class="applicant-card__actions">
+            <button class="btn btn--secondary" onclick="openWorkerPublicProfile(${p.worker_id})">${ic('user')} View</button>
+            <button class="btn btn--success" onclick="reviewWorker(${p.job_id}, ${p.worker_id}, 'assign')">${ic('check')} Assign</button>
+            <button class="btn btn--danger" onclick="reviewWorker(${p.job_id}, ${p.worker_id}, 'decline')">${ic('x')} Decline</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ══════════════════════════════════════════════
+     DEMO PAYMENT VERIFY
+  ══════════════════════════════════════════════ */
+  window.verifyPaymentDemo = async function (jobId) {
+    const res = await fetch(`${FLASK}/api/dev/simulate-payment`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: jobId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      modalOverlay.classList.remove('is-open');
+      Swal.fire({ title: 'Payment verified', text: data.message, icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() })
+        .then(() => window.location.reload());
+    } else {
+      Swal.fire({ title: 'Verification failed', text: data.error || 'Unknown error', icon: 'error', ...swalTheme() });
+    }
+  };
+
+  /* ══════════════════════════════════════════════
+     INIT
+  ══════════════════════════════════════════════ */
+  async function init() {
+    const ok = loadUser();
+    if (!ok) return;
     await loadJobs();
     await loadBargains();
-    if (action === 'accept' && data.payment?.account_number) {
-      Swal.fire({
-        title: '✅ Offer Accepted!',
-        html: `Transfer ₦${Number(data.payment.amount).toLocaleString()} to <strong>${data.payment.account_number}</strong> (${data.payment.bank_name}) to fund escrow.`,
-        icon: 'success', confirmButtonColor: '#e85c00', background: '#181614', color: '#f0ede8'
-      });
-    } else {
-      Swal.fire({ title: action === 'accept' ? 'Accepted!' : 'Rejected', icon: 'success', background: '#181614', color: '#f0ede8', confirmButtonColor: '#e85c00' });
-    }
-  } else {
-    Swal.fire('Error', data.message, 'error');
-  }
-}
-
-function getCertTier(jobsDone, avgRating) {
-  const score = (jobsDone || 0) + ((avgRating || 0) * 4);
-  if (score >= 40) return 'gold';
-  if (score >= 15) return 'silver';
-  return 'bronze';
-}
- 
-function getTierLabel(tier) {
-  return { bronze: '🥉 BRONZE CERTIFIED', silver: '🥈 SILVER CERTIFIED', gold: '🥇 GOLD VERIFIED' }[tier];
-}
- 
-function makeQRSVG(text, size = 54) {
-  // Simplified visual QR placeholder — replace with real QR lib if needed
-  const cells = 9;
-  const cell  = Math.floor(size / cells);
-  // Deterministic pixel pattern from text hash
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
-  let squares = '';
-  for (let r = 0; r < cells; r++) {
-    for (let c = 0; c < cells; c++) {
-      const on = ((hash >> ((r * cells + c) % 30)) & 1) || (r < 3 && c < 3) || (r < 3 && c > 5) || (r > 5 && c < 3);
-      if (on) squares += `<rect x="${c*cell}" y="${r*cell}" width="${cell-1}" height="${cell-1}" rx="1"/>`;
-    }
-  }
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" fill="currentColor">${squares}</svg>`;
-}
- 
-function certVerificationId(workerId) {
-  return `SC-${String(workerId).padStart(5,'0')}-${(Date.now() % 1000000).toString(36).toUpperCase()}`;
-}
- 
-function buildCertHTML(profile, tier, verId, compact = false) {
-  const name      = profile.name || 'Worker';
-  const trade     = profile.trade || 'General';
-  const jobs      = profile.jobs_completed || 0;
-  const trust     = parseFloat(profile.trust_score || 0).toFixed(1);
-  const stars     = '★'.repeat(Math.round(profile.trust_score||0)) + '☆'.repeat(5 - Math.round(profile.trust_score||0));
-  const skills    = profile.top_skills || [trade, 'GPS Verified', 'Escrow Payments'];
-  const initials  = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
-  const qrHTML    = makeQRSVG(verId);
-  const tierLabel = getTierLabel(tier);
-  const ps        = compact ? ' style="padding:24px 20px 20px"' : '';
-  const ns        = compact ? ' style="font-size:1.3rem"' : '';
- 
-  const sealSVG = tier === 'gold' ? `
-    <div class="cert-seal">
-      <svg viewBox="0 0 68 68" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="34" cy="34" r="32" stroke="rgba(212,160,23,.4)" stroke-width="1"/>
-        <circle cx="34" cy="34" r="26" stroke="rgba(212,160,23,.25)" stroke-width="1" stroke-dasharray="3 3"/>
-        <circle cx="34" cy="34" r="20" stroke="rgba(212,160,23,.35)" stroke-width="1"/>
-        ${[0,45,90,135,180,225,270,315].map(deg => {
-          const r = 29, a = deg * Math.PI/180;
-          const x = 34 + r * Math.cos(a), y = 34 + r * Math.sin(a);
-          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2" fill="rgba(212,160,23,.4)"/>`;
-        }).join('')}
-        <text x="34" y="30" text-anchor="middle" font-family="Cinzel,serif" font-size="6" fill="rgba(255,217,90,.7)" letter-spacing="1">VERIFIED</text>
-        <text x="34" y="40" text-anchor="middle" font-family="Cinzel,serif" font-size="5" fill="rgba(212,160,23,.5)" letter-spacing="1">SKILLCHAIN</text>
-      </svg>
-    </div>` : '';
- 
-  return `
-    <div class="cert-${tier}"${ps}>
-      ${sealSVG}
-      <div class="cert-tier-chip">${tierLabel}</div>
-      <div class="cert-name"${ns}>${name}</div>
-      <div class="cert-tagline">${trade} · Geofence-Verified Worker</div>
-      <div class="cert-divider"></div>
-      <div class="cert-metrics">
-        <div class="cert-metric">
-          <div class="cert-metric__val">${jobs}</div>
-          <div class="cert-metric__label">Jobs Done</div>
-        </div>
-        <div class="cert-metric">
-          <div class="cert-metric__val">${trust}</div>
-          <div class="cert-metric__label">Trust Score</div>
-        </div>
-        <div class="cert-metric">
-          <div class="cert-metric__val">${stars.slice(0,5)}</div>
-          <div class="cert-metric__label">Rating</div>
-        </div>
-      </div>
-      <div class="cert-skills">
-        ${skills.map(s => `<span class="cert-skill-tag">${s}</span>`).join('')}
-      </div>
-      <div class="cert-footer">
-        <div>
-          <div class="cert-id">ID: ${verId}</div>
-          <div class="cert-id" style="margin-top:4px">GPS-authenticated · Squad-secured</div>
-        </div>
-        <div class="cert-qr" title="Scan to verify on SkillChain">${qrHTML}</div>
-      </div>
-    </div>`;
-}
-
-// Client reviews worker applications for their job: either assign them to the job or decline their application
-async function reviewWorker(jobId, workerId, action) {
-  const res  = await fetch(`${FLASK}/api/client/review-worker`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({
-      job_id:    jobId,
-      user_id:   user.id,
-      worker_id: workerId,
-      action
-    })
-  });
-  const data = await res.json();
-
-  if (data.success) {
-    modalOverlay.classList.remove('is-open');
-    await loadJobs();
     await loadPendingWorkers();
-    Swal.fire({
-      title: action === 'assign' ? '✅ Worker Assigned!' : '❌ Worker Declined',
-      text:  action === 'assign'
-        ? 'Worker has been assigned and can now complete the job.'
-        : 'Worker declined. They can no longer complete this job.',
-      icon: 'success',
-      confirmButtonColor: '#e85c00',
-      background: '#181614', color: '#f0ede8'
-    });
-  } else {
-    Swal.fire('Error', data.message, 'error');
+    setInterval(loadBargains, 30_000);
+    setInterval(loadPendingWorkers, 20_000);
   }
-}
+  init();
 
-window.reviewWorker = reviewWorker;
-
-async function loadPendingWorkers() {
-  try {
-    const res  = await fetch(
-      `${FLASK}/api/client/job-applicants?user_id=${user.id}`,
-      { credentials: 'include' }
-    );
-    if (!res.ok) return;
-    const data = await res.json();
-    const applicants = data.applicants || [];
-
-    const badge = document.getElementById('pending-workers-badge');
-    if (badge) badge.textContent = applicants.length > 0 ? applicants.length : '';
-
-    renderPendingWorkersBanner(applicants);
-  } catch (e) { console.error('loadPendingWorkers:', e); }
-}
-
-function renderPendingWorkersBanner(applicants) {
-  const container = document.getElementById('pending-workers-banner');
-  if (!container) return;
-
-  if (!applicants.length) {
-    container.innerHTML = '';
-    container.style.display = 'none';
-    return;
-  }
-
-  container.style.display = 'block';
-  container.innerHTML = applicants.map(p => {
-    const initials = p.worker_name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
-    return `
-      <div style="background:#1a0d00;border:1px solid rgba(232,92,0,.4);border-radius:12px;
-                  padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px">
-        <div style="width:44px;height:44px;border-radius:50%;background:rgba(232,92,0,.15);
-                    border:2px solid #e85c00;color:#e85c00;font-family:'Syne',sans-serif;
-                    font-size:1rem;font-weight:800;display:grid;place-items:center;flex-shrink:0">
-          ${initials}
-        </div>
-        <div style="flex:1;min-width:0">
-          <p style="font-size:.7rem;letter-spacing:.08em;color:#e85c00;margin-bottom:2px">
-            👷 WORKER APPLIED FOR YOUR JOB
-          </p>
-          <p style="font-weight:700;font-size:.9rem">${p.worker_name}</p>
-          <p style="font-size:.75rem;color:#a09890;margin-top:1px">
-            ${p.worker_trade || 'General'} · ⭐ ${Number(p.worker_trust).toFixed(1)} · ${p.worker_jobs} jobs done
-          </p>
-          <p style="font-size:.72rem;color:#5a5550;margin-top:1px">For: <strong>${p.title}</strong></p>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-          <button onclick="openWorkerPublicProfile(${p.worker_id})"
-            style="background:#e85c00;color:#fff;border:none;border-radius:7px;
-                   padding:7px 12px;font-size:.78rem;font-weight:600;cursor:pointer">
-            👤 View Profile
-          </button>
-          <button onclick="reviewWorker(${p.job_id}, ${p.worker_id}, 'assign')"
-            style="background:rgba(34,197,94,.12);color:#22c55e;
-                   border:1px solid rgba(34,197,94,.3);border-radius:7px;
-                   padding:6px 12px;font-size:.75rem;font-weight:600;cursor:pointer">
-            ✅ Assign
-          </button>
-          <button onclick="reviewWorker(${p.job_id}, ${p.worker_id}, 'decline')"
-            style="background:rgba(239,68,68,.08);color:#ef4444;
-                   border:1px solid rgba(239,68,68,.3);border-radius:7px;
-                   padding:6px 12px;font-size:.75rem;font-weight:600;cursor:pointer">
-            ❌ Decline
-          </button>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-
-// ADD these to client dashboard JS IIFE:
-function getCertTier(jobsDone, avgRating) {
-  const score = (jobsDone || 0) + ((avgRating || 0) * 4);
-  if (score >= 40) return 'gold';
-  if (score >= 15) return 'silver';
-  return 'bronze';
-}
-
-function getTierLabel(tier) {
-  return { bronze: '🥉 BRONZE CERTIFIED', silver: '🥈 SILVER CERTIFIED', gold: '🥇 GOLD VERIFIED' }[tier];
-}
-
-function certVerificationId(workerId) {
-  return `SC-${String(workerId).padStart(5,'0')}-${(Date.now() % 1000000).toString(36).toUpperCase()}`;
-}
-
-function makeQRSVG(text, size = 54) {
-  const cells = 9, cell = Math.floor(size / cells);
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
-  let squares = '';
-  for (let r = 0; r < cells; r++)
-    for (let c = 0; c < cells; c++) {
-      const on = ((hash >> ((r*cells+c) % 30)) & 1) || (r<3&&c<3)||(r<3&&c>5)||(r>5&&c<3);
-      if (on) squares += `<rect x="${c*cell}" y="${r*cell}" width="${cell-1}" height="${cell-1}" rx="1"/>`;
-    }
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" fill="currentColor">${squares}</svg>`;
-}
-// Build the HTML for a worker's certificate, used on the back of the credential card and the public profile. If compact is true, use a tighter layout for the card back.
-function buildCertHTML(profile, tier, verId, compact = false) {
-  const name     = profile.name || 'Worker';
-  const trade    = profile.trade || 'General';
-  const jobs     = profile.jobs_completed || 0;
-  const trust    = parseFloat(profile.trust_score || 0).toFixed(1);
-  const stars    = '★'.repeat(Math.round(profile.trust_score||0)) + '☆'.repeat(5-Math.round(profile.trust_score||0));
-  const skills   = profile.top_skills || [trade, 'GPS Verified', 'Escrow Payments'];
-  const qrHTML   = makeQRSVG(verId);
-  const tierLabel= getTierLabel(tier);
-  const ps       = compact ? ' style="padding:24px 20px 20px"' : '';
-  const ns       = compact ? ' style="font-size:1.3rem"' : '';
-  const sealSVG  = tier === 'gold' ? `<div class="cert-seal"><svg viewBox="0 0 68 68" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="34" cy="34" r="32" stroke="rgba(212,160,23,.4)" stroke-width="1"/><text x="34" y="34" text-anchor="middle" font-size="6" fill="rgba(255,217,90,.7)">VERIFIED</text></svg></div>` : '';
-
-  return `
-    <div class="cert-${tier}"${ps}>
-      ${sealSVG}
-      <div class="cert-tier-chip">${tierLabel}</div>
-      <div class="cert-name"${ns}>${name}</div>
-      <div class="cert-tagline">${trade} · Geofence-Verified Worker</div>
-      <div class="cert-divider"></div>
-      <div class="cert-metrics">
-        <div class="cert-metric"><div class="cert-metric__val">${jobs}</div><div class="cert-metric__label">Jobs Done</div></div>
-        <div class="cert-metric"><div class="cert-metric__val">${trust}</div><div class="cert-metric__label">Trust Score</div></div>
-        <div class="cert-metric"><div class="cert-metric__val">${stars.slice(0,5)}</div><div class="cert-metric__label">Rating</div></div>
-      </div>
-      <div class="cert-skills">${skills.map(s => `<span class="cert-skill-tag">${s}</span>`).join('')}</div>
-      <div class="cert-footer">
-        <div><div class="cert-id">ID: ${verId}</div><div class="cert-id" style="margin-top:4px">GPS-authenticated · Squad-secured</div></div>
-        <div class="cert-qr">${qrHTML}</div>
-      </div>
-    </div>`;
-}
-
-function buildWorkerCredCard(workerData) {
-  const w      = workerData.worker || workerData;
-  const rs     = workerData.rating_summary || {};
-  const jobs   = w.jobs_completed || 0;
-  const trust  = parseFloat(w.trust_score || 0);
-  const avgRat = parseFloat(rs.avg_rating || trust);
-  const tier   = getCertTier(jobs, avgRat);
-  const verId  = certVerificationId(w.id);
-  const initials = (w.name||'W').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
-  const cardId = `cred-${w.id}`;
-  const tierMeta = {
-    bronze: { label: 'Bronze Certified' },
-    silver: { label: 'Silver Certified' },
-    gold:   { label: 'Gold Verified'    }
-  }[tier];
-  const backHTML = buildCertHTML(
-    { ...w, top_skills: [w.trade||'General','GPS Verified','Squad Secured'] },
-    tier, verId, true
-  );
-  return `
-    <div class="cred-card-wrap" id="${cardId}">
-      <div class="cred-card-inner">
-        <div class="cred-card-front cred-front-${tier}">
-          <div class="cred-squad-badge">Verified by Squad</div>
-          <div class="cred-tier-badge">${tierMeta.label}</div>
-          <div class="cred-mini">
-            <div class="cred-mini__avatar">${initials}</div>
-            <div class="cred-mini__info">
-              <div class="cred-mini__name">${w.name||'—'}</div>
-              <div class="cred-mini__trade">${w.trade||'General'}</div>
-              <div class="cred-mini__stats">
-                <div class="cred-mini__stat"><span class="cred-mini__stat-val">${jobs}</span><span class="cred-mini__stat-label">Jobs</span></div>
-                <div class="cred-mini__stat"><span class="cred-mini__stat-val">${trust.toFixed(1)}</span><span class="cred-mini__stat-label">Trust</span></div>
-                <div class="cred-mini__stat"><span class="cred-mini__stat-val">${avgRat > 0 ? avgRat.toFixed(1)+'★' : '—'}</span><span class="cred-mini__stat-label">Rating</span></div>
-              </div>
-            </div>
-          </div>
-          <button class="cred-flip-btn" onclick="flipCredCard('${cardId}')">View Credentials →</button>
-        </div>
-        <div class="cred-card-back">
-          <button class="cred-back-close" onclick="flipCredCard('${cardId}')">← Back</button>
-          ${backHTML}
-        </div>
-      </div>
-    </div>
-    <p style="font-size:.65rem;color:#5a5550;text-align:center;margin-top:6px">ID: ${verId}</p>`;
-}
-
-function flipCredCard(cardId) {
-  document.getElementById(cardId)?.classList.toggle('is-flipped');
-}
-
-async function fundEscrowForJob(jobId, amount) {
-  const confirmed = await Swal.fire({
-    title: 'Fund Escrow?',
-    html: `Transfer ₦${Number(amount).toLocaleString()} to unlock this job for the worker.<br><br>
-           <span style="font-size:.8rem;color:#a09890">Click the job card to see the account number.</span>`,
-    icon: 'info',
-    showCancelButton: true,
-    confirmButtonText: 'View Payment Details',
-    confirmButtonColor: '#e85c00',
-    cancelButtonColor: '#333',
-    background: '#181614', color: '#f0ede8'
-  });
-
-  if (confirmed.isConfirmed) {
-    const job = allJobs.find(j => j.id === jobId);
-    if (job) openJobModal(job);
-  }
-}
-
-  window.respondBargain = respondBargain;
-// Retry generating Squad account if it failed on job post
-async function retryPaymentAccount(jobId) {
-  Swal.fire({
-    title: 'Generating…',
-    allowOutsideClick: false,
-    background: '#181614', color: '#f0ede8',
-    didOpen: () => Swal.showLoading()
-  });
-
-  try {
-    const res  = await fetch(`${FLASK}/api/client/retry-payment/${jobId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include'
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      await loadJobs();
-      Swal.fire({
-        title: '✅ Payment Account Ready!',
-        text:  'Click the job card to see the payment link.',
-        icon:  'success',
-        confirmButtonColor: '#e85c00',
-        background: '#181614', color: '#f0ede8'
-      });
-      // Re-open modal with fresh data
-      const job = allJobs.find(j => j.id === jobId);
-      if (job) openJobModal(job);
-    } else {
-      Swal.fire('Error', data.message, 'error');
-    }
-  } catch (e) {
-    Swal.fire('Network Error', 'Could not reach server.', 'error');
-  }
-}
-// ── Init ──────────────────────────────────────────
-async function init() {
-  const ok = loadUser();
-  if (!ok) return;
-  await loadJobs();
-  await loadBargains();
-  await loadPendingWorkers();           
-  setInterval(loadBargains, 30_000);
-  setInterval(loadPendingWorkers, 20_000); 
-}
-
-init();
-
-// ── Expose to global scope (needed for inline onclick= handlers) ──
-window.toggleLikeMedia        = toggleLikeMedia;
-window.openMediaComments      = openMediaComments;
-window.openWorkerPublicProfile = openWorkerPublicProfile;
-window.postJobComment         = postJobComment;
-window.selectStar             = selectStar;
-window.submitRating           = submitRating;
-window.simulatePayment        = simulatePayment;
-window.copyAccNum             = copyAccNum;
-window.respondBargain         = respondBargain;
-window.reviewWorker = reviewWorker;
-window.flipCredCard        = flipCredCard;
-window.buildWorkerCredCard = buildWorkerCredCard;
-
-
+  // ── Expose to global scope for inline onclick= handlers ──
+  window.toggleLikeMedia         = toggleLikeMedia;
+  window.openMediaComments       = openMediaComments;
+  window.openWorkerPublicProfile = openWorkerPublicProfile;
+  window.postJobComment          = postJobComment;
+  window.selectStar              = selectStar;
+  window.submitRating            = submitRating;
+  window.copyAccNum              = copyAccNum;
+  window.respondBargain          = respondBargain;
+  window.reviewWorker            = reviewWorker;
+  window.buildWorkerCredCard     = buildWorkerCredCard;
 
 })();
-// Demo payment verification — bypasses real Squad for hackathon demo
-async function verifyPaymentDemo(jobId) {
-  const res  = await fetch('https://skillchain-backend-gce5.onrender.com/api/dev/simulate-payment', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ job_id: jobId })
-  });
-  const data = await res.json();
-
-  if (data.success) {
-    document.getElementById('modal-overlay').classList.remove('is-open');
-    // Reload jobs so UI reflects funded status
-    const stored = JSON.parse(localStorage.getItem('userData') || '{}');
-    const res2   = await fetch(`https://skillchain-backend-gce5.onrender.com/api/client/jobs?user_id=${stored.id}`, { credentials: 'include' });
-    const jobs   = await res2.json();
-    // Trigger a page reload — simplest way to show updated state
-    Swal.fire({
-      title: '✅ Payment Verified (Demo)',
-      text:  data.message,
-      icon:  'success',
-      confirmButtonColor: '#e85c00',
-      background: '#181614', color: '#f0ede8'
-    }).then(() => window.location.reload());
-  } else {
-    alert('Simulate failed: ' + (data.error || 'unknown'));
-  }
-}
-// deploy
