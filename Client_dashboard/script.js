@@ -428,6 +428,19 @@
             <button class="btn btn--danger" onclick="reviewWorker(${job.id}, ${job.worker_id}, 'decline')">${ic('x')} Decline</button>
           </div>
         </div>`;
+    } else if (job.status === 'verified') {
+      const deadline = job.review_deadline ? new Date(job.review_deadline) : null;
+      const deadlineStr = deadline ? deadline.toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+      reviewSection = `
+        <div class="notice notice--warning">
+          <p class="notice__label">${ic('alert')} Work submitted — review before payment releases</p>
+          <p><strong style="color:var(--text)">${job.worker_name || 'The worker'}</strong> marked this job as done from within the site's GPS boundary. Check the proof below, then approve to release payment or dispute if something's wrong.</p>
+          ${deadlineStr ? `<p style="font-size:.76rem;color:var(--text-3);margin-top:6px">${ic('clock')} If you don't respond, payment auto-releases on <strong>${deadlineStr}</strong>.</p>` : ''}
+          <div class="notice__row">
+            <button class="btn btn--success" onclick="reviewSubmission(${job.id}, 'approve')">${ic('check')} Approve &amp; Release Payment</button>
+            <button class="btn btn--danger" onclick="reviewSubmission(${job.id}, 'dispute')">${ic('x')} Dispute</button>
+          </div>
+        </div>`;
     }
 
     // Escrow section
@@ -1284,6 +1297,102 @@
   }
 
   /* ══════════════════════════════════════════════
+     ARTISAN WORK SUBMISSION REVIEW (approve payment / dispute)
+  ══════════════════════════════════════════════ */
+  async function reviewSubmission(jobId, action) {
+    let reason = '';
+
+    if (action === 'dispute') {
+      const { value: text, isConfirmed } = await Swal.fire({
+        title: 'What went wrong?',
+        input: 'textarea',
+        inputPlaceholder: 'Briefly describe the issue with the submitted work…',
+        showCancelButton: true,
+        confirmButtonText: 'Submit Dispute',
+        confirmButtonColor: '#E85C00',
+        ...swalTheme()
+      });
+      if (!isConfirmed) return; // user backed out
+      reason = (text || '').trim();
+    } else {
+      const { isConfirmed } = await Swal.fire({
+        title: 'Release payment?',
+        text: 'This will send the escrowed funds to the artisan. This cannot be undone.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, release payment',
+        confirmButtonColor: '#E85C00',
+        ...swalTheme()
+      });
+      if (!isConfirmed) return;
+    }
+
+    try {
+      const res = await fetch(`${FLASK}/api/client/review-job`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ job_id: jobId, user_id: user.id, action, reason })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        modalOverlay.classList.remove('is-open');
+        await loadJobs();
+        Swal.fire({
+          title: action === 'approve' ? 'Payment released' : 'Dispute submitted',
+          text: data.message,
+          icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme()
+        });
+      } else {
+        Swal.fire({ title: data.already_resolved ? 'Already resolved' : 'Error', text: data.message, icon: data.already_resolved ? 'info' : 'error', ...swalTheme() });
+        if (data.already_resolved) { modalOverlay.classList.remove('is-open'); await loadJobs(); }
+      }
+    } catch (e) {
+      Swal.fire({ title: 'Network error', text: 'Could not reach the server. Please try again.', icon: 'error', ...swalTheme() });
+    }
+  }
+
+  async function loadReviewSubmissions() {
+    try {
+      const res = await fetch(`${FLASK}/api/client/pending-review-jobs?user_id=${user.id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderReviewSubmissionsBanner(data.jobs || []);
+    } catch (e) { console.error('loadReviewSubmissions:', e); }
+  }
+
+  function renderReviewSubmissionsBanner(jobs) {
+    const container = document.getElementById('review-submissions-banner');
+    if (!container) return;
+    if (!jobs.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    container.innerHTML = jobs.map(j => {
+      const initials = (j.worker_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      return `
+        <div class="applicant-card">
+          <div class="applicant-card__avatar">${initials}</div>
+          <div class="applicant-card__body">
+            <p class="applicant-card__label">${ic('alert')} Work submitted — awaiting your review</p>
+            <p class="applicant-card__name">${j.worker_name || 'Worker'}</p>
+            <p class="applicant-card__meta">₦${Number(j.amount).toLocaleString()} · ${j.distance_meters != null ? Math.round(j.distance_meters) + 'm from site' : ''}</p>
+            <p class="applicant-card__job">Job: <strong>${j.title}</strong></p>
+          </div>
+          <div class="applicant-card__actions">
+            <button class="btn btn--secondary" onclick="openJobModalById(${j.id})">${ic('user')} Review</button>
+            <button class="btn btn--success" onclick="reviewSubmission(${j.id}, 'approve')">${ic('check')} Approve</button>
+            <button class="btn btn--danger" onclick="reviewSubmission(${j.id}, 'dispute')">${ic('x')} Dispute</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Banner buttons only have the job id (not the full job object) — look it
+  // up from what we already loaded and open the normal detail modal.
+  function openJobModalById(jobId) {
+    const job = allJobs.find(j => j.id === jobId);
+    if (job) openJobModal(job);
+  }
+
+  /* ══════════════════════════════════════════════
      WORKER APPLICATION REVIEW
   ══════════════════════════════════════════════ */
   async function reviewWorker(jobId, workerId, action) {
@@ -1366,8 +1475,10 @@
     await loadJobs();
     await loadBargains();
     await loadPendingWorkers();
+    await loadReviewSubmissions();
     setInterval(loadBargains, 30_000);
     setInterval(loadPendingWorkers, 20_000);
+    setInterval(loadReviewSubmissions, 20_000);
   }
   init();
 
@@ -1381,6 +1492,8 @@
   window.copyAccNum              = copyAccNum;
   window.respondBargain          = respondBargain;
   window.reviewWorker            = reviewWorker;
+  window.reviewSubmission        = reviewSubmission;
+  window.openJobModalById        = openJobModalById;
   window.buildWorkerCredCard     = buildWorkerCredCard;
 
 })();

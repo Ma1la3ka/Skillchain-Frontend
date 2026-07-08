@@ -358,6 +358,8 @@
       rightBtn = `<button class="complete-btn" data-job-id="${job.id}">Complete <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
     } else if (job.status === 'pending_review') {
       rightBtn = `<span class="awaiting-tag">${ic('clock')} Awaiting Approval</span>`;
+    } else if (job.status === 'verified') {
+      rightBtn = `<span class="awaiting-tag">${ic('clock')} Awaiting Client Review</span>`;
     }
     return `
       <div class="job-card" data-job-id="${job.id}">
@@ -558,6 +560,9 @@
       actionBtn = `<button class="btn btn--primary btn--wide" id="modal-complete-btn" data-job-id="${job.id}">${ic('pin')} Submit Proof of Presence</button>`;
     } else if (job.status === 'pending_review') {
       actionBtn = `<div class="notice notice--warning"><p class="notice__title">${ic('clock')} Awaiting Client Approval</p><p>The client will assign or decline your application.</p></div>`;
+    } else if (job.status === 'verified') {
+      const deadline = job.review_deadline ? new Date(job.review_deadline).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+      actionBtn = `<div class="notice notice--warning"><p class="notice__title">${ic('clock')} Awaiting Client Review</p><p>You've submitted proof of completion. The client is reviewing it before releasing payment.${deadline ? ` If they don't respond, payment auto-releases by <strong>${deadline}</strong>.` : ''}</p></div>`;
     }
 
     modalBody.innerHTML = `
