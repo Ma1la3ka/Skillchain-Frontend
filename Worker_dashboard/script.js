@@ -619,44 +619,195 @@
   }
 
   function renderProfile() {
-    const p = user.profile || {};
-    const name  = p.name  || user.name  || '—';
-    const trade = p.trade || user.trade || '—';
-    const email = p.email || user.email || '—';
-    const score = parseFloat(p.trust_score || 0).toFixed(1);
+    const p       = user.profile || {};
+    const name    = p.name  || user.name  || '—';
+    const trade   = p.trade || user.trade || '—';
+    const email   = p.email || user.email || '—';
+    const phone   = p.phone || '';
+    const bio     = p.bio   || '';
+    const score   = parseFloat(p.trust_score || 0).toFixed(1);
     const initial = name[0]?.toUpperCase() || 'W';
 
-    document.getElementById('profile-avatar').textContent = initial;
-    document.getElementById('profile-name').textContent   = name;
-    document.getElementById('profile-trade').textContent  = trade;
-    document.getElementById('profile-email').textContent  = email;
-    document.getElementById('profile-trust').textContent  = score;
+    // Avatar — show uploaded photo if available, else initial
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const avatarInitial = document.getElementById('profile-avatar-initial');
+    const storedPhoto = localStorage.getItem(`sc-avatar-${user.id}`);
+    if (storedPhoto) {
+      avatarImg.style.backgroundImage = `url(${storedPhoto})`;
+      avatarImg.style.backgroundSize  = 'cover';
+      avatarImg.style.backgroundPosition = 'center';
+      if (avatarInitial) avatarInitial.style.display = 'none';
+    } else {
+      avatarImg.style.backgroundImage = '';
+      if (avatarInitial) { avatarInitial.textContent = initial; avatarInitial.style.display = ''; }
+    }
+
+    document.getElementById('profile-name').textContent  = name;
+    document.getElementById('profile-trade').textContent = trade;
+    document.getElementById('profile-email').textContent = email;
+    document.getElementById('profile-trust').textContent = score;
+
+    // Phone
+    const phoneEl = document.getElementById('profile-phone');
+    if (phone) { phoneEl.textContent = '📞 ' + phone; phoneEl.style.display = ''; }
+    else { phoneEl.style.display = 'none'; }
+
+    // Bio
+    const bioEl = document.getElementById('profile-bio');
+    if (bio) { bioEl.textContent = bio; bioEl.style.display = ''; }
+    else { bioEl.style.display = 'none'; }
+
+    // Skills tags
+    const skillsEl = document.getElementById('profile-skills');
+    const skills = p.top_skills || [];
+    skillsEl.innerHTML = skills.length
+      ? skills.map(s => `<span class="profile-skill-tag">${s}</span>`).join('')
+      : '';
 
     renderCertButton(p);
 
+    // Balance display — compute available balance
+    const totalEarned = allMyJobs.filter(j => j.status === 'paid').reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+    const withdrawn   = parseFloat(p.total_withdrawn || 0);
+    const balance     = Math.max(0, totalEarned - withdrawn);
+    const balEl = document.getElementById('profile-balance-val');
+    if (balEl) balEl.textContent = balance.toLocaleString();
+
+    // Saved bank details (if any)
     const walletBody = document.getElementById('profile-wallet-body');
-    if (p.squad_account_number) {
+    if (p.bank_account_no && p.bank_name) {
       walletBody.innerHTML = `
         <div class="wallet-detail">
           <div class="wallet-detail__icon">${ic('wallet')}</div>
-          <div><p class="wallet-detail__num">${p.squad_account_number}</p><p class="wallet-detail__bank">${p.squad_bank_name || 'Squad Sandbox Bank'}</p></div>
-          <span class="wallet-detail__status"><span class="wallet-dot" style="background:var(--success)"></span> Active</span>
+          <div>
+            <p class="wallet-detail__num">${p.bank_account_no}</p>
+            <p class="wallet-detail__bank">${p.bank_name} · ${p.bank_account_name || ''}</p>
+          </div>
+          <span class="wallet-detail__status"><span class="wallet-dot" style="background:var(--success)"></span> Saved</span>
         </div>`;
     } else {
-      walletBody.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('wallet')}</div><p>No wallet linked yet.</p></div>`;
+      walletBody.innerHTML = `
+        <p style="font-size:.82rem;color:var(--text-3);padding:8px 0">
+          No bank account saved yet. You'll be asked when you withdraw.
+        </p>`;
     }
 
+    // Verification stats
     const verLogs = p.verification_logs || [];
-    const total  = verLogs.length;
-    const passed = verLogs.filter(v => v.result === 'pass').length;
-    const failed = total - passed;
-    const rate   = total > 0 ? Math.round((passed / total) * 100) : 0;
+    const total   = verLogs.length;
+    const passed  = verLogs.filter(v => v.result === 'pass').length;
+    const failed  = total - passed;
+    const rate    = total > 0 ? Math.round((passed / total) * 100) : 0;
 
     document.getElementById('vs-total').textContent = total;
     document.getElementById('vs-pass').textContent  = passed;
     document.getElementById('vs-fail').textContent  = failed;
     document.getElementById('vs-rate').textContent  = `${rate}%`;
   }
+
+  /* ── Avatar upload / camera capture ── */
+  window.triggerAvatarUpload = function() {
+    document.getElementById('avatar-file-input')?.click();
+  };
+
+  window.handleAvatarUpload = async function(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show preview immediately from local FileReader (instant UX)
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const avatarImg = document.getElementById('profile-avatar-img');
+      const initial   = document.getElementById('profile-avatar-initial');
+      avatarImg.style.backgroundImage    = `url(${dataUrl})`;
+      avatarImg.style.backgroundSize     = 'cover';
+      avatarImg.style.backgroundPosition = 'center';
+      if (initial) initial.style.display = 'none';
+      // Cache locally as fallback
+      localStorage.setItem(`sc-avatar-${user.id}`, dataUrl);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to server — store properly in DB
+    try {
+      const fd = new FormData();
+      fd.append('user_id', user.id);
+      fd.append('photo',   file, file.name || 'avatar.jpg');
+
+      const res  = await fetch(`${FLASK}/api/worker/upload-avatar`, {
+        method: 'POST', body: fd, credentials: 'include'
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        // Store server path in profile so cert + other views can use it
+        user.profile = user.profile || {};
+        user.profile.profile_photo = data.path;
+        Swal.fire({ title: 'Photo saved!', icon: 'success', timer: 1400, showConfirmButton: false, ...swalTheme() });
+      } else {
+        Swal.fire({ title: 'Upload failed', text: data.message, icon: 'error', confirmButtonColor: '#E85C00', ...swalTheme() });
+      }
+    } catch {
+      // Server unreachable — localStorage preview still shows, warn user
+      Swal.fire({
+        title: 'Saved locally only',
+        text: 'Could not reach the server. Photo will show on this device but won\'t sync to other devices.',
+        icon: 'warning', confirmButtonColor: '#E85C00', ...swalTheme()
+      });
+    }
+  };
+
+  /* ── Edit Profile modal ── */
+  window.openEditProfileModal = async function() {
+    const p = user.profile || {};
+    const { value: formValues } = await Swal.fire({
+      title: 'Edit Profile',
+      html: `
+        <input id="ep-phone" class="wd-field" placeholder="Phone number (e.g. 08012345678)" value="${p.phone || ''}">
+        <textarea id="ep-bio" class="wd-field" rows="3" placeholder="Short bio — what you do, your experience…" style="resize:vertical">${p.bio || ''}</textarea>
+        <input id="ep-skills" class="wd-field" placeholder="Skills (comma-separated, e.g. Wiring, Solar, Inverter)" value="${(p.top_skills || []).join(', ')}">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Save Changes',
+      confirmButtonColor: '#E85C00',
+      cancelButtonColor: '#9A968E',
+      ...swalTheme(),
+      preConfirm: () => ({
+        phone:      document.getElementById('ep-phone').value.trim(),
+        bio:        document.getElementById('ep-bio').value.trim(),
+        top_skills: document.getElementById('ep-skills').value.split(',').map(s => s.trim()).filter(Boolean)
+      })
+    });
+
+    if (!formValues) return;
+
+    try {
+      const res = await fetch(`${FLASK}/api/worker/update-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: user.id, ...formValues })
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Merge into local profile
+        user.profile = { ...(user.profile || {}), ...formValues };
+        renderProfile();
+        Swal.fire({ title: 'Profile updated', icon: 'success', timer: 1500, showConfirmButton: false, ...swalTheme() });
+      } else {
+        Swal.fire({ title: 'Update failed', text: data.message, icon: 'error', confirmButtonColor: '#E85C00', ...swalTheme() });
+      }
+    } catch {
+      // If the endpoint doesn't exist yet, save locally and still update UI
+      user.profile = { ...(user.profile || {}), ...formValues };
+      renderProfile();
+      Swal.fire({ title: 'Saved locally', text: 'Changes saved. Will sync when server endpoint is ready.', icon: 'info', timer: 2000, showConfirmButton: false, ...swalTheme() });
+    }
+  };
+
+  window.openEditProfileModal = window.openEditProfileModal;
 
   /* ══════════════════════════════════════════════
      CERTIFICATE — tier logic + downloadable document
@@ -686,35 +837,132 @@
     return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" fill="currentColor">${squares}</svg>`;
   }
 
+  // Tier color palettes — each cert looks visually distinct
+  const TIER_PALETTE = {
+    bronze: {
+      bg:      'linear-gradient(145deg, #2C1A08 0%, #1A0F05 100%)',
+      accent:  '#D4822A',
+      accent2: '#F0A84A',
+      badge:   'linear-gradient(135deg,#C97B28,#E8A050)',
+      border:  'rgba(212,130,42,.4)',
+      inner:   'rgba(212,130,42,.12)',
+      label:   '#F5C98A',
+      sub:     'rgba(245,201,138,.6)',
+      metric:  'rgba(212,130,42,.15)',
+      skill:   'rgba(212,130,42,.18)',
+    },
+    silver: {
+      bg:      'linear-gradient(145deg, #141820 0%, #0D1118 100%)',
+      accent:  '#8CA0BE',
+      accent2: '#B0C4DE',
+      badge:   'linear-gradient(135deg,#6B80A0,#9AAFC8)',
+      border:  'rgba(140,160,190,.4)',
+      inner:   'rgba(140,160,190,.1)',
+      label:   '#C8D8EE',
+      sub:     'rgba(200,216,238,.6)',
+      metric:  'rgba(140,160,190,.15)',
+      skill:   'rgba(140,160,190,.18)',
+    },
+    gold: {
+      bg:      'linear-gradient(145deg, #1E1500 0%, #120D00 100%)',
+      accent:  '#D4AF37',
+      accent2: '#F0D060',
+      badge:   'linear-gradient(135deg,#C9A227,#EDD050)',
+      border:  'rgba(212,175,55,.5)',
+      inner:   'rgba(212,175,55,.14)',
+      label:   '#F5E090',
+      sub:     'rgba(245,224,144,.65)',
+      metric:  'rgba(212,175,55,.18)',
+      skill:   'rgba(212,175,55,.2)',
+    }
+  };
+
   function buildCertDocHTML(profile, tier, verId) {
     const name   = profile.name || 'Worker';
     const trade  = profile.trade || 'General';
     const jobs   = profile.jobs_completed || 0;
     const trust  = parseFloat(profile.trust_score || 0).toFixed(1);
     const filled = Math.round(profile.trust_score || 0);
-    const stars  = ICON.star.repeat(filled) + ICON.starEmpty.repeat(5 - filled);
-    const skills = profile.top_skills || [trade, 'GPS Verified', 'Escrow Payments'];
-    const issued = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+    const stars  = Array.from({length:5},(_,i) => `<span style="color:${i<filled?p.accent2:'rgba(255,255,255,.2)'}">${i<filled?'★':'☆'}</span>`).join('');
+    const skills = profile.top_skills?.length ? profile.top_skills : [trade, 'GPS Verified', 'Escrow Payments'];
+    const issued = new Date().toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' });
+
+    // Pull stored photo if available
+    const storedPhoto = localStorage.getItem(`sc-avatar-${profile.id || user?.id}`);
+    const avatarHTML  = storedPhoto
+      ? `<div class="cert-photo" style="background-image:url(${storedPhoto})"></div>`
+      : `<div class="cert-photo cert-photo--initial" style="background:${p.metric}">${name[0]?.toUpperCase()}</div>`;
+
+    const p = TIER_PALETTE[tier];
+
+    // Tier-specific header text
+    const tierDesc = {
+      bronze: 'Completing their first verified jobs on SkillChain.',
+      silver: 'Consistently delivering GPS-verified, escrow-secured work.',
+      gold:   'An elite verified artisan with an outstanding trust record.'
+    }[tier];
 
     return `
-      <div class="cert-doc" id="cert-doc-printable">
-        <span class="cert-doc__tier cert-doc__tier--${tier}">${TIER_LABEL[tier]}</span>
-        <p class="cert-doc__eyebrow">SkillChain Artisan Certificate</p>
-        <p class="cert-doc__name">${name}</p>
-        <p class="cert-doc__tagline">${trade} · Geofence-Verified Worker · Issued ${issued}</p>
-        <div class="cert-doc__divider"></div>
-        <div class="cert-doc__metrics">
-          <div class="cert-doc__metric"><div class="cert-doc__metric-val">${jobs}</div><div class="cert-doc__metric-label">Jobs Done</div></div>
-          <div class="cert-doc__metric"><div class="cert-doc__metric-val">${trust}</div><div class="cert-doc__metric-label">Trust Score</div></div>
-          <div class="cert-doc__metric"><div class="cert-doc__metric-val" style="letter-spacing:1px">${stars}</div><div class="cert-doc__metric-label">Rating</div></div>
-        </div>
-        <div class="cert-doc__skills">${skills.map(s => `<span class="cert-doc__skill">${s}</span>`).join('')}</div>
-        <div class="cert-doc__footer">
-          <div class="cert-doc__id">
-            CERTIFICATE ID<br><strong style="color:var(--text);font-size:.78rem">${verId}</strong><br><br>
-            GPS-authenticated · Escrow-secured<br>Verify at skillchain.app/verify
+      <div class="cert-doc cert-doc--${tier}" id="cert-doc-printable"
+           style="background:${p.bg};border-color:${p.border}">
+        <!-- Decorative corner marks -->
+        <div class="cert-corner cert-corner--tl" style="border-color:${p.accent}"></div>
+        <div class="cert-corner cert-corner--tr" style="border-color:${p.accent}"></div>
+        <div class="cert-corner cert-corner--bl" style="border-color:${p.accent}"></div>
+        <div class="cert-corner cert-corner--br" style="border-color:${p.accent}"></div>
+
+        <!-- Header -->
+        <div class="cert-header">
+          <div class="cert-header__left">
+            <div class="cert-tier-badge" style="background:${p.badge}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="white" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              ${TIER_LABEL[tier].toUpperCase()}
+            </div>
+            <p class="cert-eyebrow" style="color:${p.sub}">SkillChain Artisan Certificate</p>
+            <p class="cert-platform" style="color:${p.accent}">skillchain.app</p>
           </div>
-          <div class="cert-doc__qr">${makeQRSVG(verId)}</div>
+          ${avatarHTML}
+        </div>
+
+        <!-- Name + trade -->
+        <div class="cert-identity" style="border-bottom:1px solid ${p.inner}">
+          <p class="cert-name" style="color:${p.label}">${name}</p>
+          <p class="cert-trade" style="color:${p.accent2}">${trade}</p>
+          <p class="cert-desc" style="color:${p.sub}">${tierDesc}</p>
+        </div>
+
+        <!-- Metrics -->
+        <div class="cert-metrics">
+          <div class="cert-metric" style="background:${p.metric};border-color:${p.inner}">
+            <div class="cert-metric__val" style="color:${p.accent2}">${jobs}</div>
+            <div class="cert-metric__label" style="color:${p.sub}">Jobs Done</div>
+          </div>
+          <div class="cert-metric" style="background:${p.metric};border-color:${p.inner}">
+            <div class="cert-metric__val" style="color:${p.accent2}">${trust}</div>
+            <div class="cert-metric__label" style="color:${p.sub}">Trust Score</div>
+          </div>
+          <div class="cert-metric" style="background:${p.metric};border-color:${p.inner}">
+            <div class="cert-metric__val" style="font-size:1rem;letter-spacing:1px">${stars}</div>
+            <div class="cert-metric__label" style="color:${p.sub}">Rating</div>
+          </div>
+        </div>
+
+        <!-- Skills -->
+        <div class="cert-skills">
+          ${skills.map(s => `<span class="cert-skill" style="background:${p.skill};border-color:${p.inner};color:${p.label}">${s}</span>`).join('')}
+        </div>
+
+        <!-- Footer -->
+        <div class="cert-footer" style="border-top:1px solid ${p.inner}">
+          <div class="cert-footer__id" style="color:${p.sub}">
+            <span style="font-size:.6rem;letter-spacing:.1em">CERTIFICATE ID</span><br>
+            <strong style="color:${p.label};font-size:.76rem;font-family:var(--font-mono)">${verId}</strong><br>
+            <span style="font-size:.64rem">Issued ${issued} · GPS-authenticated · Escrow-secured</span>
+          </div>
+          <div class="cert-qr" style="border-color:${p.inner}">
+            <div style="color:${p.accent}">${makeQRSVG(verId, 54)}</div>
+            <p style="font-size:.54rem;color:${p.sub};margin-top:4px;text-align:center">Scan to verify</p>
+          </div>
         </div>
       </div>`;
   }
@@ -803,9 +1051,9 @@
     }
   }
 
-  window.openWithdrawModal = openWithdrawModal;
-  window.openCertModal     = openCertModal;
-  window.closeCertModal    = closeCertModal;
+  window.openWithdrawModal   = openWithdrawModal;
+  window.openCertModal       = openCertModal;
+  window.closeCertModal      = closeCertModal;
   window.downloadCertificate = downloadCertificate;
 
   /* ══════════════════════════════════════════════

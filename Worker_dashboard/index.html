@@ -251,36 +251,69 @@
   <section class="view" id="view-profile">
     <div class="page-header">
       <div><p class="page-eyebrow">Account</p><h1 class="page-header__title">My Profile</h1></div>
+      <button class="btn btn--secondary" id="btn-edit-profile" onclick="openEditProfileModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Edit Profile
+      </button>
     </div>
 
-    <div class="profile-card">
-      <div class="profile-card__avatar" id="profile-avatar">W</div>
-      <div class="profile-card__info">
-        <h2 class="profile-card__name" id="profile-name">—</h2>
-        <p class="profile-card__trade" id="profile-trade">—</p>
-        <p class="profile-card__email" id="profile-email">—</p>
+    <!-- Profile hero card -->
+    <div class="profile-hero">
+      <!-- Avatar with camera overlay -->
+      <div class="profile-avatar-wrap" onclick="triggerAvatarUpload()" title="Change photo">
+        <div class="profile-avatar-img" id="profile-avatar-img">
+          <span id="profile-avatar-initial">W</span>
+        </div>
+        <div class="profile-avatar-cam">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/></svg>
+        </div>
+        <input type="file" id="avatar-file-input" accept="image/*" capture="user" style="display:none" onchange="handleAvatarUpload(event)">
       </div>
-      <div class="profile-card__score">
-        <span class="profile-card__score-val" id="profile-trust">—</span>
-        <span class="profile-card__score-label">Trust Score</span>
+
+      <div class="profile-hero__info">
+        <h2 class="profile-hero__name" id="profile-name">—</h2>
+        <p class="profile-hero__trade" id="profile-trade">—</p>
+        <p class="profile-hero__email" id="profile-email">—</p>
+        <p class="profile-hero__phone" id="profile-phone" style="display:none"></p>
+        <p class="profile-hero__bio" id="profile-bio" style="display:none"></p>
+        <!-- Skills tags -->
+        <div class="profile-skills" id="profile-skills"></div>
       </div>
-    </div>
 
-    <div id="profile-cert-area" style="margin-top:16px"></div>
-
-    <div class="section-block" style="margin-top:20px">
-      <h3 class="section-block__title" style="margin-bottom:16px">Squad Wallet</h3>
-      <div id="profile-wallet-body">
-        <div class="empty-state">
-          <div class="icon-sq"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/></svg></div>
-          <p>No wallet linked yet.</p>
+      <div class="profile-hero__score">
+        <div class="profile-score-ring">
+          <span class="profile-score-val" id="profile-trust">—</span>
+          <span class="profile-score-label">Trust Score</span>
         </div>
       </div>
+    </div>
+
+    <!-- Certificate -->
+    <div id="profile-cert-area" style="margin-top:16px"></div>
+
+    <!-- Escrow Balance (replaces Squad wallet display) -->
+    <div class="section-block" style="margin-top:20px">
+      <div class="section-block__header">
+        <div>
+          <h3 class="section-block__title">SkillChain Balance</h3>
+          <p class="section-block__sub">Earnings from verified jobs · withdraw anytime</p>
+        </div>
+      </div>
+      <div class="balance-display" id="profile-balance-display">
+        <div class="balance-display__amount">
+          <span class="balance-display__currency">₦</span>
+          <span id="profile-balance-val">0</span>
+        </div>
+        <span class="balance-display__label">Available to withdraw</span>
+      </div>
+      <div id="profile-wallet-body" style="margin-top:12px"></div>
       <button class="btn btn--primary" style="margin-top:14px;width:100%" onclick="openWithdrawModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4v11M7 11l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         Withdraw to Bank
       </button>
     </div>
 
+    <!-- Verification Stats -->
     <div class="section-block" style="margin-top:20px">
       <h3 class="section-block__title" style="margin-bottom:16px">Verification Stats</h3>
       <div class="verify-stats">

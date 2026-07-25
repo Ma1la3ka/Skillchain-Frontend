@@ -12,11 +12,23 @@
 
   // ── State ─────────────────────────────────────────
   let workerLat    = null, workerLng = null;
+  let workerAcc    = null;                 // best accuracy reading so far (metres)
   let mediaStream  = null, mediaRecorder = null;
   let recordedBlob = null, chunks = [];
   let imgFiles     = [];
   let jobData      = null;
-  let gpsLocked    = null;   // { lat, lng, ts } — locked at record-start
+  let gpsLocked    = null;   // { lat, lng, acc, ts } — locked at record-start
+  let gpsWatcher   = null;   // watchPosition ID — runs silently in background
+  let gpsSamples   = [];     // rolling buffer of recent fixes for averaging
+
+  // Geofence radius — 150m for Nigerian urban GPS conditions.
+  // Budget Android phones (Tecno, Infinix, Itel) drift 20-60m in built-up areas.
+  // 100m rejects workers standing right at the site. 150m still proves presence.
+  const FENCE_RADIUS_M     = 150;
+  // Reject fix entirely if accuracy worse than this (cell-tower-only positioning)
+  const MAX_ACCEPT_ACC_M   = 200;
+  // Samples to average before confirming a reading (reduces random noise ~40%)
+  const GPS_SAMPLES_NEEDED = 3;
 
   // ── DOM helpers ───────────────────────────────────
   const $ = id => document.getElementById(id);
@@ -62,7 +74,7 @@
       const lat = jobData.site_lat;
       const lng = jobData.site_lng;
       $('fence-coords-text').textContent = (lat && lng)
-        ? `Geofence: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)} — must be within 100m`
+        ? `Geofence: ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)} — must be within ${FENCE_RADIUS_M}m`
         : 'Geofence: coordinates not set for this job';
 
     } catch (e) {
@@ -121,50 +133,171 @@
   }
 
   // ── STEP 1: GPS capture ───────────────────────────
-  $('btn-get-gps')?.addEventListener('click', () => {
+  //
+  // Strategy:
+  //  1. Use watchPosition (not getCurrentPosition) so the fix improves over time
+  //  2. Accept a cached fix up to 10s old — avoids the cold-start timeout problem
+  //     on cheap Android while still being fresh enough to be meaningful
+  //  3. Reject fixes with accuracy > 200m (cell-tower-only, useless for geofencing)
+  //  4. Collect GPS_SAMPLES_NEEDED consecutive good fixes and AVERAGE them —
+  //     reduces random noise by ~40% which is the single biggest practical improvement
+  //  5. Keep watching silently after the first confirmed reading so coords stay fresh
+  //     (silent background update — UI only shows confirmed reads)
+  //  6. Warn user clearly about accuracy so they can move outside / to a window
+
+  function startGpsWatch() {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
+      $('gps-result').innerHTML = `
+        <p style="color:var(--danger);font-size:.82rem;margin-top:.5rem">
+          ❌ Geolocation is not supported by your browser.
+        </p>`;
       return;
     }
 
     const btn = $('btn-get-gps');
     btn.textContent = '⏳ Getting GPS…';
     btn.disabled    = true;
+    gpsSamples      = [];
 
-    navigator.geolocation.getCurrentPosition(
+    // Stop any existing watcher before starting a new one
+    if (gpsWatcher !== null) {
+      navigator.geolocation.clearWatch(gpsWatcher);
+      gpsWatcher = null;
+    }
+
+    gpsWatcher = navigator.geolocation.watchPosition(
       pos => {
-        workerLat = pos.coords.latitude;
-        workerLng = pos.coords.longitude;
         const acc = Math.round(pos.coords.accuracy);
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        // ── Reject fix if accuracy is too poor ──────────────────────────
+        if (acc > MAX_ACCEPT_ACC_M) {
+          $('gps-result').innerHTML = `
+            <div class="gps-display" style="background:var(--bg3);border-radius:8px;padding:.75rem 1rem">
+              <p style="color:#fbbf24;font-size:.82rem;font-weight:600">
+                ⚠️ Weak signal (±${acc}m accuracy)
+              </p>
+              <p style="font-size:.75rem;color:var(--text-3);margin-top:3px">
+                Move outside or near a window. Waiting for better signal…
+              </p>
+            </div>`;
+          // Don't add this sample — keep waiting
+          return;
+        }
+
+        // ── Add sample to rolling buffer ─────────────────────────────────
+        gpsSamples.push({ lat, lng, acc });
+
+        // Keep only the last GPS_SAMPLES_NEEDED readings
+        if (gpsSamples.length > GPS_SAMPLES_NEEDED) {
+          gpsSamples.shift();
+        }
+
+        // ── Show live progress before we have enough samples ────────────
+        if (gpsSamples.length < GPS_SAMPLES_NEEDED) {
+          $('gps-result').innerHTML = `
+            <div class="gps-display" style="background:var(--bg3);border-radius:8px;padding:.75rem 1rem">
+              <p style="color:var(--text-2);font-size:.82rem">
+                📡 Improving fix… (${gpsSamples.length}/${GPS_SAMPLES_NEEDED} samples, ±${acc}m)
+              </p>
+            </div>`;
+          return;
+        }
+
+        // ── We have enough samples — compute weighted average ────────────
+        // Weight each sample by inverse of its accuracy (more accurate = more weight)
+        let totalWeight = 0, avgLat = 0, avgLng = 0, bestAcc = Infinity;
+
+        gpsSamples.forEach(s => {
+          const w = 1 / s.acc;   // better accuracy → higher weight
+          totalWeight += w;
+          avgLat      += s.lat * w;
+          avgLng      += s.lng * w;
+          if (s.acc < bestAcc) bestAcc = s.acc;
+        });
+
+        avgLat /= totalWeight;
+        avgLng /= totalWeight;
+
+        // ── Confirm the reading ──────────────────────────────────────────
+        workerLat = avgLat;
+        workerLng = avgLng;
+        workerAcc = bestAcc;
+
+        // Accuracy tier label for the UI
+        const accLabel = bestAcc <= 20  ? '🟢 Excellent'
+                       : bestAcc <= 50  ? '🟢 Good'
+                       : bestAcc <= 100 ? '🟡 Fair'
+                       :                  '🟠 Weak';
 
         $('gps-result').innerHTML = `
           <div class="gps-display ok">
-            <p class="gps-display__line">✅ Location captured (±${acc}m accuracy)</p>
-            <p class="gps-display__coords">${workerLat.toFixed(6)}, ${workerLng.toFixed(6)}</p>
+            <p class="gps-display__line">
+              ✅ Location confirmed (${accLabel} · ±${Math.round(bestAcc)}m)
+            </p>
+            <p class="gps-display__coords">
+              ${avgLat.toFixed(6)}, ${avgLng.toFixed(6)}
+              · averaged ${GPS_SAMPLES_NEEDED} samples
+            </p>
+            ${bestAcc > 80 ? `
+            <p style="font-size:.72rem;color:#fbbf24;margin-top:5px">
+              ⚠️ Accuracy is moderate. Moving outdoors will improve it.
+              You can still proceed — the fence radius accounts for this.
+            </p>` : ''}
           </div>`;
 
         gpsBadge.textContent = 'DONE';
         gpsBadge.className   = 'step-badge step-badge--done';
 
-        // Unlock next steps
         stepVideo.classList.remove('inactive');
         stepPhotos.classList.remove('inactive');
 
-        btn.textContent = '📍 Update GPS';
+        btn.textContent = '📍 Refresh GPS';
         btn.disabled    = false;
 
         checkReady();
+
+        // ── Keep watching silently to stay fresh ────────────────────────
+        // We don't stop watchPosition — it keeps improving coords in the
+        // background so gpsLocked at record-start gets the best available fix.
       },
+
       err => {
+        // Error handler — give actionable messages per error code
+        const msgs = {
+          1: 'Location permission denied. Please allow location access in your browser settings.',
+          2: 'GPS signal unavailable. Move outdoors or near a window and try again.',
+          3: 'GPS timed out. Move outdoors, then tap Retry.'
+        };
+        const msg = msgs[err.code] || err.message;
+
         $('gps-result').innerHTML = `
-          <p style="color:var(--danger);font-size:.82rem;margin-top:.5rem">
-            ❌ ${err.message}
-          </p>`;
+          <p style="color:var(--danger);font-size:.82rem;margin-top:.5rem">❌ ${msg}</p>`;
+
         btn.textContent = '📍 Retry GPS';
         btn.disabled    = false;
+
+        // Clear samples so retry starts fresh
+        gpsSamples = [];
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+
+      {
+        enableHighAccuracy: true,
+        timeout:            20000,  // 20s — more forgiving than 15s for slow cold starts
+        maximumAge:         10000   // accept a cached fix up to 10s old.
+                                    // This avoids the cold-start stall on cheap Androids
+                                    // while still being recent enough to matter.
+                                    // NOT 0 — that forces fresh fix every time and is
+                                    // the main cause of timeouts on budget phones.
+      }
     );
+  }
+
+  $('btn-get-gps')?.addEventListener('click', () => {
+    // Reset samples so re-tap always starts a fresh averaging run
+    gpsSamples = [];
+    startGpsWatch();
   });
 
   // ── STEP 2: Camera ────────────────────────────────
@@ -205,7 +338,9 @@
       return;
     }
 
-    gpsLocked = { lat: workerLat, lng: workerLng, ts: Date.now() };
+    // Lock the CURRENT best averaged reading at the moment recording starts.
+    // workerLat/workerLng are kept fresh by the silent watchPosition background loop.
+    gpsLocked = { lat: workerLat, lng: workerLng, acc: workerAcc, ts: Date.now() };
     chunks = [];
     recordedBlob = null;
 
