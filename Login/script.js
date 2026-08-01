@@ -59,6 +59,25 @@
     }
   });
 
+  if (data.pick_role) {
+  // Show picker instead of redirecting
+  const { value: choice } = await Swal.fire({
+    title: `Welcome back, ${data.user.name}`,
+    html: `<p style="margin-bottom:16px">Which account do you want to open?</p>`,
+    input: 'radio',
+    inputOptions: {
+      worker: '🔧 Artisan Account — find and complete jobs',
+      client: '📋 Client Account — post jobs and hire artisans',
+    },
+    inputValue: data.last_active_role || 'worker',
+    confirmButtonText: 'Continue',
+    confirmButtonColor: '#E85C00',
+  });
+  window.location.href = choice === 'client' ? data.client_url : data.worker_url;
+} else {
+  window.location.href = data.redirect;
+}
+
   // ── Password show/hide ────────────────────────────
   togglePw?.addEventListener('click', () => {
     const show   = pwInput.type === 'password';
