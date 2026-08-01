@@ -640,3 +640,89 @@ svg{ display:block; }
   .cert-metrics { grid-template-columns: 1fr 1fr; }
   .cert-name { font-size: 1.4rem; }
 }
+
+/* ── Role Switch Button ─────────────────────────────────────────────────────
+   Add this to your shared dashboard stylesheet.
+   Works in both light (worker) and dark (client) dashboard themes.
+───────────────────────────────────────────────────────────────────────────── */
+
+.nav-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(232, 92, 0, 0.3);
+  background: rgba(232, 92, 0, 0.06);
+  color: #E85C00;
+  font-size: 0.83rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease,
+              transform 0.12s ease, box-shadow 0.15s ease;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.nav-switch-btn:hover {
+  background:    rgba(232, 92, 0, 0.12);
+  border-color:  rgba(232, 92, 0, 0.55);
+  transform:     translateX(2px);
+  box-shadow:    0 2px 12px rgba(232, 92, 0, 0.15);
+}
+
+.nav-switch-btn:active {
+  transform: translateX(0) scale(0.98);
+}
+
+.nav-switch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nav-switch-btn svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+/* Active role pill — shown in topbar/header to remind user which mode they're in */
+.active-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.active-role-pill--artisan {
+  background: rgba(232, 92, 0, 0.12);
+  color: #E85C00;
+  border: 1px solid rgba(232, 92, 0, 0.25);
+}
+
+.active-role-pill--client {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+/* Slot in sidebar where the button lives */
+#nav-switch-slot {
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+
+/* SweetAlert2 override for the confirmation modal */
+.switch-modal-popup {
+  border-radius: 16px !important;
+  font-family: inherit !important;
+}
