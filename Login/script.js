@@ -59,24 +59,7 @@
     }
   });
 
-  if (data.pick_role) {
-  // Show picker instead of redirecting
-  const { value: choice } = await Swal.fire({
-    title: `Welcome back, ${data.user.name}`,
-    html: `<p style="margin-bottom:16px">Which account do you want to open?</p>`,
-    input: 'radio',
-    inputOptions: {
-      worker: '🔧 Artisan Account — find and complete jobs',
-      client: '📋 Client Account — post jobs and hire artisans',
-    },
-    inputValue: data.last_active_role || 'worker',
-    confirmButtonText: 'Continue',
-    confirmButtonColor: '#E85C00',
-  });
-  window.location.href = choice === 'client' ? data.client_url : data.worker_url;
-} else {
-  window.location.href = data.redirect;
-}
+
 
   // ── Password show/hide ────────────────────────────
   togglePw?.addEventListener('click', () => {
@@ -122,35 +105,48 @@
       const data = await res.json();
 
       if (data.success) {
-        // Save user + timestamp to localStorage
         localStorage.setItem('userData', JSON.stringify({
-          id:        data.user.id,
-          name:      data.user.name,
-          role:      data.user.role,
-          email:     data.user.email,
+          id: data.user.id,
+          name: data.user.name,
+          role: data.user.role,
+          email: data.user.email,
           loginTime: new Date().getTime()
         }));
 
         Swal.fire({
-          icon:              'success',
-          title:             'Login Successful!',
-          text:              `Welcome back, ${data.user.name} 👋`,
-          timer:             1800,
+          icon: 'success',
+          title: 'Login Successful!',
+          text: `Welcome back, ${data.user.name} 👋`,
+          timer: 1800,
           showConfirmButton: false,
-          background:        '#181614',
-          color:             '#f0ede8',
+          background: '#181614',
+          color: '#f0ede8',
         });
 
-        setTimeout(() => {
-          // Use replace() so login page is removed from history —
-          // back arrow can't return here after redirect
-          window.location.replace(
-            data.user.role === 'worker'
-              ? '/Worker_dashboard/index.html'
-              : '/Client_dashboard/index.html'
-          );
+        setTimeout(async () => {
+          if (data.pick_role) {
+            const { value: choice } = await Swal.fire({
+              title: `Welcome back, ${data.user.name}`,
+              html: `<p style="margin-bottom:16px">Which account do you want to open?</p>`,
+              input: 'radio',
+              inputOptions: {
+                worker: '🔧 Artisan Account — find and complete jobs',
+                client: '📋 Client Account — post jobs and hire artisans',
+              },
+              inputValue: data.last_active_role || 'worker',
+              confirmButtonText: 'Continue',
+              confirmButtonColor: '#E85C00',
+            });
+            window.location.href = choice === 'client' ? data.client_url : data.worker_url;
+          } else {
+            window.location.replace(
+              data.user.role === 'worker'
+                ? '/Worker_dashboard/index.html'
+                : '/Client_dashboard/index.html'
+            );
+          }
         }, 1800);
-
+  
       } else {
         setLoading(false);
         Swal.fire({
