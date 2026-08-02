@@ -2,6 +2,7 @@
   'use strict';
 
   const FLASK      = 'https://skillchain-backend-gce5.onrender.com';
+  window.FLASK = FLASK;
   const RETRY_HOST = 'https://bullion-crushing-trickster.ngrok-free.dev';
   const LOGIN_PAGE = '/Login/index.html';
   const SESSION_DUR = 30 * 60 * 1000;
@@ -169,6 +170,7 @@
     if (viewId === 'payments')     renderPayments();
     if (viewId === 'find-workers') searchWorkers();
     if (viewId === 'bargains')     loadBargains();
+    if (viewId === 'profile')      renderClientProfile();
   }
 
   navItems.forEach(item => item.addEventListener('click', e => { e.preventDefault(); showView(item.dataset.view); }));
@@ -209,6 +211,7 @@
     }
     user.loginTime = Date.now();
     localStorage.setItem('userData', JSON.stringify(user));
+    window.USER_ID = user.id;
 
     const welcomeEl = document.getElementById('welcome-name');
     const dateEl    = document.getElementById('overview-date');
@@ -1449,8 +1452,138 @@
   }
 
   /* ══════════════════════════════════════════════
-     DEMO PAYMENT VERIFY
-  ══════════════════════════════════════════════ */
+     DEMO PAYMENT VERIFY/* ══ CLIENT PROFILE ══════════════════════════════ */
+function renderClientProfile() {
+  if (!user) return;
+  const name    = user.name  || '—';
+  const email   = user.email || '—';
+  const phone   = user.phone || '';
+  const bio     = user.bio   || '';
+  const initial = name[0]?.toUpperCase() || 'C';
+
+  // Avatar
+  const avatarImg     = document.getElementById('profile-avatar-img');
+  const avatarInitial = document.getElementById('profile-avatar-initial');
+  const serverPhoto = p.profile_photo_path ? `${FLASK}/${p.profile_photo_path}` : null;
+  const localPhoto    = localStorage.getItem(`sc-avatar-${user.id}`);
+  const photoSrc      = serverPhoto || localPhoto;
+
+  if (avatarImg) {
+    if (photoSrc) {
+      avatarImg.style.backgroundImage    = `url(${photoSrc})`;
+      avatarImg.style.backgroundSize     = 'cover';
+      avatarImg.style.backgroundPosition = 'center';
+      if (avatarInitial) avatarInitial.style.display = 'none';
+    } else {
+      avatarImg.style.backgroundImage = '';
+      if (avatarInitial) { avatarInitial.textContent = initial; avatarInitial.style.display = ''; }
+    }
+  }
+
+  document.getElementById('profile-name').textContent  = name;
+  document.getElementById('profile-email').textContent = email;
+
+  const phoneEl = document.getElementById('profile-phone');
+  if (phoneEl) { phoneEl.textContent = phone ? '📞 ' + phone : ''; phoneEl.style.display = phone ? '' : 'none'; }
+
+  const bioEl = document.getElementById('profile-bio');
+  if (bioEl) { bioEl.textContent = bio; bioEl.style.display = bio ? '' : 'none'; }
+
+  // Stats from allJobs
+  const total     = allJobs.length;
+  const completed = allJobs.filter(j => ['verified','paid'].includes(j.status)).length;
+  const spent     = allJobs.filter(j => j.status === 'paid').reduce((s,j) => s + Number(j.amount||0), 0);
+  const escrow    = allJobs.filter(j => ['open','assigned','pending_verification'].includes(j.status)).reduce((s,j) => s + Number(j.amount||0), 0);
+
+  const el = id => document.getElementById(id);
+  if (el('profile-jobs-posted')) el('profile-jobs-posted').textContent = total;
+  if (el('cp-total'))            el('cp-total').textContent            = total;
+  if (el('cp-completed'))        el('cp-completed').textContent        = completed;
+  if (el('cp-spent'))            el('cp-spent').textContent            = '₦' + spent.toLocaleString();
+  if (el('cp-escrow'))           el('cp-escrow').textContent           = '₦' + escrow.toLocaleString();
+}
+
+window.triggerAvatarUpload = function () {
+  document.getElementById('avatar-file-input')?.click();
+};
+
+window.handleAvatarUpload = async function (e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl   = ev.target.result;
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const initial   = document.getElementById('profile-avatar-initial');
+    if (avatarImg) {
+      avatarImg.style.backgroundImage    = `url(${dataUrl})`;
+      avatarImg.style.backgroundSize     = 'cover';
+      avatarImg.style.backgroundPosition = 'center';
+    }
+    if (initial) initial.style.display = 'none';
+    localStorage.setItem(`sc-avatar-${user.id}`, dataUrl);
+  };
+  reader.readAsDataURL(file);
+
+  try {
+    const fd = new FormData();
+    fd.append('user_id', user.id);
+    fd.append('photo',   file, file.name || 'avatar.jpg');
+    const res  = await fetch(`${FLASK}/api/worker/upload-avatar`, { method:'POST', body:fd, credentials:'include' });
+    const data = await res.json();
+    if (data.success) {
+      user.profile_photo = data.path;
+      localStorage.setItem('userData', JSON.stringify(user));
+      Swal.fire({ title:'Photo saved!', icon:'success', timer:1400, showConfirmButton:false, ...swalTheme() });
+    }
+  } catch {
+    Swal.fire({ title:'Saved locally only', text:"Couldn't sync to server.", icon:'warning', confirmButtonColor:'#E85C00', ...swalTheme() });
+  }
+};
+
+window.openEditProfileModal = async function () {
+  const { value: formValues } = await Swal.fire({
+    title: 'Edit Profile',
+    html: `
+      <input id="ep-phone" class="field__input" placeholder="Phone (e.g. 08012345678)" value="${user.phone||''}" style="width:100%;margin-bottom:10px">
+      <textarea id="ep-bio" class="field__input field__input--ta" rows="3" placeholder="Short bio…" style="width:100%;margin-bottom:10px">${user.bio||''}</textarea>`,
+    focusConfirm: false, showCancelButton: true,
+    confirmButtonText:'Save Changes', confirmButtonColor:'#E85C00', cancelButtonColor:'#9A968E',
+    ...swalTheme(),
+    preConfirm: () => ({
+      phone: document.getElementById('ep-phone').value.trim(),
+      bio:   document.getElementById('ep-bio').value.trim(),
+    })
+  });
+  if (!formValues) return;
+
+  try {
+    const res  = await fetch(`${FLASK}/api/worker/update-profile`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({ user_id:user.id, ...formValues })
+    });
+    const data = await res.json();
+    if (data.success) {
+      Object.assign(user, formValues);
+      localStorage.setItem('userData', JSON.stringify(user));
+      renderClientProfile();
+      Swal.fire({ title:'Profile updated', icon:'success', timer:1500, showConfirmButton:false, ...swalTheme() });
+    } else {
+      // Save locally anyway
+      Object.assign(user, formValues);
+      localStorage.setItem('userData', JSON.stringify(user));
+      renderClientProfile();
+      Swal.fire({ title:'Saved locally', icon:'info', timer:1800, showConfirmButton:false, ...swalTheme() });
+    }
+  } catch {
+    Object.assign(user, formValues);
+    localStorage.setItem('userData', JSON.stringify(user));
+    renderClientProfile();
+    Swal.fire({ title:'Saved locally', icon:'info', timer:1800, showConfirmButton:false, ...swalTheme() });
+  }
+};
+ 
   window.verifyPaymentDemo = async function (jobId) {
     const res = await fetch(`${FLASK}/api/dev/simulate-payment`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -1465,6 +1598,8 @@
       Swal.fire({ title: 'Verification failed', text: data.error || 'Unknown error', icon: 'error', ...swalTheme() });
     }
   };
+
+
 
   /* ══════════════════════════════════════════════
      INIT
@@ -1495,5 +1630,5 @@
   window.reviewSubmission        = reviewSubmission;
   window.openJobModalById        = openJobModalById;
   window.buildWorkerCredCard     = buildWorkerCredCard;
-
+  window.openEditProfileModal = openEditProfileModal;
 })();

@@ -57,6 +57,13 @@
       Bargains
       <span class="nav-item__badge" id="bargain-badge"></span>
     </a>
+    <a class="nav-item" data-view="profile" href="#">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+  My Profile
+</a>
   </nav>
 
   <div class="sidebar__bottom">
@@ -419,6 +426,74 @@
       </div>
     </div>
   </section>
+
+  <!-- ══ PROFILE ══════════════════════════════ -->
+<section class="view" id="view-profile">
+  <div class="page-header">
+    <div><p class="page-eyebrow">Account</p><h1 class="page-header__title">My Profile</h1></div>
+    <button class="btn btn--secondary" onclick="openEditProfileModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Edit Profile
+    </button>
+  </div>
+
+  <!-- Profile hero card -->
+  <div class="profile-hero">
+    <div class="profile-avatar-wrap" onclick="triggerAvatarUpload()" title="Change photo">
+      <div class="profile-avatar-img" id="profile-avatar-img">
+        <span id="profile-avatar-initial">C</span>
+      </div>
+      <div class="profile-avatar-cam">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" capture="user" style="display:none" onchange="handleAvatarUpload(event)">
+    </div>
+
+    <div class="profile-hero__info">
+      <h2 class="profile-hero__name" id="profile-name">—</h2>
+      <p class="profile-hero__trade" id="profile-role" style="color:var(--accent);font-weight:600;font-size:.85rem">Client</p>
+      <p class="profile-hero__email" id="profile-email">—</p>
+      <p class="profile-hero__phone" id="profile-phone" style="display:none"></p>
+      <p class="profile-hero__bio" id="profile-bio" style="display:none"></p>
+    </div>
+
+    <!-- Client stats instead of trust score -->
+    <div class="profile-hero__score">
+      <div class="profile-score-ring" style="min-width:120px">
+        <span class="profile-score-val" id="profile-jobs-posted" style="font-size:1.6rem">0</span>
+        <span class="profile-score-label">Jobs Posted</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client stats row -->
+  <div class="verify-stats" style="margin-top:16px">
+    <div class="verify-stat">
+      <p class="verify-stat__val" id="cp-total">0</p>
+      <p class="verify-stat__label">Total Jobs</p>
+    </div>
+    <div class="verify-stat">
+      <p class="verify-stat__val verify-stat__val--green" id="cp-completed">0</p>
+      <p class="verify-stat__label">Completed</p>
+    </div>
+    <div class="verify-stat">
+      <p class="verify-stat__val verify-stat__val--orange" id="cp-spent">₦0</p>
+      <p class="verify-stat__label">Total Spent</p>
+    </div>
+    <div class="verify-stat">
+      <p class="verify-stat__val" id="cp-escrow">₦0</p>
+      <p class="verify-stat__label">In Escrow</p>
+    </div>
+  </div>
+</section>
+
+
 
 </main>
 

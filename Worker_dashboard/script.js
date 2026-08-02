@@ -176,6 +176,11 @@
       const removed = allMyJobs.filter(old => !newJobs.find(n => n.id === old.id));
       allMyJobs = newJobs;
 
+      
+      if (document.getElementById('view-profile')?.classList.contains('is-active')) {
+        renderProfile();
+      }
+
       removed.forEach(r => {
         if (r.status === 'pending_review') {
           Swal.fire({ title: 'Job removed', text: `"${r.title}" was deleted by the client.`, icon: 'warning', confirmButtonColor: '#E85C00', timer: 5000, ...swalTheme() });
@@ -266,7 +271,8 @@
     const done   = allMyJobs.filter(j => ['verified','paid'].includes(j.status)).length;
     const active = allMyJobs.filter(j => ['assigned','pending_review','pending_verification'].includes(j.status)).length;
 
-    const totalEarned      = allMyJobs.filter(j => j.status === 'paid').reduce((s,j) => s + parseFloat(j.amount), 0);
+    const totalEarned = allMyJobs.filter(j => j.status === 'paid')
+                              .reduce((s,j) => s + parseFloat(j.amount||0), 0);
     const withdrawn        = parseFloat(profile.total_withdrawn || 0);
     const availableBalance = totalEarned - withdrawn;
     const pendingEscrow    = allMyJobs.filter(j => ['assigned','pending_verification','verified'].includes(j.status)).reduce((s,j) => s + parseFloat(j.amount), 0);
@@ -596,7 +602,7 @@
     const avatarImg     = document.getElementById('profile-avatar-img');
     const avatarInitial = document.getElementById('profile-avatar-initial');
     // Priority: server path → localStorage cache → initial letter
-    const serverPhoto = p.profile_photo ? `${FLASK}/${p.profile_photo}` : null;
+    const serverPhoto = p.profile_photo_path ? `${FLASK}/${p.profile_photo_path}` : null;
     const localPhoto  = localStorage.getItem(`sc-avatar-${user.id}`);
     const photoSrc    = serverPhoto || localPhoto;
 
@@ -635,9 +641,12 @@
     renderCertButton(p);
 
     // ── SkillChain Balance ────────────────────────────────────────────────
-    const totalEarned = allMyJobs.filter(j => j.status === 'paid').reduce((s,j) => s + parseFloat(j.amount||0), 0);
-    const withdrawn   = parseFloat(p.total_withdrawn || 0);
-    const balance     = Math.max(0, totalEarned - withdrawn);
+    const balance = p.escrow_balance != null
+    ? parseFloat(p.escrow_balance)
+    : Math.max(0, allMyJobs
+        .filter(j => j.status === 'paid')
+        .reduce((s,j) => s + parseFloat(j.amount||0), 0)
+      - parseFloat(p.total_withdrawn || 0));
     const balEl = document.getElementById('profile-balance-val');
     if (balEl) balEl.textContent = balance.toLocaleString();
 
@@ -800,7 +809,7 @@
     const issued = new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'});
     const tierDesc = { bronze:'Completing their first verified jobs on SkillChain.', silver:'Consistently delivering GPS-verified, escrow-secured work.', gold:'An elite verified artisan with an outstanding trust record.' }[tier];
 
-    const serverPhoto = profile.profile_photo ? `${FLASK}/${profile.profile_photo}` : null;
+    const serverPhoto = p.profile_photo_path ? `${FLASK}/${p.profile_photo_path}` : null;
     const localPhoto  = localStorage.getItem(`sc-avatar-${profile.id||user?.id}`);
     const photoSrc    = serverPhoto || localPhoto;
     const avatarHTML  = photoSrc
@@ -859,7 +868,7 @@
       <button class="cert-trigger-btn cert-trigger-btn--${tier}" onclick="openCertModal()">
         ${ic('shield').replace('width="46" height="46"','width="16" height="16"')} View My ${TIER_LABEL[tier].replace(' Certified','').replace(' Verified','')} Certificate
       </button>`;
-    window._certProfile = profile;
+    window._certProfile = { ...profile, id: profile.id || user.id };
     window._certTier    = tier;
     window._certVerId   = certVerificationId(profile.id || user.id);
   }
@@ -922,7 +931,9 @@
   window.openCertModal       = openCertModal;
   window.closeCertModal      = closeCertModal;
   window.downloadCertificate = downloadCertificate;
-
+  window.openEditProfileModal = openEditProfileModal;
+  window.triggerAvatarUpload  = triggerAvatarUpload;
+  window.handleAvatarUpload   = handleAvatarUpload;
   /* ══════════════════════════════════════════════
      WITHDRAW TO BANK
   ══════════════════════════════════════════════ */
@@ -1042,7 +1053,7 @@
   function waitForGlobals(cb, n) {
     n = n || 0;
     if (window.FLASK && window.USER_ID) { cb(); return; }
-    if (n > 40) { console.warn('[role-switch] globals never appeared'); return; }
+    if (n > 80) { console.warn('[role-switch] globals never appeared'); return; }
     setTimeout(() => waitForGlobals(cb, n + 1), 150);
   }
 
