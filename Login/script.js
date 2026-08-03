@@ -124,28 +124,64 @@
         });
 
         setTimeout(async () => {
-          if (data.pick_role) {
-            const { value: choice } = await Swal.fire({
-              title: `Welcome back, ${data.user.name}`,
-              html: `<p style="margin-bottom:16px">Which account do you want to open?</p>`,
-              input: 'radio',
-              inputOptions: {
-                worker: '🔧 Artisan Account — find and complete jobs',
-                client: '📋 Client Account — post jobs and hire artisans',
-              },
-              inputValue: data.last_active_role || 'worker',
-              confirmButtonText: 'Continue',
-              confirmButtonColor: '#E85C00',
-            });
-            window.location.href = choice === 'client' ? data.client_url : data.worker_url;
-          } else {
-            window.location.replace(
-              data.user.role === 'worker'
-                ? '/Worker_dashboard/index.html'
-                : '/Client_dashboard/index.html'
-            );
-          }
-        }, 1800);
+        if (data.pick_role) {
+          const preselect = data.last_active_role || 'worker';
+
+          const { value: choice } = await Swal.fire({
+            title: `Welcome back, ${data.user.name}`,
+            html: `
+              <p class="role-picker__subtitle">Which account do you want to open?</p>
+              <div class="role-picker" data-selected="${preselect}">
+                <button type="button" class="role-card ${preselect === 'worker' ? 'is-selected' : ''}" data-role="worker">
+                  <svg class="role-card__icon" viewBox="0 0 24 24" fill="none">
+                    <path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.8 2.8-2-2 2.8-2.8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                  </svg>
+                  <span class="role-card__title">Artisan Account</span>
+                  <span class="role-card__desc">Find and complete jobs</span>
+                </button>
+                <button type="button" class="role-card ${preselect === 'client' ? 'is-selected' : ''}" data-role="client">
+                  <svg class="role-card__icon" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 4h6a1 1 0 0 1 1 1v1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h2V5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M9 4v2h6V4M9 12h6M9 16h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                  <span class="role-card__title">Client Account</span>
+                  <span class="role-card__desc">Post jobs and hire artisans</span>
+                </button>
+              </div>
+            `,
+            showConfirmButton: true,
+            confirmButtonText: 'Continue',
+            confirmButtonColor: '#e85c00',
+            focusConfirm: false,
+            customClass: {
+              popup: 'role-picker-popup',
+            },
+            didOpen: () => {
+              const container = Swal.getHtmlContainer().querySelector('.role-picker');
+              const cards = container.querySelectorAll('.role-card');
+              cards.forEach(card => {
+                card.addEventListener('click', () => {
+                  cards.forEach(c => c.classList.remove('is-selected'));
+                  card.classList.add('is-selected');
+                  container.dataset.selected = card.dataset.role;
+                });
+              });
+            },
+            preConfirm: () => {
+              const container = Swal.getHtmlContainer().querySelector('.role-picker');
+              return container.dataset.selected;
+            }
+          });
+
+          window.location.href = choice === 'client' ? data.client_url : data.worker_url;
+        } else {
+          window.location.replace(
+            data.user.role === 'worker'
+              ? '/Worker_dashboard/index.html'
+              : '/Client_dashboard/index.html'
+          );
+        }
+      }, 1800);
   
       } else {
         setLoading(false);
