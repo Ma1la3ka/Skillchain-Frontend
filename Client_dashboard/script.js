@@ -1464,7 +1464,7 @@ function renderClientProfile() {
   // Avatar
   const avatarImg     = document.getElementById('profile-avatar-img');
   const avatarInitial = document.getElementById('profile-avatar-initial');
-  const serverPhoto = p.profile_photo_path ? `${FLASK}/${p.profile_photo_path}` : null;
+  const serverPhoto = user.profile_photo_path ? `${FLASK}/${user.profile_photo_path}` : null;
   const localPhoto    = localStorage.getItem(`sc-avatar-${user.id}`);
   const photoSrc      = serverPhoto || localPhoto;
 
@@ -1631,4 +1631,125 @@ window.openEditProfileModal = async function () {
   window.openJobModalById        = openJobModalById;
   window.buildWorkerCredCard     = buildWorkerCredCard;
   window.openEditProfileModal = openEditProfileModal;
+})();
+
+/* ══════════════════════════════════════════════════════════════════
+   ROLE SWITCH MODULE — injected into same file for simplicity
+   Polls for window.FLASK + window.USER_ID set by the IIFE above
+══════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  const WORKER_URL = 'https://skillchain-frontend-omega.vercel.app//Worker_dashboard/index.html';
+  const CLIENT_URL = 'https://skillchain-frontend-omega.vercel.app//Client_dashboard/index.html';
+
+  function waitForGlobals(cb, n) {
+    n = n || 0;
+    if (window.FLASK && window.USER_ID) { cb(); return; }
+    if (n > 80) { console.warn('[role-switch] globals never appeared'); return; }
+    setTimeout(() => waitForGlobals(cb, n + 1), 150);
+  }
+
+  function swalOpts(extra) {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return Object.assign({ background: dark?'#17171A':'#ffffff', color: dark?'#F2F1EE':'#17181B', confirmButtonColor:'#E85C00', cancelButtonColor: dark?'#3a3530':'#9A968E' }, extra);
+  }
+
+  function injectBtn(label, icon) {
+    document.getElementById('role-switch-btn')?.remove();
+    const btn = document.createElement('button');
+    btn.id = 'role-switch-btn'; btn.className = 'nav-switch-btn';
+    btn.innerHTML = `${icon}<span>${label}</span>`;
+    btn.addEventListener('click', onSwitchClick);
+    const slot = document.getElementById('nav-switch-slot');
+    if (slot) { slot.innerHTML = ''; slot.appendChild(btn); return; }
+    const logout = document.getElementById('logout-btn') || document.querySelector('.logout-btn');
+    if (logout) logout.parentNode.insertBefore(btn, logout);
+  }
+
+  const IC_SWITCH  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M16 3l4 4-4 4M8 21l-4-4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 7H4M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+  const IC_ARTISAN = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+  async function onSwitchClick() {
+    const btn = document.getElementById('role-switch-btn');
+    if (btn) { btn.disabled=true; btn.style.opacity='0.55'; }
+    try {
+      const res    = await fetch(`${window.FLASK}/api/switch-role/status?user_id=${window.USER_ID}`, { credentials:'include' });
+      const status = await res.json();
+      const target = status.active_role === 'worker' ? 'client' : 'worker';
+
+      if (target === 'worker') { await doSwitch('worker'); return; }
+      if (status.has_client_profile) { await doSwitch('client'); return; }
+
+      const { isConfirmed } = await Swal.fire(swalOpts({
+        title:'Switch to Client Mode',
+        html:`<div style="text-align:left;font-size:.9rem;line-height:1.7">
+          <p>As a <strong>client</strong> you can post jobs and hire artisans.</p>
+          <p style="margin-top:6px">Your artisan profile stays untouched. Switch back anytime.</p>
+          <div style="margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(232,92,0,.08);border:1px solid rgba(232,92,0,.2)">
+            <p style="color:#E85C00;font-weight:700;font-size:.82rem">✅ Same login credentials — no new password</p>
+          </div></div>`,
+        confirmButtonText:'Activate Client Account', cancelButtonText:'Cancel', showCancelButton:true, icon:null,
+      }));
+      if (!isConfirmed) return;
+
+      const aRes  = await fetch(`${window.FLASK}/api/switch-role/activate-client`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+        body: JSON.stringify({ user_id:window.USER_ID })
+      });
+      const aData = await aRes.json();
+      if (!aData.success) { await Swal.fire(swalOpts({ title:'Error', text:aData.message, icon:'error' })); return; }
+
+      await Swal.fire(swalOpts({ title:'🎉 Client account activated!', text:'Switching you over now…', icon:'success', timer:1300, showConfirmButton:false }));
+      window.location.href = aData.redirect || CLIENT_URL;
+
+    } catch (err) {
+      await Swal.fire(swalOpts({ title:'Something went wrong', text:err.message, icon:'error' }));
+    } finally {
+      if (btn) { btn.disabled=false; btn.style.opacity=''; }
+    }
+  }
+
+  async function doSwitch(target) {
+    const res  = await fetch(`${window.FLASK}/api/switch-role/switch`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({ user_id:window.USER_ID, target_role:target })
+    });
+    const data = await res.json();
+    if (!data.success) { await Swal.fire(swalOpts({ title:'Switch failed', text:data.message, icon:'error' })); return; }
+    const btn = document.getElementById('role-switch-btn');
+    if (btn) btn.innerHTML = `${IC_SWITCH}<span>Switching…</span>`;
+    setTimeout(() => { window.location.href = data.redirect; }, 300);
+  }
+
+  window.enforceCantAcceptJobs = function (activeRole) {
+    if (activeRole !== 'client') return;
+    ['.accept-btn','[data-action="accept-job"]','#btn-accept'].forEach(s =>
+      document.querySelectorAll(s).forEach(el => {
+        el.disabled=true; el.title='Switch to Artisan account to accept jobs';
+        el.style.opacity='0.4'; el.style.cursor='not-allowed';
+        el.addEventListener('click', async e => {
+          e.stopPropagation();
+          const { isConfirmed } = await Swal.fire(swalOpts({ title:'Switch to Artisan Mode', text:"You're in client mode. Switch accounts to accept jobs.", icon:'info', confirmButtonText:'Switch Now', showCancelButton:true }));
+          if (isConfirmed) onSwitchClick();
+        }, true);
+      })
+    );
+  };
+
+  function init() {
+    waitForGlobals(async () => {
+      try {
+        const res  = await fetch(`${window.FLASK}/api/switch-role/me?user_id=${window.USER_ID}`, { credentials:'include' });
+        const data = await res.json();
+        if (data.error || !data.can_switch_to_client) return;
+        window.SC_ACTIVE_ROLE = data.active_role;
+        if (data.active_role === 'worker') injectBtn('Switch to Client', IC_SWITCH);
+        else { injectBtn('Switch to Artisan', IC_ARTISAN); window.enforceCantAcceptJobs(data.active_role); }
+      } catch (e) { console.warn('[role-switch] init error:', e); }
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
