@@ -38,6 +38,11 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       Find Jobs
     </a>
+    <a class="nav-item" data-view="my-bargains" href="#">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 12h8M8 8h5M6 20l-3-3 3-3M18 4l3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  My Bargains
+  <span class="nav-item__badge" id="bargain-badge"></span>
+  </a>
     <a class="nav-item" data-view="my-jobs" href="#">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 11l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="3" y="4" width="18" height="17" rx="2.5" stroke="currentColor" stroke-width="2"/></svg>
       My Active Tasks
@@ -211,6 +216,20 @@
       <div class="skeleton-list"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
     </div>
   </section>
+  
+  
+  <section class="view" id="view-my-bargains">
+  <div class="page-header">
+    <div><p class="page-eyebrow">Offers</p><h1 class="page-header__title">My Bargains</h1></div>
+  </div>
+  <p class="page-header__sub" style="margin-bottom:20px">Track every counter-offer you've sent to clients.</p>
+  <div class="jobs-list" id="my-bargains-list">
+    <div class="empty-state">
+      <div class="icon-sq"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M8 12h8M8 8h5M6 20l-3-3 3-3M18 4l3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <p>You haven't sent any bargains yet.</p>
+    </div>
+  </div>
+</section>
 
   <!-- ══ MY JOBS ═══════════════════════════════ -->
   <section class="view" id="view-my-jobs">

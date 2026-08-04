@@ -1261,44 +1261,51 @@
   }
 
   function renderBargainsList(bargains) {
-    const el = document.getElementById('bargains-list');
-    if (!el) return;
-    if (!bargains.length) { el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('handshake')}</div><p>No pending offers.</p></div>`; return; }
-    el.innerHTML = bargains.map(b => `
-      <div class="bargain-card">
-        <p class="bargain-card__title">${b.job_title}</p>
-        <p class="bargain-card__price">Original: <strong>₦${Number(b.original_amount).toLocaleString()}</strong> &rarr; Worker offers: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong></p>
-        <p class="bargain-card__worker">${ic('user')} ${b.worker_name} · ${Number(b.worker_trust).toFixed(1)} trust · ${b.worker_jobs} jobs</p>
-        ${b.message ? `<p class="bargain-card__msg">"${b.message}"</p>` : ''}
-        <div class="bargain-card__actions">
-          <button class="btn btn--success" onclick="respondBargain(${b.job_id}, 'accept')">${ic('check')} Accept ₦${Number(b.proposed_price).toLocaleString()}</button>
-          <button class="btn btn--danger" onclick="respondBargain(${b.job_id}, 'reject')">${ic('x')} Reject</button>
-        </div>
-      </div>`).join('');
-  }
+  const el = document.getElementById('bargains-list');
+  if (!el) return;
+  if (!bargains.length) { el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('handshake')}</div><p>No pending offers.</p></div>`; return; }
+  el.innerHTML = bargains.map(b => `
+    <div class="bargain-card">
+      <p class="bargain-card__title">${b.job_title}</p>
+      <p class="bargain-card__price">Original: <strong>₦${Number(b.original_amount).toLocaleString()}</strong> &rarr; Worker offers: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong></p>
+      <p class="bargain-card__worker">${ic('user')} ${b.worker_name} · ${Number(b.worker_trust).toFixed(1)} trust · ${b.worker_jobs} jobs</p>
+      ${b.message ? `<p class="bargain-card__msg">"${b.message}"</p>` : ''}
+      <div class="bargain-card__actions">
+        <button class="btn btn--success" onclick="respondBargain(${b.job_id}, 'accept', ${b.id})">${ic('check')} Accept ₦${Number(b.proposed_price).toLocaleString()}</button>
+        <button class="btn btn--danger" onclick="rejectBargainWithPrompt(${b.job_id}, ${b.id})">${ic('x')} Reject</button>
+      </div>
+    </div>`).join('');
+}
 
-  async function respondBargain(jobId, action) {
-    const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: jobId, user_id: user.id, action })
-    });
-    const data = await res.json();
-    if (data.success) {
-      await loadJobs(); await loadBargains();
-      if (action === 'accept' && data.payment?.account_number) {
-        Swal.fire({
-          title: 'Offer accepted',
-          html: `Transfer ₦${Number(data.payment.amount).toLocaleString()} to <strong>${data.payment.account_number}</strong> (${data.payment.bank_name}) to fund escrow.`,
-          icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme()
-        });
-      } else {
-        Swal.fire({ title: action === 'accept' ? 'Accepted' : 'Rejected', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
-      }
-    } else {
-      Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
-    }
+  async function respondBargain(jobId, action, bargainId, suggestedPrice) {
+  const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ bargain_id: bargainId, user_id: user.id, action, suggested_price: suggestedPrice })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadJobs(); await loadBargains();
+    Swal.fire({ title: action === 'accept' ? 'Accepted' : 'Rejected', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+  } else {
+    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
   }
+}
 
+async function rejectBargainWithPrompt(jobId, bargainId) {
+  const { value: suggested, isConfirmed } = await Swal.fire({
+    title: 'Reject this offer?',
+    text: 'Optionally suggest a price the worker should try instead.',
+    input: 'number',
+    inputPlaceholder: 'e.g. 15000 (optional)',
+    showCancelButton: true,
+    confirmButtonText: 'Reject',
+    confirmButtonColor: '#DC2626',
+    cancelButtonColor: '#9A968E',
+    ...swalTheme()
+  });
+  if (!isConfirmed) return;
+  await respondBargain(jobId, 'reject', bargainId, suggested || null);
+}
   /* ══════════════════════════════════════════════
      ARTISAN WORK SUBMISSION REVIEW (approve payment / dispute)
   ══════════════════════════════════════════════ */
@@ -1631,6 +1638,7 @@ window.openEditProfileModal = async function () {
   window.openJobModalById        = openJobModalById;
   window.buildWorkerCredCard     = buildWorkerCredCard;
   window.openEditProfileModal = openEditProfileModal;
+  window.rejectBargainWithPrompt = rejectBargainWithPrompt;
 })();
 
 /* ══════════════════════════════════════════════════════════════════

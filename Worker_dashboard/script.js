@@ -100,6 +100,7 @@
     if (viewId === 'my-jobs')   renderMyJobsList(allMyJobs);
     if (viewId === 'earnings')  renderEarnings();
     if (viewId === 'profile')   renderProfile();
+    if (viewId === 'my-bargains') loadMyBargains();
   }
 
   navItems.forEach(item => item.addEventListener('click', e => { e.preventDefault(); showView(item.dataset.view); }));
@@ -858,6 +859,61 @@
       </div>`;
   }
 
+
+  async function loadMyBargains() {
+  try {
+    const res = await fetch(`${FLASK}/api/worker/my-bargains?user_id=${user.id}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderMyBargainsList(data.bargains || []);
+  } catch (e) { console.error('loadMyBargains:', e); }
+}
+
+function bargainStatusBadge(status) {
+  const labels = { pending: 'Pending', accepted: 'Accepted', rejected: 'Declined' };
+  return `<span class="badge badge--${status === 'accepted' ? 'verified' : status === 'rejected' ? 'disputed' : 'pending_verification'}">${labels[status] || status}</span>`;
+}
+
+function renderMyBargainsList(bargains) {
+  const el = document.getElementById('my-bargains-list');
+  if (!el) return;
+  if (!bargains.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('box')}</div><p>You haven't sent any bargains yet.</p></div>`;
+    return;
+  }
+  el.innerHTML = bargains.map(b => `
+    <div class="job-card" style="cursor:default">
+      <div class="job-card__icon">${tradeIcon(b.trade)}</div>
+      <div class="job-card__info">
+        <p class="job-card__title">${b.job_title}</p>
+        <div class="job-card__meta">
+          ${bargainStatusBadge(b.status)}
+          <span>Original: ₦${b.original_amount.toLocaleString()}</span>
+          <span>Your offer: ₦${b.proposed_price.toLocaleString()}</span>
+        </div>
+        ${b.status === 'rejected' && b.client_suggested_price ? `
+          <div class="notice notice--warning" style="margin-top:10px">
+            <p>Client suggested <strong>₦${b.client_suggested_price.toLocaleString()}</strong> instead. Want to send a new offer at that price?</p>
+            <button class="btn btn--primary btn--sm" style="margin-top:8px" onclick="resendBargainAt(${b.job_id}, ${b.client_suggested_price})">Send ₦${b.client_suggested_price.toLocaleString()}</button>
+          </div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function resendBargainAt(jobId, price) {
+  const res = await fetch(`${FLASK}/api/worker/bargain`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ job_id: jobId, user_id: user.id, proposed_price: price, message: 'Updated offer per your suggestion' })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadMyBargains();
+    Swal.fire({ title: 'New offer sent', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+  } else {
+    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+  }
+}
+
   function renderCertButton(profile) {
     const container = document.getElementById('profile-cert-area');
     if (!container || !profile) return;
@@ -934,6 +990,7 @@
   window.openEditProfileModal = openEditProfileModal;
   window.triggerAvatarUpload  = triggerAvatarUpload;
   window.handleAvatarUpload   = handleAvatarUpload;
+  window.resendBargainAt = resendBargainAt;
   /* ══════════════════════════════════════════════
      WITHDRAW TO BANK
   ══════════════════════════════════════════════ */
