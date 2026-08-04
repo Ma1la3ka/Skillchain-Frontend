@@ -130,7 +130,7 @@
           const { value: choice } = await Swal.fire({
             title: `Welcome back, ${data.user.name}`,
             html: `
-              <p class="role-picker__subtitle">Which account do you want to open?</p>
+              <p class="role-picker__subtitle">Which of your account do you want to login to?</p>
               <div class="role-picker" data-selected="${preselect}">
                 <button type="button" class="role-card ${preselect === 'worker' ? 'is-selected' : ''}" data-role="worker">
                   <svg class="role-card__icon" viewBox="0 0 24 24" fill="none">
