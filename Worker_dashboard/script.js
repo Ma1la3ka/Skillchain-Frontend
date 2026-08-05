@@ -101,6 +101,7 @@
     if (viewId === 'earnings')  renderEarnings();
     if (viewId === 'profile')   renderProfile();
     if (viewId === 'my-bargains') loadMyBargains();
+    if (viewId === 'messages') loadConversations();
   }
 
   navItems.forEach(item => item.addEventListener('click', e => { e.preventDefault(); showView(item.dataset.view); }));
@@ -126,6 +127,67 @@
       }
     });
   });
+
+
+  let conversationsPollInterval = null;
+
+async function loadConversations() {
+  try {
+    const res = await fetch(`${FLASK}/api/chat/conversations?user_id=${user.id}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    renderConversationsList(data.conversations || []);
+    updateMessagesBadge(data.conversations || []);
+  } catch (e) { console.error('loadConversations:', e); }
+}
+
+function updateMessagesBadge(conversations) {
+  const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0);
+  const badge = document.getElementById('messages-badge');
+  if (!badge) return;
+  badge.textContent = totalUnread > 0 ? totalUnread : '';
+  badge.classList.toggle('is-visible', totalUnread > 0);
+}
+
+function conversationRowHTML(c) {
+  const initials = (c.other_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const timeAgo = relativeTime ? relativeTime(c.last_at) : new Date(c.last_at).toLocaleDateString();
+  const preview = c.last_from_me ? `You: ${c.last_message}` : c.last_message;
+  return `
+    <div class="job-card" data-job-id="${c.job_id}" data-other-id="${c.other_id}" style="cursor:pointer">
+      <div class="job-card__icon" style="border-radius:50%">${initials}</div>
+      <div class="job-card__info">
+        <p class="job-card__title">${c.other_name} <span style="font-weight:400;color:var(--text-3);font-size:.75rem">· ${c.job_title}</span></p>
+        <div class="job-card__meta">
+          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${preview}</span>
+        </div>
+      </div>
+      <div class="job-card__right">
+        <span style="font-size:.72rem;color:var(--text-3)">${timeAgo}</span>
+        ${c.unread_count > 0 ? `<span class="nav-item__badge is-visible" style="position:static">${c.unread_count}</span>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderConversationsList(conversations) {
+  const el = document.getElementById('conversations-list');
+  if (!el) return;
+  if (!conversations.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('comment')}</div><p>No conversations yet.</p></div>`;
+    return;
+  }
+  el.innerHTML = conversations.map(conversationRowHTML).join('');
+  el.querySelectorAll('.job-card').forEach(card => {
+    card.addEventListener('click', () => {
+      openChatThread(parseInt(card.dataset.jobId), parseInt(card.dataset.otherId));
+    });
+  });
+}
+
+// Stub for now — built in the next piece (the actual chat thread panel)
+function openChatThread(jobId, otherId) {
+  console.log('Opening chat thread', jobId, otherId);
+}
 
   /* ══════════════════════════════════════════════
      LOAD USER / PROFILE / JOBS
@@ -460,6 +522,10 @@
       <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address||'—'}</p></div>
       <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade||'—'}</p></div>
       ${job.client_name ? `<div class="modal-field"><p class="modal-field__label">Posted By</p><p class="modal-field__val">${ic('user')} ${job.client_name}</p></div>` : ''}
+      ${job.client_name ? `<div class="modal-field"><p class="modal-field__label">Posted By</p><p class="modal-field__val">${ic('user')} ${job.client_name}</p></div>` : ''}
+      <button class="btn btn--secondary btn--wide" style="margin-top:8px" onclick="openChatThread(${job.id}, ${job.client_id})">${ic('comment')} Message Client</button>
+      <div class="modal-divider"></div>
+      <button class="btn btn--primary btn--wide" id="confirm-accept-btn">Accept at ₦${Number(job.amount).toLocaleString()}</button>
       <div class="modal-divider"></div>
       <button class="btn btn--primary btn--wide" id="confirm-accept-btn">Accept at ₦${Number(job.amount).toLocaleString()}</button>
       <div class="bargain-box">
@@ -991,6 +1057,132 @@ async function resendBargainAt(jobId, price) {
   window.triggerAvatarUpload  = triggerAvatarUpload;
   window.handleAvatarUpload   = handleAvatarUpload;
   window.resendBargainAt = resendBargainAt;
+  window.openChatThread = openChatThread;
+  window.openClientPublicProfile = openClientPublicProfile;
+
+  let currentChatJobId = null;
+let currentChatOtherId = null;
+let chatPollInterval = null;
+
+async function openChatThread(jobId, otherId) {
+  currentChatJobId = jobId;
+  currentChatOtherId = otherId;
+
+  document.getElementById('chat-modal-overlay').classList.add('is-open');
+  document.getElementById('chat-messages').innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.8rem">Loading…</div>`;
+
+  document.getElementById('chat-send-offer-btn').style.display = 
+  (user.role === 'client' || window.SC_ACTIVE_ROLE === 'client') ? '' : 'none';
+
+  await loadChatHeader(otherId);
+  await loadChatMessages();
+
+  clearInterval(chatPollInterval);
+  chatPollInterval = setInterval(loadChatMessages, 5000);
+}
+
+function closeChatThread() {
+  document.getElementById('chat-modal-overlay').classList.remove('is-open');
+  clearInterval(chatPollInterval);
+  chatPollInterval = null;
+  currentChatJobId = null;
+  currentChatOtherId = null;
+}
+
+document.getElementById('chat-modal-close')?.addEventListener('click', closeChatThread);
+document.getElementById('chat-modal-overlay')?.addEventListener('click', e => {
+  if (e.target.id === 'chat-modal-overlay') closeChatThread();
+});
+
+async function loadChatHeader(otherId) {
+  try {
+    const res = await fetch(`${FLASK}/api/user-status?user_id=${otherId}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const u = await res.json();
+
+    const avatarEl = document.getElementById('chat-header-avatar');
+    const initials = (u.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    avatarEl.textContent = initials;
+    avatarEl.onclick = null; // reset before rebinding
+
+    document.getElementById('chat-header-name').textContent = u.name || 'User';
+    document.getElementById('chat-header-status').textContent = u.online
+      ? '🟢 Online'
+      : (u.last_seen_at ? `Last seen ${relativeTime(u.last_seen_at)}` : 'Offline');
+
+    // Clicking the header opens the right kind of public profile,
+    // depending on whether the other person is a worker or a client.
+    document.getElementById('chat-header').onclick = () => {
+      if (u.role === 'worker') {
+        openWorkerPublicProfile(otherId);
+      } else {
+        openClientPublicProfile(otherId);
+      }
+    };
+  } catch (e) { console.error('loadChatHeader:', e); }
+}
+
+async function loadChatMessages() {
+  if (!currentChatJobId || !currentChatOtherId) return;
+  try {
+    const res = await fetch(
+      `${FLASK}/api/chat/thread?job_id=${currentChatJobId}&user_id=${user.id}&other_id=${currentChatOtherId}`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    renderChatMessages(data.messages || []);
+  } catch (e) { console.error('loadChatMessages:', e); }
+}
+
+function renderChatMessages(messages) {
+  const el = document.getElementById('chat-messages');
+  const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+
+  if (!messages.length) {
+    el.innerHTML = `<div style="text-align:center;padding:30px 10px;color:var(--text-3);font-size:.8rem">No messages yet — say hello!</div>`;
+    return;
+  }
+
+  el.innerHTML = messages.map(m => {
+    const mine = m.sender_id === user.id;
+    const time = new Date(m.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}">
+      ${m.body}
+      <span class="chat-bubble__time">${time}</span>
+    </div>`;
+  }).join('');
+
+  if (wasAtBottom) el.scrollTop = el.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const body = input.value.trim();
+  if (!body || !currentChatJobId || !currentChatOtherId) return;
+  input.value = '';
+
+  try {
+    await fetch(`${FLASK}/api/chat/send`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body })
+    });
+    await loadChatMessages();
+  } catch (e) {
+    console.error('sendChatMessage:', e);
+    Swal.fire({ title: 'Message failed to send', icon: 'error', ...swalTheme() });
+  }
+}
+
+document.getElementById('chat-send-btn')?.addEventListener('click', sendChatMessage);
+document.getElementById('chat-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
+
+// Placeholder — wired properly once we touch the bargain UI in the next piece
+document.getElementById('chat-send-offer-btn')?.addEventListener('click', () => {
+  Swal.fire({ title: 'Coming next', text: 'This will open the price-offer form.', icon: 'info', ...swalTheme() });
+});
+
+
   /* ══════════════════════════════════════════════
      WITHDRAW TO BANK
   ══════════════════════════════════════════════ */
@@ -1083,6 +1275,200 @@ async function resendBargainAt(jobId, price) {
     }
   }
 
+  let currentChatJobId = null;
+let currentChatOtherId = null;
+let chatPollInterval = null;
+
+async function openChatThread(jobId, otherId) {
+  currentChatJobId = jobId;
+  currentChatOtherId = otherId;
+
+  document.getElementById('chat-modal-overlay').classList.add('is-open');
+  document.getElementById('chat-messages').innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.8rem">Loading…</div>`;
+
+  await loadChatHeader(otherId);
+  await loadChatMessages();
+
+  clearInterval(chatPollInterval);
+  chatPollInterval = setInterval(loadChatMessages, 5000);
+}
+
+function closeChatThread() {
+  document.getElementById('chat-modal-overlay').classList.remove('is-open');
+  clearInterval(chatPollInterval);
+  chatPollInterval = null;
+  currentChatJobId = null;
+  currentChatOtherId = null;
+}
+
+document.getElementById('chat-modal-close')?.addEventListener('click', closeChatThread);
+document.getElementById('chat-modal-overlay')?.addEventListener('click', e => {
+  if (e.target.id === 'chat-modal-overlay') closeChatThread();
+});
+
+async function loadChatHeader(otherId) {
+  try {
+    const res = await fetch(`${FLASK}/api/user-status?user_id=${otherId}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const u = await res.json();
+
+    const avatarEl = document.getElementById('chat-header-avatar');
+    const initials = (u.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    avatarEl.textContent = initials;
+    avatarEl.onclick = null; // reset before rebinding
+
+    document.getElementById('chat-header-name').textContent = u.name || 'User';
+    document.getElementById('chat-header-status').textContent = u.online
+      ? '🟢 Online'
+      : (u.last_seen_at ? `Last seen ${relativeTime(u.last_seen_at)}` : 'Offline');
+
+    // Clicking the header opens the right kind of public profile,
+    // depending on whether the other person is a worker or a client.
+    document.getElementById('chat-header').onclick = () => {
+      if (u.role === 'worker') {
+        openWorkerPublicProfile(otherId);
+      } else {
+        openClientPublicProfile(otherId);
+      }
+    };
+  } catch (e) { console.error('loadChatHeader:', e); }
+}
+
+async function loadChatMessages() {
+  if (!currentChatJobId || !currentChatOtherId) return;
+  try {
+    const res = await fetch(
+      `${FLASK}/api/chat/thread?job_id=${currentChatJobId}&user_id=${user.id}&other_id=${currentChatOtherId}`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    renderChatMessages(data.messages || []);
+  } catch (e) { console.error('loadChatMessages:', e); }
+}
+
+function renderChatMessages(messages) {
+  const el = document.getElementById('chat-messages');
+  const wasAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+
+  if (!messages.length) {
+    el.innerHTML = `<div style="text-align:center;padding:30px 10px;color:var(--text-3);font-size:.8rem">No messages yet — say hello!</div>`;
+    return;
+  }
+
+  el.innerHTML = messages.map(m => {
+    const mine = m.sender_id === user.id;
+    const time = new Date(m.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}">
+      ${m.body}
+      <span class="chat-bubble__time">${time}</span>
+    </div>`;
+  }).join('');
+
+  if (wasAtBottom) el.scrollTop = el.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const body = input.value.trim();
+  if (!body || !currentChatJobId || !currentChatOtherId) return;
+  input.value = '';
+
+  try {
+    await fetch(`${FLASK}/api/chat/send`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body })
+    });
+    await loadChatMessages();
+  } catch (e) {
+    console.error('sendChatMessage:', e);
+    Swal.fire({ title: 'Message failed to send', icon: 'error', ...swalTheme() });
+  }
+}
+
+document.getElementById('chat-send-btn')?.addEventListener('click', sendChatMessage);
+document.getElementById('chat-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
+
+document.getElementById('chat-send-offer-btn')?.addEventListener('click', async () => {
+  if (!currentChatJobId) return;
+
+  const { value: price, isConfirmed } = await Swal.fire({
+    title: 'Send Price Offer',
+    text: 'This sends a formal, trackable price offer for this job.',
+    input: 'number',
+    inputPlaceholder: 'e.g. 15000',
+    showCancelButton: true,
+    confirmButtonText: 'Send Offer',
+    confirmButtonColor: '#E85C00',
+    cancelButtonColor: '#9A968E',
+    ...swalTheme(),
+    inputValidator: (value) => {
+      if (!value || Number(value) < 100) return 'Enter a valid amount (min ₦100).';
+    }
+  });
+  if (!isConfirmed || !price) return;
+
+  // Client sending an offer directly (no bargain needed — just accepts
+  // their own new number for their own job) vs a worker sending a
+  // counter-offer (goes through the existing bargain endpoint).
+  const isClientSending = user.role === 'client' || window.SC_ACTIVE_ROLE === 'client';
+
+  try {
+    if (isClientSending) {
+      // Client updates the job's own budget directly — no bargain needed,
+      // since it's their job and their number.
+      Swal.fire({ title: 'Not yet available', text: 'Clients should use the bargain response flow for now.', icon: 'info', ...swalTheme() });
+    } else {
+      const res = await fetch(`${FLASK}/api/worker/bargain`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ job_id: currentChatJobId, user_id: user.id, proposed_price: price, message: 'Sent via chat' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire({ title: 'Offer sent', text: `₦${Number(price).toLocaleString()} sent to the client for review.`, icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+      } else {
+        Swal.fire({ title: 'Could not send offer', text: data.message, icon: 'error', ...swalTheme() });
+      }
+    }
+  } catch (e) {
+    Swal.fire({ title: 'Network error', icon: 'error', ...swalTheme() });
+  }
+});
+
+async function openClientPublicProfile(clientId) {
+  if (!clientId) return;
+
+  const res = await fetch(`${FLASK}/api/client/public-profile?client_id=${clientId}`, { credentials: 'include' });
+  if (!res.ok) { Swal.fire({ title: 'Could not load profile', icon: 'error', ...swalTheme() }); return; }
+  const data = await res.json();
+  const c = data.client || {};
+
+  const initials = (c.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const color = avatarColor(c.name || 'C');
+  const memberSince = c.created_at ? new Date(c.created_at).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' }) : '—';
+
+  workerModalBody.innerHTML = `
+    <div style="text-align:center;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+      <div style="width:60px;height:60px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};font-family:var(--font-display);font-size:1.3rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px">${initials}</div>
+      <p style="font-family:var(--font-display);font-size:1.15rem;font-weight:800">${c.name || '—'}</p>
+      <p style="font-size:.76rem;color:var(--text-3)">Client · Member since ${memberSince}</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="acct-box" style="text-align:center;padding:14px">
+        <p style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--accent)">${c.total_jobs || 0}</p>
+        <p style="font-size:.68rem;color:var(--text-3)">Jobs Posted</p>
+      </div>
+      <div class="acct-box" style="text-align:center;padding:14px">
+        <p style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--success)">${c.completed_jobs || 0}</p>
+        <p style="font-size:.68rem;color:var(--text-3)">Completed & Paid</p>
+      </div>
+    </div>
+  `;
+  workerModalOverlay.classList.add('is-open');
+}
+
+
   /* ══════════════════════════════════════════════
      INIT
   ══════════════════════════════════════════════ */
@@ -1092,6 +1478,13 @@ async function resendBargainAt(jobId, price) {
     await Promise.all([loadProfile(), loadMyJobs()]);
     if (user.profile) renderStats(user.profile);
     setInterval(loadMyJobs, 10_000);
+    setInterval(loadConversations, 15_000);
+    setInterval(() => {
+  fetch(`${FLASK}/api/heartbeat`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ user_id: user.id })
+  }).catch(() => {});
+}, 30_000);
   }
   init();
 

@@ -726,3 +726,8 @@ svg{ display:block; }
   border-radius: 16px !important;
   font-family: inherit !important;
 }
+
+.chat-bubble{max-width:75%;padding:9px 13px;border-radius:14px;font-size:.85rem;line-height:1.4;word-wrap:break-word}
+.chat-bubble--mine{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.chat-bubble--theirs{align-self:flex-start;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px}
+.chat-bubble__time{font-size:.62rem;opacity:.7;margin-top:3px;display:block}
