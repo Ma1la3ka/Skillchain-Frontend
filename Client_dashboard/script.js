@@ -1749,15 +1749,24 @@ function renderChatMessages(messages) {
     return;
   }
 
-  el.innerHTML = messages.map(m => {
+  let lastDate = null;
+  let html = '';
+  messages.forEach(m => {
+    const msgDate = new Date(m.created_at).toDateString();
+    if (msgDate !== lastDate) {
+      const label = msgDate === new Date().toDateString() ? 'Today' : new Date(m.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
+      html += `<div class="chat-date-divider"><span>${label}</span></div>`;
+      lastDate = msgDate;
+    }
     const mine = m.sender_id === user.id;
     const time = new Date(m.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
-    return `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}">
+    html += `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}">
       ${m.body}
       <span class="chat-bubble__time">${time}</span>
     </div>`;
-  }).join('');
+  });
 
+  el.innerHTML = html;
   if (wasAtBottom) el.scrollTop = el.scrollHeight;
 }
 
