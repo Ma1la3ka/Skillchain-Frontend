@@ -1457,65 +1457,7 @@ async function rejectBargainWithPrompt(jobId, bargainId) {
     }).join('');
   }
 
-let conversationsPollInterval = null;
 
-async function loadConversations() {
-  try {
-    const res = await fetch(`${FLASK}/api/chat/conversations?user_id=${user.id}`, { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    renderConversationsList(data.conversations || []);
-    updateMessagesBadge(data.conversations || []);
-  } catch (e) { console.error('loadConversations:', e); }
-}
-
-function updateMessagesBadge(conversations) {
-  const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0);
-  const badge = document.getElementById('messages-badge');
-  if (!badge) return;
-  badge.textContent = totalUnread > 0 ? totalUnread : '';
-  badge.classList.toggle('is-visible', totalUnread > 0);
-}
-
-function conversationRowHTML(c) {
-  const initials = (c.other_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const timeAgo = relativeTime ? relativeTime(c.last_at) : new Date(c.last_at).toLocaleDateString();
-  const preview = c.last_from_me ? `You: ${c.last_message}` : c.last_message;
-  return `
-    <div class="job-card" data-job-id="${c.job_id}" data-other-id="${c.other_id}" style="cursor:pointer">
-      <div class="job-card__icon" style="border-radius:50%">${initials}</div>
-      <div class="job-card__info">
-        <p class="job-card__title">${c.other_name} <span style="font-weight:400;color:var(--text-3);font-size:.75rem">· ${c.job_title}</span></p>
-        <div class="job-card__meta">
-          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${preview}</span>
-        </div>
-      </div>
-      <div class="job-card__right">
-        <span style="font-size:.72rem;color:var(--text-3)">${timeAgo}</span>
-        ${c.unread_count > 0 ? `<span class="nav-item__badge is-visible" style="position:static">${c.unread_count}</span>` : ''}
-      </div>
-    </div>`;
-}
-
-function renderConversationsList(conversations) {
-  const el = document.getElementById('conversations-list');
-  if (!el) return;
-  if (!conversations.length) {
-    el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('comment')}</div><p>No conversations yet.</p></div>`;
-    return;
-  }
-  el.innerHTML = conversations.map(conversationRowHTML).join('');
-  el.querySelectorAll('.job-card').forEach(card => {
-    card.addEventListener('click', () => {
-      openChatThread(parseInt(card.dataset.jobId), parseInt(card.dataset.otherId));
-    });
-  });
-}
-
-// Stub for now — built in the next piece (the actual chat thread panel)
-function openChatThread(jobId, otherId) {
-  console.log('Opening chat thread', jobId, otherId);
-}
 
   /* ══════════════════════════════════════════════
      DEMO PAYMENT VERIFY/* ══ CLIENT PROFILE ══════════════════════════════ */
