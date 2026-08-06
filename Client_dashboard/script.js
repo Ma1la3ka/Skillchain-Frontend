@@ -1875,11 +1875,14 @@ async function openClientPublicProfile(clientId) {
     setInterval(loadReviewSubmissions, 20_000);
     setInterval(loadConversations, 15_000);
     setInterval(() => {
+  if (!window.USER_ID) return;  // don't fire if user not loaded yet
   fetch(`${FLASK}/api/heartbeat`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-    body: JSON.stringify({ user_id: user.id })
-  }).catch(() => {});
-}, 30_000)
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: window.USER_ID }),
+    credentials: 'include'
+  }).catch(() => {});  // silently ignore — UptimeRobot keeps server alive
+}, 120000);  
   }
   init();
 
