@@ -557,6 +557,125 @@
   </div>
 </div>
 
+
+<div class="wp-overlay" id="wp-overlay" aria-modal="true" role="dialog" aria-label="Worker Profile">
+  <div class="wp-sheet" id="wp-sheet">
+
+    <!-- Close -->
+    <button class="wp-close" id="wp-close" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <!-- Hero band -->
+    <div class="wp-hero" id="wp-hero">
+      <div class="wp-hero__avatar-wrap">
+        <div class="wp-hero__avatar" id="wp-avatar"></div>
+        <span class="wp-hero__online" id="wp-online-dot" style="display:none"></span>
+      </div>
+      <div class="wp-hero__info">
+        <div class="wp-hero__name-row">
+          <h2 class="wp-hero__name" id="wp-name">—</h2>
+          <span class="wp-hero__trade-badge" id="wp-trade">—</span>
+        </div>
+        <p class="wp-hero__meta" id="wp-meta">—</p>
+        <!-- Trust score inline -->
+        <div class="wp-trust-inline">
+          <div class="wp-trust-ring-wrap">
+            <svg class="wp-trust-ring" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3.5"/>
+              <circle cx="22" cy="22" r="18" fill="none" stroke="#fff" stroke-width="3.5"
+                      stroke-linecap="round" stroke-dasharray="113.1"
+                      stroke-dashoffset="113.1" id="wp-trust-ring"
+                      transform="rotate(-90 22 22)"/>
+            </svg>
+            <span class="wp-trust-val" id="wp-trust-val">0</span>
+          </div>
+          <div class="wp-trust-label">
+            <span style="font-size:.72rem;opacity:.75;letter-spacing:.06em">TRUST SCORE</span>
+            <div class="wp-stars" id="wp-stars"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="wp-stats-row">
+      <div class="wp-stat">
+        <span class="wp-stat__val" id="wp-jobs">0</span>
+        <span class="wp-stat__lbl">Jobs Done</span>
+      </div>
+      <div class="wp-stat__div"></div>
+      <div class="wp-stat">
+        <span class="wp-stat__val" id="wp-rating">—</span>
+        <span class="wp-stat__lbl">Avg Rating</span>
+      </div>
+      <div class="wp-stat__div"></div>
+      <div class="wp-stat">
+        <span class="wp-stat__val" id="wp-reviews">0</span>
+        <span class="wp-stat__lbl">Reviews</span>
+      </div>
+      <div class="wp-stat__div"></div>
+      <div class="wp-stat">
+        <span class="wp-stat__val" id="wp-pass-rate">—</span>
+        <span class="wp-stat__lbl">GPS Pass Rate</span>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="wp-body">
+
+      <!-- Skills -->
+      <div class="wp-section" id="wp-skills-section" style="display:none">
+        <p class="wp-section__label">SKILLS</p>
+        <div class="wp-skills" id="wp-skills"></div>
+      </div>
+
+      <!-- Rating breakdown -->
+      <div class="wp-section" id="wp-ratings-section" style="display:none">
+        <p class="wp-section__label">RATING BREAKDOWN</p>
+        <div class="wp-rating-bars" id="wp-rating-bars"></div>
+      </div>
+
+      <!-- Proof media -->
+      <div class="wp-section" id="wp-media-section" style="display:none">
+        <p class="wp-section__label">PROOF OF WORK</p>
+        <div class="wp-media-grid" id="wp-media-grid"></div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="wp-empty" id="wp-empty" style="display:none">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <p>No proof media yet</p>
+      </div>
+
+    </div>
+
+    <!-- Footer actions -->
+    <div class="wp-footer">
+      <button class="wp-btn wp-btn--ghost" id="wp-chat-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        Message
+      </button>
+      <button class="wp-btn wp-btn--primary" id="wp-hire-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Hire This Artisan
+      </button>
+    </div>
+
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/Client_dashboard/script.js"></script>

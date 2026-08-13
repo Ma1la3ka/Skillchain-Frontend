@@ -1136,32 +1136,358 @@
     });
   }
 
-  function openWorkerModal(w) {
-    if (!w) return;
-    const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-    const score = Number(w.trust_score || 0).toFixed(1);
-    const filled = Math.round(w.trust_score || 0);
-    const stars = ICON.star.repeat(filled) + ICON.starEmpty.repeat(5 - filled);
-    const color = avatarColor(w.name);
+  
+/* ── Constants ── */
+const WP_RING_C = 2 * Math.PI * 18; // circumference for r=18
 
-    workerModalBody.innerHTML = `
-      <div style="text-align:center;margin-bottom:20px">
-        <div style="width:60px;height:60px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};font-size:1.25rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px;font-family:var(--font-display)">${initials}</div>
-        <p style="font-family:var(--font-display);font-size:1.15rem;font-weight:800">${w.name}</p>
-        <p style="color:var(--accent);font-size:.84rem;font-weight:600">${w.trade || 'General'}</p>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
-        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.25rem;font-weight:800;color:var(--accent)">${score}</p><p style="font-size:.68rem;color:var(--text-3)">Trust Score</p></div>
-        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.25rem;font-weight:800">${w.jobs_completed || 0}</p><p style="font-size:.68rem;color:var(--text-3)">Jobs Done</p></div>
-        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.25rem;font-weight:800;color:var(--warning)">${stars}</p><p style="font-size:.68rem;color:var(--text-3)">Rating</p></div>
-      </div>
-      <div class="modal-divider"></div>
-      ${w.phone ? `<a href="tel:${w.phone}" class="btn btn--primary btn--wide" style="margin-bottom:10px">${ic('user')} Call ${w.name.split(' ')[0]}</a>` : ''}
-<button onclick="openChatThread(null, ${w.id})" class="btn btn--wide" style="background:#25D366;color:#fff;margin-bottom:10px">${ic('comment')} Message</button>
-      <button onclick="openWorkerPublicProfile(${w.id})" class="btn btn--secondary btn--wide">${ic('user')} View Full Profile</button>
-    `;
-    workerModalOverlay.classList.add('is-open');
+/* ── Open modal ── */
+async function openWorkerProfileModal(workerId, jobId, jobTitle) {
+  const overlay = document.getElementById('wp-overlay');
+  if (!overlay) return;
+
+  // Store context for action buttons
+  overlay.dataset.workerId = workerId;
+  overlay.dataset.jobId    = jobId    || '';
+  overlay.dataset.jobTitle = jobTitle || '';
+
+  // Show overlay immediately with skeleton
+  overlay.classList.add('is-open');
+  showWPSkeleton();
+
+  try {
+    // Fetch worker public profile
+    const res  = await fetch(
+      `${FLASK}/api/worker/public-profile?worker_id=${workerId}&viewer_id=${user.id}`,
+      { credentials: 'include' }
+    );
+    if (!res.ok) throw new Error(`${res.status}`);
+    const data = await res.json();
+
+    renderWorkerProfile(data, workerId);
+  } catch (e) {
+    console.error('[wp-modal]', e);
+    closeWorkerProfileModal();
+    Swal.fire({
+      title: 'Could not load profile',
+      text:  'Please try again.',
+      icon:  'error',
+      confirmButtonColor: '#E85C00',
+      ...swalTheme?.() || {}
+    });
   }
+}
+
+/* ── Render profile data ── */
+function renderWorkerProfile(data, workerId) {
+  // ── Avatar ──
+  const avatarEl = document.getElementById('wp-avatar');
+  const initial  = (data.name || '?')[0].toUpperCase();
+  const photoSrc = data.profile_photo_path || null; // Cloudinary full URL
+
+  if (photoSrc) {
+    avatarEl.style.backgroundImage    = `url(${photoSrc})`;
+    avatarEl.style.backgroundSize     = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+    avatarEl.textContent = '';
+  } else {
+    avatarEl.style.backgroundImage = '';
+    avatarEl.textContent = initial;
+  }
+
+  // ── Online dot ──
+  const onlineDot = document.getElementById('wp-online-dot');
+  if (data.online) onlineDot.style.display = 'block';
+  else             onlineDot.style.display = 'none';
+
+  // ── Basic info ──
+  document.getElementById('wp-name').textContent  = data.name  || '—';
+  document.getElementById('wp-trade').textContent = data.trade || '—';
+
+  const verifiedJobs = data.jobs_completed || 0;
+  const location     = data.location || 'Nigeria';
+  document.getElementById('wp-meta').textContent =
+    `${verifiedJobs} verified job${verifiedJobs === 1 ? '' : 's'} · ${location}`;
+
+  // ── Trust score ring ──
+  const score   = parseFloat(data.trust_score || 0);
+  const pct     = Math.min(100, (score / 5) * 100);
+  const offset  = WP_RING_C - (WP_RING_C * pct / 100);
+  const ringEl  = document.getElementById('wp-trust-ring');
+  const valEl   = document.getElementById('wp-trust-val');
+  if (ringEl) {
+    ringEl.style.strokeDasharray  = WP_RING_C;
+    ringEl.style.strokeDashoffset = offset;
+  }
+  if (valEl) valEl.textContent = score.toFixed(1);
+
+  // ── Stars ──
+  const starsEl = document.getElementById('wp-stars');
+  const filled  = Math.round(score);
+  starsEl.innerHTML = Array.from({ length: 5 }, (_, i) =>
+    `<span class="${i < filled ? 's-filled' : 's-empty'}">${i < filled ? '★' : '☆'}</span>`
+  ).join('');
+
+  // ── Stats ──
+  const avgRating  = parseFloat(data.avg_rating  || 0);
+  const totalRatings = parseInt(data.total_ratings || 0);
+  const verLogs    = data.verification_logs || [];
+  const passed     = verLogs.filter(v => v.result === 'pass').length;
+  const passRate   = verLogs.length > 0
+    ? Math.round((passed / verLogs.length) * 100) + '%'
+    : '—';
+
+  document.getElementById('wp-jobs').textContent    = verifiedJobs;
+  document.getElementById('wp-rating').textContent  = avgRating > 0 ? avgRating.toFixed(1) + '★' : '—';
+  document.getElementById('wp-reviews').textContent = totalRatings;
+  document.getElementById('wp-pass-rate').textContent = passRate;
+
+  // ── Skills ──
+  const skills    = Array.isArray(data.top_skills) ? data.top_skills : [];
+  const skillsSec = document.getElementById('wp-skills-section');
+  const skillsEl  = document.getElementById('wp-skills');
+  if (skills.length) {
+    skillsEl.innerHTML = skills
+      .map(s => `<span class="wp-skill-tag">${s}</span>`)
+      .join('');
+    skillsSec.style.display = '';
+  } else {
+    skillsSec.style.display = 'none';
+  }
+
+  // ── Rating breakdown ──
+  const reviews    = data.reviews || [];
+  const ratingsSec = document.getElementById('wp-ratings-section');
+  const ratingBars = document.getElementById('wp-rating-bars');
+  if (reviews.length) {
+    const counts = [5,4,3,2,1].map(star => ({
+      star,
+      count: reviews.filter(r => Math.round(r.rating) === star).length
+    }));
+    ratingBars.innerHTML = counts.map(({ star, count }) => {
+      const pct = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+      return `
+        <div class="wp-rating-bar-row">
+          <span class="wp-rating-bar-row__label">${star}<span class="star">★</span></span>
+          <div class="wp-rating-bar-track">
+            <div class="wp-rating-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="wp-rating-bar-row__pct">${pct}%</span>
+        </div>`;
+    }).join('');
+    ratingsSec.style.display = '';
+  } else {
+    ratingsSec.style.display = 'none';
+  }
+
+  // ── Proof media ──
+  const media    = data.media || [];
+  const mediaSec = document.getElementById('wp-media-section');
+  const mediaGrid= document.getElementById('wp-media-grid');
+  const emptyEl  = document.getElementById('wp-empty');
+
+  if (media.length) {
+    mediaGrid.innerHTML = media.map(m => {
+      const isVideo = m.media_type === 'video';
+      const src     = m.file_path;  // Cloudinary URL or static path
+      const fullSrc = src.startsWith('http') ? src : `${FLASK}/${src}`;
+
+      if (isVideo) {
+        return `
+          <div class="wp-media-item">
+            <video
+              src="${fullSrc}"
+              controls
+              preload="metadata"
+              playsinline
+              style="width:100%;aspect-ratio:16/10;object-fit:cover;background:#111"
+            ></video>
+            ${m.caption ? `<p class="wp-media-item__caption">${m.caption}</p>` : ''}
+            <div class="wp-media-item__actions">
+              <button class="wp-media-action ${m.user_liked ? 'liked' : ''}"
+                      onclick="wpToggleLike(${m.id}, this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="${m.user_liked ? 'currentColor' : 'none'}">
+                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
+                        stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                ${m.likes || 0}
+              </button>
+              <button class="wp-media-action" onclick="wpViewComments(${m.id})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                        stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                ${m.comment_count || 0}
+              </button>
+            </div>
+          </div>`;
+      } else {
+        return `
+          <div class="wp-media-item">
+            <img src="${fullSrc}" alt="Proof of work" loading="lazy"
+                 style="width:100%;aspect-ratio:16/10;object-fit:cover">
+            ${m.caption ? `<p class="wp-media-item__caption">${m.caption}</p>` : ''}
+            <div class="wp-media-item__actions">
+              <button class="wp-media-action ${m.user_liked ? 'liked' : ''}"
+                      onclick="wpToggleLike(${m.id}, this)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="${m.user_liked ? 'currentColor' : 'none'}">
+                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
+                        stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                ${m.likes || 0}
+              </button>
+            </div>
+          </div>`;
+      }
+    }).join('');
+    mediaSec.style.display = '';
+    emptyEl.style.display  = 'none';
+  } else {
+    mediaSec.style.display = 'none';
+    emptyEl.style.display  = '';
+  }
+
+  // ── Action buttons ──
+  const overlay  = document.getElementById('wp-overlay');
+  const jobId    = overlay.dataset.jobId;
+  const jobTitle = overlay.dataset.jobTitle;
+
+  document.getElementById('wp-chat-btn').onclick = () => {
+    closeWorkerProfileModal();
+    // Open chat with this worker
+    if (typeof openChat === 'function') {
+      openChat(workerId, data.name, jobId, jobTitle);
+    }
+  };
+
+  document.getElementById('wp-hire-btn').onclick = () => {
+    if (!jobId) {
+      Swal.fire({
+        title: 'Select a job first',
+        text:  'Open a job and hire from there.',
+        icon:  'info',
+        confirmButtonColor: '#E85C00',
+        ...swalTheme?.() || {}
+      });
+      return;
+    }
+    closeWorkerProfileModal();
+    assignWorker(jobId, workerId, data.name);
+  };
+}
+
+/* ── Skeleton while loading ── */
+function showWPSkeleton() {
+  const avatarEl = document.getElementById('wp-avatar');
+  avatarEl.style.backgroundImage = '';
+  avatarEl.textContent = '';
+  avatarEl.classList.add('wp-skeleton');
+
+  document.getElementById('wp-name').innerHTML  =
+    '<span class="wp-skeleton" style="width:140px;height:18px;display:inline-block;border-radius:6px"></span>';
+  document.getElementById('wp-trade').textContent = '';
+  document.getElementById('wp-meta').innerHTML  =
+    '<span class="wp-skeleton" style="width:100px;height:12px;display:inline-block;border-radius:4px"></span>';
+
+  ['wp-jobs','wp-rating','wp-reviews','wp-pass-rate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML =
+      '<span class="wp-skeleton" style="width:32px;height:20px;display:inline-block;border-radius:4px"></span>';
+  });
+
+  document.getElementById('wp-skills-section').style.display  = 'none';
+  document.getElementById('wp-ratings-section').style.display = 'none';
+  document.getElementById('wp-media-section').style.display   = 'none';
+  document.getElementById('wp-empty').style.display           = 'none';
+}
+
+/* ── Close ── */
+function closeWorkerProfileModal() {
+  document.getElementById('wp-overlay')?.classList.remove('is-open');
+  // Clean up avatar skeleton class
+  document.getElementById('wp-avatar')?.classList.remove('wp-skeleton');
+}
+
+/* ── Like toggle ── */
+async function wpToggleLike(mediaId, btn) {
+  try {
+    const res  = await fetch(`${FLASK}/api/media/like`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ media_id: mediaId, user_id: user.id })
+    });
+    const data = await res.json();
+    if (data.success) {
+      btn.classList.toggle('liked', data.liked);
+      // Update count in button text (keep icon, update number)
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        svg.setAttribute('fill', data.liked ? 'currentColor' : 'none');
+      }
+      btn.lastChild.textContent = ' ' + data.count;
+    }
+  } catch (e) { console.error('[wp-like]', e); }
+}
+
+  /* ── Comments (placeholder — expand as needed) ── */
+  function wpViewComments(mediaId) {
+    Swal.fire({
+      title:   'Comments',
+      html:    `<p style="color:var(--text-3);font-size:.85rem">Loading comments…</p>`,
+      showConfirmButton: false,
+      showCloseButton:   true,
+      ...swalTheme?.() || {}
+    });
+    // Load comments via /api/media/comments?media_id=...
+    fetch(`${FLASK}/api/media/comments?media_id=${mediaId}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        const comments = data.comments || [];
+        Swal.update({
+          html: comments.length
+            ? comments.map(c => `
+                <div style="text-align:left;padding:8px 0;border-bottom:1px solid var(--border)">
+                  <strong style="font-size:.82rem">${c.user_name || 'User'}</strong>
+                  <p style="font-size:.8rem;color:var(--text-2);margin-top:2px">${c.body}</p>
+                </div>`).join('')
+            : '<p style="color:var(--text-3);font-size:.85rem">No comments yet.</p>'
+        });
+      }).catch(() => {});
+  }
+
+  /* ── Init event listeners ── */
+  function initWorkerProfileModal() {
+    const overlay = document.getElementById('wp-overlay');
+    const closeBtn = document.getElementById('wp-close');
+
+    // Close on overlay click
+    overlay?.addEventListener('click', e => {
+      if (e.target === overlay) closeWorkerProfileModal();
+    });
+
+    // Close on button
+    closeBtn?.addEventListener('click', closeWorkerProfileModal);
+
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && overlay?.classList.contains('is-open')) {
+        closeWorkerProfileModal();
+      }
+    });
+  }
+
+// ── Expose to window ──
+window.openWorkerProfileModal  = openWorkerProfileModal;
+window.closeWorkerProfileModal = closeWorkerProfileModal;
+window.wpToggleLike            = wpToggleLike;
+window.wpViewComments          = wpViewComments;
+
+// Init on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initWorkerProfileModal);
+} else {
+  initWorkerProfileModal();
+}
 
   /* ══════════════════════════════════════════════
      DELETE JOB
