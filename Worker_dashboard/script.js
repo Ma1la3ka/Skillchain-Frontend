@@ -165,13 +165,19 @@ function conversationRowHTML(c) {
   const initials = (c.other_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const timeAgo = relativeTime ? relativeTime(c.last_at) : new Date(c.last_at).toLocaleDateString();
   const preview = c.last_from_me ? `You: ${c.last_message}` : c.last_message;
+  const isDone = ['paid', 'verified'].includes(c.job_status);
+  const statusBadge = isDone 
+    ? `<span style="font-size:.65rem;color:var(--text-3);background:var(--surface-sunk);padding:2px 8px;border-radius:99px">Completed</span>`
+    : `<span style="font-size:.65rem;color:var(--success);background:rgba(22,163,74,.1);padding:2px 8px;border-radius:99px">Active</span>`;
+  
   return `
     <div class="job-card" data-job-id="${c.job_id}" data-other-id="${c.other_id}" style="cursor:pointer">
       <div class="job-card__icon" style="border-radius:50%">${initials}</div>
       <div class="job-card__info">
-        <p class="job-card__title">${c.other_name} <span style="font-weight:400;color:var(--text-3);font-size:.75rem">· ${c.job_title}</span></p>
-        <div class="job-card__meta">
-          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">${preview}</span>
+        <p class="job-card__title">${c.other_name} <span style="font-weight:600;color:var(--accent);font-size:.8rem">· ${c.job_title}</span></p>
+        <div class="job-card__meta" style="gap:8px;align-items:center">
+          ${statusBadge}
+          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${preview}</span>
         </div>
       </div>
       <div class="job-card__right">
@@ -191,6 +197,15 @@ function avatarColor(seed) {
 function renderConversationsList(conversations) {
   const el = document.getElementById('conversations-list');
   if (!el) return;
+
+  conversations.sort((a, b) => {
+    const aActive = !['paid', 'verified'].includes(a.job_status);
+    const bActive = !['paid', 'verified'].includes(b.job_status);
+    if (aActive && !bActive) return -1;
+    if (!aActive && bActive) return 1;
+    return new Date(b.last_at || 0) - new Date(a.last_at || 0);
+  });
+  
   if (!conversations.length) {
     el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('comment')}</div><p>No conversations yet.</p></div>`;
     return;
@@ -1079,6 +1094,9 @@ let currentChatOtherId = null;
 let chatPollInterval = null;
 
 async function openChatThread(jobId, otherId) {
+
+  document.getElementById('modal-overlay')?.classList.remove('is-open');
+  document.getElementById('worker-modal-overlay')?.classList.remove('is-open');
   currentChatJobId = jobId;
   currentChatOtherId = otherId;
 
@@ -1127,6 +1145,9 @@ async function loadChatHeader(otherId) {
     // Clicking the header opens the right kind of public profile,
     // depending on whether the other person is a worker or a client.
     document.getElementById('chat-header').onclick = () => {
+
+      closeChatThread();
+
       if (u.role === 'worker') {
         openWorkerPublicProfile(otherId);
       } else {
