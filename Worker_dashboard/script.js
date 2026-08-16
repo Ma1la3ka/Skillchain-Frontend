@@ -349,12 +349,12 @@ function renderConversationsList(conversations) {
     const done   = allMyJobs.filter(j => ['verified','paid'].includes(j.status)).length;
     const active = allMyJobs.filter(j => ['assigned','pending_review','pending_verification'].includes(j.status)).length;
 
-    const balance = p.escrow_balance != null
-    ? parseFloat(p.escrow_balance)
-    : Math.max(0, allMyJobs
-        .filter(j => j.status === 'paid')
-        .reduce((s,j) => s + parseFloat(j.amount||0), 0)
-        - parseFloat(p.total_withdrawn || 0));
+    const availableBalance = profile.escrow_balance != null
+  ? parseFloat(profile.escrow_balance)
+  : Math.max(0, allMyJobs
+      .filter(j => j.status === 'paid')
+      .reduce((s,j) => s + parseFloat(j.amount||0), 0)
+      - parseFloat(profile.total_withdrawn || 0));
     const pendingEscrow    = allMyJobs.filter(j => ['assigned','pending_verification','verified'].includes(j.status)).reduce((s,j) => s + parseFloat(j.amount), 0);
 
     document.getElementById('stat-done').textContent   = profile.jobs_completed ?? done;
