@@ -205,6 +205,7 @@
     const stored = localStorage.getItem('userData');
     if (!stored) { window.location.replace(LOGIN_PAGE); return false; }
     user = JSON.parse(stored);
+    window.USER_ID = user.id;
     if (Date.now() - user.loginTime > SESSION_DUR) {
       localStorage.removeItem('userData');
       window.location.replace(LOGIN_PAGE);
@@ -762,7 +763,7 @@
       </div>` : ''}
 
       <p class="modal-field__label" style="margin-bottom:10px">SkillChain Certificate</p>
-      ${buildWorkerCredCard(data)}
+      
     `;
     workerModalOverlay.classList.add('is-open');
   }
@@ -1131,7 +1132,7 @@
         e.stopPropagation();
         const workerId = parseInt(btn.dataset.workerId);
         const worker = (window._lastWorkerResults || []).find(w => w.id === workerId);
-        if (worker) openWorkerModal(worker);
+        if (worker) openWorkerProfileModalModal(worker);
       });
     });
   }
@@ -1346,6 +1347,131 @@ function renderWorkerProfile(data, workerId) {
     emptyEl.style.display  = '';
   }
 
+  // ── Certificate ──
+const certStrip = document.getElementById('wp-cert-strip');
+const certInner = document.getElementById('wp-cert-inner');
+if (certStrip && certInner) {
+  const jobs  = data.jobs_completed || 0;
+  const trust = parseFloat(data.trust_score || 0);
+  const tier  = jobs >= 20 && trust >= 4 ? 'gold'
+              : jobs >= 5  && trust >= 3 ? 'silver'
+              : 'bronze';
+  const TIER_PALETTE = {
+    bronze:{ bg:'linear-gradient(145deg,#2C1A08,#1A0F05)', accent:'#D4822A', accent2:'#F0A84A', badge:'linear-gradient(135deg,#C97B28,#E8A050)', border:'rgba(212,130,42,.4)', inner:'rgba(212,130,42,.12)', label:'#F5C98A', sub:'rgba(245,201,138,.6)', metric:'rgba(212,130,42,.15)', skill:'rgba(212,130,42,.18)' },
+    silver:{ bg:'linear-gradient(145deg,#141820,#0D1118)', accent:'#8CA0BE', accent2:'#B0C4DE', badge:'linear-gradient(135deg,#6B80A0,#9AAFC8)', border:'rgba(140,160,190,.4)', inner:'rgba(140,160,190,.1)', label:'#C8D8EE', sub:'rgba(200,216,238,.6)', metric:'rgba(140,160,190,.15)', skill:'rgba(140,160,190,.18)' },
+    gold:  { bg:'linear-gradient(145deg,#1E1500,#120D00)', accent:'#D4AF37', accent2:'#F0D060', badge:'linear-gradient(135deg,#C9A227,#EDD050)', border:'rgba(212,175,55,.5)', inner:'rgba(212,175,55,.14)', label:'#F5E090', sub:'rgba(245,224,144,.65)', metric:'rgba(212,175,55,.18)', skill:'rgba(212,175,55,.2)' }
+  };
+  const TIER_LABEL = { bronze:'Bronze Certified', silver:'Silver Certified', gold:'Gold Verified' };
+  const p        = TIER_PALETTE[tier];
+  const photoSrc = data.profile_photo_path || null;
+  const initial  = (data.name || '?')[0].toUpperCase();
+  const avatarHTML = photoSrc
+    ? `<div style="width:64px;height:64px;border-radius:12px;background-image:url(${photoSrc});background-size:cover;background-position:center;border:2px solid rgba(255,255,255,.15);flex-shrink:0"></div>`
+    : `<div style="width:64px;height:64px;border-radius:12px;background:${p.metric};border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:rgba(255,255,255,.7);flex-shrink:0">${initial}</div>`;
+  const skills  = Array.isArray(data.top_skills) && data.top_skills.length
+    ? data.top_skills : [data.trade||'General','GPS Verified','Escrow Payments'];
+  const issued  = new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'});
+  const verId   = `SC-${String(data.id||0).padStart(5,'0')}-${(Date.now()%1000000).toString(36).toUpperCase()}`;
+  const filled  = Math.round(trust);
+  const stars   = Array.from({length:5},(_,i)=>`<span style="color:${i<filled?p.accent2:'rgba(255,255,255,.2)'}">${i<filled?'★':'☆'}</span>`).join('');
+  const tierDesc = { bronze:'Completing their first verified jobs on SkillChain.', silver:'Consistently delivering GPS-verified, escrow-secured work.', gold:'An elite verified artisan with an outstanding trust record.' }[tier];
+
+  certInner.innerHTML = `
+    <div style="background:${p.bg};border:1.5px solid ${p.border};border-radius:16px;
+                overflow:hidden;position:relative;margin:0 24px 20px">
+      <div style="position:absolute;top:10px;left:10px;width:16px;height:16px;
+                  border-top:2px solid ${p.accent};border-left:2px solid ${p.accent};
+                  border-radius:3px 0 0 0"></div>
+      <div style="position:absolute;top:10px;right:10px;width:16px;height:16px;
+                  border-top:2px solid ${p.accent};border-right:2px solid ${p.accent};
+                  border-radius:0 3px 0 0"></div>
+      <div style="position:absolute;bottom:10px;left:10px;width:16px;height:16px;
+                  border-bottom:2px solid ${p.accent};border-left:2px solid ${p.accent};
+                  border-radius:0 0 0 3px"></div>
+      <div style="position:absolute;bottom:10px;right:10px;width:16px;height:16px;
+                  border-bottom:2px solid ${p.accent};border-right:2px solid ${p.accent};
+                  border-radius:0 0 3px 0"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;
+                  padding:22px 22px 16px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:inline-flex;align-items:center;gap:6px;
+                      background:${p.badge};border-radius:999px;padding:4px 12px;
+                      font-size:.63rem;font-weight:800;letter-spacing:.1em;
+                      color:#fff;width:fit-content">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z"
+                    stroke="white" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            ${TIER_LABEL[tier].toUpperCase()}
+          </div>
+          <p style="font-family:monospace;font-size:.6rem;letter-spacing:.1em;
+                    color:${p.sub}">SkillChain Artisan Certificate</p>
+          <p style="font-family:monospace;font-size:.6rem;font-weight:700;
+                    color:${p.accent}">skillchain.app</p>
+        </div>
+        ${avatarHTML}
+      </div>
+      <div style="padding:0 22px 16px;border-bottom:1px solid ${p.inner}">
+        <p style="font-size:1.5rem;font-weight:800;letter-spacing:-.03em;
+                  color:${p.label};line-height:1.1;margin-bottom:4px">
+          ${data.name||'Artisan'}
+        </p>
+        <p style="font-size:.85rem;font-weight:700;color:${p.accent2};margin-bottom:6px">
+          ${data.trade||'General'}
+        </p>
+        <p style="font-size:.76rem;color:${p.sub};line-height:1.5">${tierDesc}</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);
+                  gap:10px;padding:16px 22px">
+        <div style="background:${p.metric};border:1px solid ${p.inner};
+                    border-radius:10px;padding:12px;text-align:center">
+          <div style="font-family:monospace;font-size:1.3rem;font-weight:700;
+                      color:${p.accent2};line-height:1;margin-bottom:4px">${jobs}</div>
+          <div style="font-size:.6rem;text-transform:uppercase;
+                      letter-spacing:.08em;color:${p.sub}">Jobs Done</div>
+        </div>
+        <div style="background:${p.metric};border:1px solid ${p.inner};
+                    border-radius:10px;padding:12px;text-align:center">
+          <div style="font-family:monospace;font-size:1.3rem;font-weight:700;
+                      color:${p.accent2};line-height:1;margin-bottom:4px">
+            ${trust.toFixed(1)}
+          </div>
+          <div style="font-size:.6rem;text-transform:uppercase;
+                      letter-spacing:.08em;color:${p.sub}">Trust Score</div>
+        </div>
+        <div style="background:${p.metric};border:1px solid ${p.inner};
+                    border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:.95rem;letter-spacing:1px;margin-bottom:4px">
+            ${stars}
+          </div>
+          <div style="font-size:.6rem;text-transform:uppercase;
+                      letter-spacing:.08em;color:${p.sub}">Rating</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 22px 16px">
+        ${skills.map(s=>`
+          <span style="background:${p.skill};border:1px solid ${p.inner};
+                       border-radius:6px;padding:3px 10px;font-size:.7rem;
+                       font-weight:600;color:${p.label}">${s}</span>
+        `).join('')}
+      </div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;
+                  padding:14px 22px 20px;border-top:1px solid ${p.inner}">
+        <div style="font-family:monospace;line-height:1.65">
+          <span style="font-size:.58rem;letter-spacing:.1em;color:${p.sub}">
+            CERTIFICATE ID
+          </span><br>
+          <strong style="color:${p.label};font-size:.72rem">${verId}</strong><br>
+          <span style="font-size:.62rem;color:${p.sub}">
+            Issued ${issued} · GPS-authenticated
+          </span>
+        </div>
+      </div>
+    </div>`;
+  certStrip.style.display = '';
+}
   // ── Action buttons ──
   const overlay  = document.getElementById('wp-overlay');
   const jobId    = overlay.dataset.jobId;
@@ -1455,6 +1581,8 @@ async function wpToggleLike(mediaId, btn) {
       }).catch(() => {});
   }
 
+  
+
   /* ── Init event listeners ── */
   function initWorkerProfileModal() {
     const overlay = document.getElementById('wp-overlay');
@@ -1519,50 +1647,6 @@ if (document.readyState === 'loading') {
     }
   }
 
-  /* ══════════════════════════════════════════════
-     CREDENTIAL / CERTIFICATE CARD
-  ══════════════════════════════════════════════ */
-  function getCertTier(jobsDone, avgRating) {
-    const score = (jobsDone || 0) + ((avgRating || 0) * 4);
-    if (score >= 40) return 'gold';
-    if (score >= 15) return 'silver';
-    return 'bronze';
-  }
-  function certVerificationId(workerId) { return `SC-${String(workerId).padStart(5, '0')}-${(Date.now() % 1000000).toString(36).toUpperCase()}`; }
-
-  function buildWorkerCredCard(workerData) {
-    const w = workerData.worker || workerData;
-    const rs = workerData.rating_summary || {};
-    const jobs = w.jobs_completed || 0;
-    const trust = parseFloat(w.trust_score || 0);
-    const avgRat = parseFloat(rs.avg_rating || trust);
-    const tier = getCertTier(jobs, avgRat);
-    const verId = certVerificationId(w.id);
-    const initials = (w.name || 'W').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-    const color = avatarColor(w.name || 'W');
-    const tierLabel = { bronze: 'Bronze Certified', silver: 'Silver Certified', gold: 'Gold Verified' }[tier];
-
-    return `
-      <div class="cred-card">
-        <div class="cred-card__badges">
-          <span class="cred-tier-badge cred-tier-badge--${tier}">${tierLabel}</span>
-          <span class="cred-verified-badge">${ic('shield')} Verified</span>
-        </div>
-        <div class="cred-card__body">
-          <div class="cred-card__avatar" style="background:${color}18;border:2px solid ${color};color:${color}">${initials}</div>
-          <div>
-            <p class="cred-card__name">${w.name || '—'}</p>
-            <p class="cred-card__trade">${w.trade || 'General'} · Geofence-Verified</p>
-            <div class="cred-card__stats">
-              <div class="cred-stat"><span class="cred-stat__val">${jobs}</span><span class="cred-stat__label">Jobs</span></div>
-              <div class="cred-stat"><span class="cred-stat__val">${trust.toFixed(1)}</span><span class="cred-stat__label">Trust</span></div>
-              <div class="cred-stat"><span class="cred-stat__val">${avgRat > 0 ? avgRat.toFixed(1) : '—'}</span><span class="cred-stat__label">Rating</span></div>
-            </div>
-          </div>
-        </div>
-        <p class="cred-card__id">ID ${verId} · GPS-authenticated · Escrow-secured</p>
-      </div>`;
-  }
 
   /* ══════════════════════════════════════════════
      BARGAINS
@@ -1808,7 +1892,12 @@ function conversationRowHTML(c) {
   const timeAgo = relativeTime ? relativeTime(c.last_at) : new Date(c.last_at).toLocaleDateString();
   const preview = c.last_from_me ? `You: ${c.last_message}` : c.last_message;
   return `
-    <div class="job-card" data-job-id="${c.job_id}" data-other-id="${c.other_id}" style="cursor:pointer">
+    <div class="job-card" 
+     data-job-id="${c.job_id}" 
+     data-other-id="${c.other_id}"
+     data-other-name="${(c.other_name || '').replace(/"/g, '&quot;')}"
+     data-job-title="${(c.job_title || '').replace(/"/g, '&quot;')}"
+     style="cursor:pointer">
       <div class="job-card__icon" style="border-radius:50%">${initials}</div>
       <div class="job-card__info">
         <p class="job-card__title">${c.other_name} <span style="font-weight:400;color:var(--text-3);font-size:.75rem">· ${c.job_title}</span></p>
@@ -1833,16 +1922,20 @@ function renderConversationsList(conversations) {
   el.innerHTML = conversations.map(conversationRowHTML).join('');
   el.querySelectorAll('.job-card').forEach(card => {
     card.addEventListener('click', () => {
-      openChatThread(parseInt(card.dataset.jobId), parseInt(card.dataset.otherId));
-    });
+  openChatThread(
+    parseInt(card.dataset.jobId),
+    parseInt(card.dataset.otherId),
+    card.dataset.otherName  || '',
+    card.dataset.jobTitle   || ''
+  );
+});
   });
 }
 
-// Stub for now — built in the next piece (the actual chat thread panel)
-function openChatThread(jobId, otherId) {
-  console.log('Opening chat thread', jobId, otherId);
+function openChatThread(jobId, otherId, otherName, jobTitle) {
+  // Pass job context through to openChat
+  openChat(otherId, otherName, jobId, jobTitle);
 }
-
   /* ══════════════════════════════════════════════
      DEMO PAYMENT VERIFY/* ══ CLIENT PROFILE ══════════════════════════════ */
 function renderClientProfile() {
@@ -1994,10 +2087,14 @@ window.openEditProfileModal = async function () {
 let currentChatJobId = null;
 let currentChatOtherId = null;
 let chatPollInterval = null;
+let currentChatOtherName = '';
+let currentChatJobTitle  = '';
 
-async function openChatThread(jobId, otherId) {
-  currentChatJobId = jobId;
-  currentChatOtherId = otherId;
+async function openChatThread(jobId, otherId, otherName, jobTitle) {
+  currentChatJobId    = jobId;
+  currentChatOtherId  = otherId;
+  currentChatOtherName = otherName || '';
+  currentChatJobTitle  = jobTitle  || '';
 
   document.getElementById('chat-modal-overlay').classList.add('is-open');
   document.getElementById('chat-messages').innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.8rem">Loading…</div>`;
@@ -2105,7 +2202,7 @@ async function sendChatMessage() {
   try {
     await fetch(`${FLASK}/api/chat/send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body })
+      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body: messageText })
     });
     await loadChatMessages();
   } catch (e) {
@@ -2118,7 +2215,16 @@ document.getElementById('chat-send-btn')?.addEventListener('click', sendChatMess
 document.getElementById('chat-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
 
 document.getElementById('chat-send-offer-btn')?.addEventListener('click', async () => {
-  if (!currentChatJobId) return;
+  if (!currentChatJobId) {
+  Swal.fire({
+    title: 'No job selected',
+    text: 'Open this chat from a specific job to send a price offer.',
+    icon: 'info',
+    confirmButtonColor: '#E85C00',
+    ...swalTheme()
+  });
+  return;
+}
 
   const { value: price, isConfirmed } = await Swal.fire({
     title: 'Send Final Offer',
@@ -2137,7 +2243,7 @@ document.getElementById('chat-send-offer-btn')?.addEventListener('click', async 
   try {
     const res = await fetch(`${FLASK}/api/client/send-offer`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: currentChatJobId, worker_id: currentChatOtherId, user_id: user.id, proposed_price: price })
+      body: JSON.stringify({ job_id: currentChatJobId, worker_id: currentChatOtherId, user_id: user.id, amount: Number(price) })
     });
     const data = await res.json();
     if (data.success) {
@@ -2224,7 +2330,7 @@ async function openClientPublicProfile(clientId) {
   window.reviewWorker            = reviewWorker;
   window.reviewSubmission        = reviewSubmission;
   window.openJobModalById        = openJobModalById;
-  window.buildWorkerCredCard     = buildWorkerCredCard;
+  
   window.openEditProfileModal = openEditProfileModal;
   window.rejectBargainWithPrompt = rejectBargainWithPrompt;
   window.openChatThread = openChatThread;
@@ -2340,7 +2446,8 @@ async function openClientPublicProfile(clientId) {
       try {
         const res  = await fetch(`${window.FLASK}/api/switch-role/me?user_id=${window.USER_ID}`, { credentials:'include' });
         const data = await res.json();
-        if (data.error || !data.can_switch_to_client) return;
+        if (data.error) return;
+        if (!data.can_switch_to_client && !data.can_switch_to_worker) return;
         window.SC_ACTIVE_ROLE = data.active_role;
         if (data.active_role === 'worker') injectBtn('Switch to Client', IC_SWITCH);
         else { injectBtn('Switch to Artisan', IC_ARTISAN); window.enforceCantAcceptJobs(data.active_role); }

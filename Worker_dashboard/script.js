@@ -349,10 +349,12 @@ function renderConversationsList(conversations) {
     const done   = allMyJobs.filter(j => ['verified','paid'].includes(j.status)).length;
     const active = allMyJobs.filter(j => ['assigned','pending_review','pending_verification'].includes(j.status)).length;
 
-    const totalEarned = allMyJobs.filter(j => j.status === 'paid')
-                              .reduce((s,j) => s + parseFloat(j.amount||0), 0);
-    const withdrawn        = parseFloat(profile.total_withdrawn || 0);
-    const availableBalance = totalEarned - withdrawn;
+    const balance = p.escrow_balance != null
+    ? parseFloat(p.escrow_balance)
+    : Math.max(0, allMyJobs
+        .filter(j => j.status === 'paid')
+        .reduce((s,j) => s + parseFloat(j.amount||0), 0)
+        - parseFloat(p.total_withdrawn || 0));
     const pendingEscrow    = allMyJobs.filter(j => ['assigned','pending_verification','verified'].includes(j.status)).reduce((s,j) => s + parseFloat(j.amount), 0);
 
     document.getElementById('stat-done').textContent   = profile.jobs_completed ?? done;
@@ -681,7 +683,7 @@ function renderConversationsList(conversations) {
     const avatarImg     = document.getElementById('profile-avatar-img');
     const avatarInitial = document.getElementById('profile-avatar-initial');
     // Priority: server path → localStorage cache → initial letter
-    const serverPhoto = p.profile_photo_path ? `${FLASK}/${p.profile_photo_path}` : null;
+    const serverPhoto = p.profile_photo_path || null;
     const localPhoto  = localStorage.getItem(`sc-avatar-${user.id}`);
     const photoSrc    = serverPhoto || localPhoto;
 
@@ -888,7 +890,7 @@ function renderConversationsList(conversations) {
     const issued = new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'});
     const tierDesc = { bronze:'Completing their first verified jobs on SkillChain.', silver:'Consistently delivering GPS-verified, escrow-secured work.', gold:'An elite verified artisan with an outstanding trust record.' }[tier];
 
-    const serverPhoto = p.profile_photo_path ? `${FLASK}/${p.profile_photo_path}` : null;
+    const serverPhoto = profile.profile_photo_path || null;
     const localPhoto  = localStorage.getItem(`sc-avatar-${profile.id||user?.id}`);
     const photoSrc    = serverPhoto || localPhoto;
     const avatarHTML  = photoSrc

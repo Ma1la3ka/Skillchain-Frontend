@@ -1094,3 +1094,9 @@ svg{ display:block; }
   .wp-stats-row { padding: 12px 16px; }
   .wp-stat__val { font-size: 1.1rem; }
 }
+
+.wp-cert-strip {
+  background: var(--surface-2, #f0ede8);
+  border-top: 1px solid var(--border, #e8e2da);
+  padding: 16px 0 0;
+}
