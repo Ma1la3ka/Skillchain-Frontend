@@ -1492,10 +1492,14 @@ async function openClientPublicProfile(clientId) {
       try {
         const res  = await fetch(`${window.FLASK}/api/switch-role/me?user_id=${window.USER_ID}`, { credentials:'include' });
         const data = await res.json();
-        if (data.error || !data.can_switch_to_client) return;
+        if (data.error || (!data.can_switch_to_client && !data.can_switch_to_worker)) return;
         window.SC_ACTIVE_ROLE = data.active_role;
-        if (data.active_role === 'worker') injectBtn('Switch to Client', IC_SWITCH);
-        else { injectBtn('Switch to Artisan', IC_ARTISAN); window.enforceCantAcceptJobs(data.active_role); }
+        if (data.active_role === 'worker') {
+          if (data.can_switch_to_client) injectBtn('Switch to Client', IC_SWITCH);
+        } else {
+          if (data.can_switch_to_worker) injectBtn('Switch to Artisan', IC_ARTISAN);
+          window.enforceCantAcceptJobs(data.active_role);
+        }
       } catch (e) { console.warn('[role-switch] init error:', e); }
     });
   }

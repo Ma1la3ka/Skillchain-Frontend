@@ -2202,7 +2202,7 @@ async function sendChatMessage() {
   try {
     await fetch(`${FLASK}/api/chat/send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body: messageText })
+      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body })
     });
     await loadChatMessages();
   } catch (e) {
@@ -2382,7 +2382,58 @@ async function openClientPublicProfile(clientId) {
       const status = await res.json();
       const target = status.active_role === 'worker' ? 'client' : 'worker';
 
-      if (target === 'worker') { await doSwitch('worker'); return; }
+      if (target === 'worker') {
+        if (status.has_worker_profile || status.trade) {
+          await doSwitch('worker');
+          return;
+        }
+
+        const { value: trade, isConfirmed } = await Swal.fire(swalOpts({
+          title:'Switch to Artisan Mode',
+          html:`<div style="text-align:left;font-size:.9rem;line-height:1.7">
+            <p>As an <strong>artisan</strong> you can accept jobs and earn on SkillChain.</p>
+            <p style="margin-top:8px;color:var(--text-2)">Select your trade:</p>
+            <select id="sw-trade-select" style="width:100%;padding:10px 12px;margin-top:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:.9rem">
+              <option value="">— Select Trade —</option>
+              <option value="Mechanic">Mechanic</option>
+              <option value="Electrician">Electrician</option>
+              <option value="Plumber">Plumber</option>
+              <option value="Carpenter">Carpenter</option>
+              <option value="Painter">Painter</option>
+              <option value="Welder">Welder</option>
+              <option value="Tailor">Tailor</option>
+              <option value="Mason">Mason</option>
+              <option value="HVAC Technician">HVAC Technician</option>
+              <option value="Other">Other</option>
+            </select>
+            <div style="margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(232,92,0,.08);border:1px solid rgba(232,92,0,.2)">
+              <p style="color:#E85C00;font-weight:700;font-size:.82rem">✅ Same login — your client profile stays untouched</p>
+            </div>
+          </div>`,
+          confirmButtonText:'Activate Artisan Account',
+          cancelButtonText:'Cancel',
+          showCancelButton:true,
+          icon:null,
+          preConfirm: () => {
+            const val = document.getElementById('sw-trade-select').value;
+            if (!val) { Swal.showValidationMessage('Please select a trade'); return false; }
+            return val;
+          }
+        }));
+        if (!isConfirmed || !trade) return;
+
+        const aRes  = await fetch(`${window.FLASK}/api/switch-role/activate-worker`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+          body: JSON.stringify({ user_id:window.USER_ID, trade })
+        });
+        const aData = await aRes.json();
+        if (!aData.success) { await Swal.fire(swalOpts({ title:'Error', text:aData.message, icon:'error' })); return; }
+
+        await Swal.fire(swalOpts({ title:'🎉 Artisan profile activated!', text:`Trade: ${trade}. Switching you over now…`, icon:'success', timer:1300, showConfirmButton:false }));
+        window.location.href = aData.redirect || WORKER_URL;
+        return;
+      }
+
       if (status.has_client_profile) { await doSwitch('client'); return; }
 
       const { isConfirmed } = await Swal.fire(swalOpts({
@@ -2449,8 +2500,12 @@ async function openClientPublicProfile(clientId) {
         if (data.error) return;
         if (!data.can_switch_to_client && !data.can_switch_to_worker) return;
         window.SC_ACTIVE_ROLE = data.active_role;
-        if (data.active_role === 'worker') injectBtn('Switch to Client', IC_SWITCH);
-        else { injectBtn('Switch to Artisan', IC_ARTISAN); window.enforceCantAcceptJobs(data.active_role); }
+        if (data.active_role === 'worker') {
+          if (data.can_switch_to_client) injectBtn('Switch to Client', IC_SWITCH);
+        } else {
+          if (data.can_switch_to_worker) injectBtn('Switch to Artisan', IC_ARTISAN);
+          window.enforceCantAcceptJobs(data.active_role);
+        }
       } catch (e) { console.warn('[role-switch] init error:', e); }
     });
   }
