@@ -1132,7 +1132,7 @@
         e.stopPropagation();
         const workerId = parseInt(btn.dataset.workerId);
         const worker = (window._lastWorkerResults || []).find(w => w.id === workerId);
-        if (worker) openWorkerProfileModalModal(worker);
+        if (worker) openWorkerProfileModal(worker);
       });
     });
   }
