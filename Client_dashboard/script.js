@@ -1674,18 +1674,55 @@ if (document.readyState === 'loading') {
   function renderBargainsList(bargains) {
   const el = document.getElementById('bargains-list');
   if (!el) return;
-  if (!bargains.length) { el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('handshake')}</div><p>No pending offers.</p></div>`; return; }
-  el.innerHTML = bargains.map(b => `
-    <div class="bargain-card">
-      <p class="bargain-card__title">${b.job_title}</p>
-      <p class="bargain-card__price">Original: <strong>₦${Number(b.original_amount).toLocaleString()}</strong> &rarr; Worker offers: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong></p>
-      <p class="bargain-card__worker">${ic('user')} ${b.worker_name} · ${Number(b.worker_trust).toFixed(1)} trust · ${b.worker_jobs} jobs</p>
-      ${b.message ? `<p class="bargain-card__msg">"${b.message}"</p>` : ''}
+  if (!bargains.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('handshake')}</div><p>No offers yet.</p></div>`;
+    return;
+  }
+  el.innerHTML = bargains.map(b => {
+    const isClientOffer = (b.initiated_by || 'worker') === 'client';
+    const isPending     = b.status === 'pending';
+    const isAccepted    = b.status === 'accepted';
+    const isRejected    = b.status === 'rejected';
+
+    const statusBadge = isAccepted
+      ? `<span class="badge badge--verified">Accepted ✅</span>`
+      : isRejected
+      ? `<span class="badge badge--disputed">Declined ❌</span>`
+      : isClientOffer
+      ? `<span class="badge badge--assigned">Awaiting worker response</span>`
+      : `<span class="badge badge--assigned">Pending your response</span>`;
+
+    const offerLine = isClientOffer
+      ? `💰 You offered: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong>`
+      : `Original: <strong>₦${Number(b.job_amount || b.original_amount || 0).toLocaleString()}</strong> &rarr; Worker offers: <strong>₦${Number(b.proposed_price).toLocaleString()}</strong>`;
+
+    const actions = isPending && !isClientOffer ? `
       <div class="bargain-card__actions">
-        <button class="btn btn--success" onclick="respondBargain(${b.job_id}, 'accept', ${b.id})">${ic('check')} Accept ₦${Number(b.proposed_price).toLocaleString()}</button>
-        <button class="btn btn--danger" onclick="rejectBargainWithPrompt(${b.job_id}, ${b.id})">${ic('x')} Reject</button>
-      </div>
-    </div>`).join('');
+        <button class="btn btn--success" 
+                onclick="respondBargain(${b.job_id}, 'accept', ${b.id})">
+          ${ic('check')} Accept ₦${Number(b.proposed_price).toLocaleString()}
+        </button>
+        <button class="btn btn--danger" 
+                onclick="rejectBargainWithPrompt(${b.job_id}, ${b.id})">
+          ${ic('x')} Reject
+        </button>
+      </div>` : isPending && isClientOffer ? `
+      <p style="font-size:.75rem;color:var(--text-3);margin-top:6px">
+        ⏳ Waiting for worker to respond...
+      </p>` : '';
+
+    return `
+      <div class="bargain-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <p class="bargain-card__title">${b.job_title}</p>
+          ${statusBadge}
+        </div>
+        <p class="bargain-card__price">${offerLine}</p>
+        <p class="bargain-card__worker">${ic('user')} ${b.worker_name} · ${Number(b.trust_score || b.worker_trust || 0).toFixed(1)} trust</p>
+        ${b.message ? `<p class="bargain-card__msg">"${b.message}"</p>` : ''}
+        ${actions}
+      </div>`;
+  }).join('');
 }
 
   async function respondBargain(jobId, action, bargainId, suggestedPrice) {
