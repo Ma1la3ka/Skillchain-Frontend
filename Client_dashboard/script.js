@@ -692,10 +692,16 @@
   }
 
   async function openWorkerPublicProfile(workerId) {
-    if (!workerId) return;
-    modalOverlay.classList.remove('is-open');
+  const wid = parseInt(workerId);
+  if (!wid || isNaN(wid)) {
+    console.error('[openWorkerPublicProfile] Invalid workerId:', workerId);
+    Swal.fire({ title: 'Could not load profile', text: 'Invalid worker ID.', icon: 'error', ...swalTheme() });
+    return;
+  }
+  
+  modalOverlay.classList.remove('is-open');
 
-    const res = await fetch(`${FLASK}/api/worker/public-profile?worker_id=${workerId}&viewer_id=${user.id}`, { credentials: 'include' });
+    const res = await fetch(`${FLASK}/api/worker/public-profile?worker_id=${wid}&viewer_id=${user.id}`, { credentials: 'include' });
     if (!res.ok) { Swal.fire({ title: 'Could not load profile', icon: 'error', ...swalTheme() }); return; }
     const data = await res.json();
 
@@ -1925,7 +1931,7 @@ function renderConversationsList(conversations) {
     if (!aActive && bActive) return 1;
     return new Date(b.last_at || 0) - new Date(a.last_at || 0);
   });
-  
+
   if (!conversations.length) {
     el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('comment')}</div><p>No conversations yet.</p></div>`;
     return;
@@ -2102,15 +2108,22 @@ let currentChatOtherName = '';
 let currentChatJobTitle  = '';
 
 async function openChatThread(jobId, otherId, otherName, jobTitle) {
+  // Defensive parsing — ensure IDs are numbers
+  currentChatJobId = parseInt(jobId) || null;
+  currentChatOtherId = parseInt(otherId) || null;
+  currentChatOtherName = otherName || '';
+  currentChatJobTitle = jobTitle || '';
 
+  if (!currentChatJobId || !currentChatOtherId) {
+    console.error('[openChatThread] Invalid IDs:', { jobId, otherId });
+    Swal.fire({ title: 'Cannot open chat', text: 'Invalid conversation.', icon: 'error', ...swalTheme() });
+    return;
+  }
+
+  // Close any open profile/job modals so they don't show behind chat
   document.getElementById('modal-overlay')?.classList.remove('is-open');
   document.getElementById('worker-modal-overlay')?.classList.remove('is-open');
   document.getElementById('wp-overlay')?.classList.remove('is-open');
-
-  currentChatJobId    = jobId;
-  currentChatOtherId  = otherId;
-  currentChatOtherName = otherName || '';
-  currentChatJobTitle  = jobTitle  || '';
 
   document.getElementById('chat-modal-overlay').classList.add('is-open');
   document.getElementById('chat-messages').innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.8rem">Loading…</div>`;

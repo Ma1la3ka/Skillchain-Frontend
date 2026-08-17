@@ -205,7 +205,7 @@ function renderConversationsList(conversations) {
     if (!aActive && bActive) return 1;
     return new Date(b.last_at || 0) - new Date(a.last_at || 0);
   });
-  
+
   if (!conversations.length) {
     el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('comment')}</div><p>No conversations yet.</p></div>`;
     return;
@@ -973,10 +973,18 @@ function renderMyBargainsList(bargains) {
   const el = document.getElementById('my-bargains-list');
   if (!el) return;
   if (!bargains.length) {
-    el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('box')}</div><p>You haven't sent any bargains yet.</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="icon-sq">${ic('box')}</div><p>No offers yet.</p></div>`;
     return;
   }
-  el.innerHTML = bargains.map(b => `
+  el.innerHTML = bargains.map(b => {
+    const isClientOffer = b.initiated_by === 'client' || b.initiated_by === null; // null if column dropped
+    const offerLabel = isClientOffer ? 'Client offers' : 'Your offer';
+    const actionBtn = isClientOffer 
+      ? `<button class="btn btn--success btn--sm" onclick="acceptClientOffer(${b.job_id}, ${b.id})">${ic('check')} Accept</button>
+         <button class="btn btn--danger btn--sm" onclick="rejectClientOffer(${b.job_id}, ${b.id})">${ic('x')} Reject</button>`
+      : `<span style="font-size:.75rem;color:var(--text-3)">Awaiting client response</span>`;
+    
+    return `
     <div class="job-card" style="cursor:default">
       <div class="job-card__icon">${tradeIcon(b.trade)}</div>
       <div class="job-card__info">
@@ -984,15 +992,16 @@ function renderMyBargainsList(bargains) {
         <div class="job-card__meta">
           ${bargainStatusBadge(b.status)}
           <span>Original: ₦${b.original_amount.toLocaleString()}</span>
-          <span>Your offer: ₦${b.proposed_price.toLocaleString()}</span>
+          <span>${offerLabel}: ₦${b.proposed_price.toLocaleString()}</span>
         </div>
         ${b.status === 'rejected' && b.client_suggested_price ? `
           <div class="notice notice--warning" style="margin-top:10px">
-            <p>Client suggested <strong>₦${b.client_suggested_price.toLocaleString()}</strong> instead. Want to send a new offer at that price?</p>
-            <button class="btn btn--primary btn--sm" style="margin-top:8px" onclick="resendBargainAt(${b.job_id}, ${b.client_suggested_price})">Send ₦${b.client_suggested_price.toLocaleString()}</button>
+            <p>Client suggested <strong>₦${b.client_suggested_price.toLocaleString()}</strong> instead.</p>
           </div>` : ''}
+        ${isClientOffer ? `<div style="margin-top:10px;display:flex;gap:8px">${actionBtn}</div>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function resendBargainAt(jobId, price) {
@@ -1078,6 +1087,53 @@ async function resendBargainAt(jobId, price) {
     } finally { btn.disabled=false; btn.innerHTML=orig; }
   }
 
+
+async function acceptClientOffer(jobId, bargainId) {
+  const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ bargain_id: bargainId, user_id: user.id, action: 'accept' })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadMyBargains();
+    Swal.fire({ title: 'Offer accepted!', text: 'Job assigned to you.', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+  } else {
+    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+  }
+}
+
+async function rejectClientOffer(jobId, bargainId) {
+  const { value: counterPrice, isConfirmed } = await Swal.fire({
+    title: 'Reject this offer?',
+    text: 'Optionally suggest a counter-price.',
+    input: 'number',
+    inputPlaceholder: 'e.g. 100000 (optional)',
+    showCancelButton: true,
+    confirmButtonText: 'Reject',
+    confirmButtonColor: '#DC2626',
+    cancelButtonColor: '#9A968E',
+    ...swalTheme()
+  });
+  if (!isConfirmed) return;
+  
+  const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ 
+      bargain_id: bargainId, 
+      user_id: user.id, 
+      action: 'reject',
+      suggested_price: counterPrice || null 
+    })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadMyBargains();
+    Swal.fire({ title: 'Offer rejected', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+  } else {
+    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+  }
+}
+
   window.openWithdrawModal   = openWithdrawModal;
   window.openCertModal       = openCertModal;
   window.closeCertModal      = closeCertModal;
@@ -1088,6 +1144,8 @@ async function resendBargainAt(jobId, price) {
   window.resendBargainAt = resendBargainAt;
   window.openChatThread = openChatThread;
   window.openClientPublicProfile = openClientPublicProfile;
+  window.acceptClientOffer = acceptClientOffer;
+window.rejectClientOffer = rejectClientOffer;
 
   let currentChatJobId = null;
 let currentChatOtherId = null;
