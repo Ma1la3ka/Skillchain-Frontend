@@ -2145,11 +2145,10 @@ let currentChatOtherName = '';
 let currentChatJobTitle  = '';
 
 async function openChatThread(jobId, otherId, otherName, jobTitle) {
-  // Defensive parsing — ensure IDs are numbers
-  currentChatJobId = parseInt(jobId) || null;
-  currentChatOtherId = parseInt(otherId) || null;
+  currentChatJobId     = parseInt(jobId)   || null;
+  currentChatOtherId   = parseInt(otherId) || null;
   currentChatOtherName = otherName || '';
-  currentChatJobTitle = jobTitle || '';
+  currentChatJobTitle  = jobTitle  || '';
 
   if (!currentChatJobId || !currentChatOtherId) {
     console.error('[openChatThread] Invalid IDs:', { jobId, otherId });
@@ -2157,7 +2156,6 @@ async function openChatThread(jobId, otherId, otherName, jobTitle) {
     return;
   }
 
-  // Close any open profile/job modals so they don't show behind chat
   document.getElementById('modal-overlay')?.classList.remove('is-open');
   document.getElementById('worker-modal-overlay')?.classList.remove('is-open');
   document.getElementById('wp-overlay')?.classList.remove('is-open');
@@ -2165,14 +2163,46 @@ async function openChatThread(jobId, otherId, otherName, jobTitle) {
   document.getElementById('chat-modal-overlay').classList.add('is-open');
   document.getElementById('chat-messages').innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3);font-size:.8rem">Loading…</div>`;
 
-  document.getElementById('chat-send-offer-btn').style.display = 
-  (user.role === 'client' || window.SC_ACTIVE_ROLE === 'client') ? '' : 'none';
+  document.getElementById('chat-send-offer-btn').style.display =
+    (user.role === 'client' || window.SC_ACTIVE_ROLE === 'client') ? '' : 'none';
 
   await loadChatHeader(otherId);
   await loadChatMessages();
 
   clearInterval(chatPollInterval);
   chatPollInterval = setInterval(loadChatMessages, 5000);
+
+    // ADD at end of openChatThread:
+  if (currentChatJobId && currentChatOtherId) {
+    checkPendingOffer(currentChatJobId, currentChatOtherId);
+  }
+}
+
+// Separate function — outside openChatThread
+async function checkPendingOffer(jobId, workerId) {
+  try {
+    const res  = await fetch(
+      `${FLASK}/api/client/bargains?user_id=${user.id}`,
+      { credentials: 'include' }
+    );
+    const data = await res.json();
+    const hasPending = (data.bargains || []).some(b =>
+      b.job_id == jobId &&
+      b.other_id == workerId &&
+      b.status === 'pending' &&
+      (b.initiated_by || 'worker') === 'client'
+    );
+
+    const offerBtn = document.getElementById('chat-send-offer-btn');
+    if (offerBtn) {
+      offerBtn.disabled      = hasPending;
+      offerBtn.title         = hasPending
+        ? 'Worker has not responded to your previous offer yet'
+        : 'Send a price offer';
+      offerBtn.style.opacity = hasPending ? '0.5' : '1';
+      offerBtn.style.cursor  = hasPending ? 'not-allowed' : 'pointer';
+    }
+  } catch { }
 }
 
 function closeChatThread() {
