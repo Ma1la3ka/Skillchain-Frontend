@@ -1473,13 +1473,15 @@ async function openClientPublicProfile(clientId) {
   const CLIENT_URL = 'https://skillchain-frontend-omega.vercel.app//Client_dashboard/index.html';
 
   function waitForGlobals(cb, n) {
-    n = n || 0;
-    if (window.FLASK && window.USER_ID) { cb(); return; }
-    if (n > 80) { console.warn('[role-switch] globals never appeared'); return; }
-    setTimeout(() => waitForGlobals(cb, n + 1), 150);
-
-    
+  n = n || 0;
+  if (window.FLASK && window.USER_ID) {
+    console.log('[role-switch] globals found at attempt', n, '— USER_ID:', window.USER_ID);
+    cb();
+    return;
   }
+  if (n > 200) { console.warn('[role-switch] globals never appeared after 200 attempts'); return; }
+  setTimeout(() => waitForGlobals(cb, n + 1), 200);
+}
 
   
   function swalOpts(extra) {
