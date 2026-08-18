@@ -1446,7 +1446,7 @@ async function openClientPublicProfile(clientId) {
     if (!ok) return;
     await Promise.all([loadProfile(), loadMyJobs()]);
     if (user.profile) renderStats(user.profile);
-    setInterval(loadMyJobs, 10_000);
+    setInterval(loadMyJobs, 15_000);
     setInterval(loadConversations, 15_000);
     setInterval(() => {
   if (!window.USER_ID) return;  // don't fire if user not loaded yet
@@ -1477,8 +1477,11 @@ async function openClientPublicProfile(clientId) {
     if (window.FLASK && window.USER_ID) { cb(); return; }
     if (n > 80) { console.warn('[role-switch] globals never appeared'); return; }
     setTimeout(() => waitForGlobals(cb, n + 1), 150);
+
+    
   }
 
+  
   function swalOpts(extra) {
     const dark = document.documentElement.getAttribute('data-theme') === 'dark';
     return Object.assign({ background: dark?'#17171A':'#ffffff', color: dark?'#F2F1EE':'#17181B', confirmButtonColor:'#E85C00', cancelButtonColor: dark?'#3a3530':'#9A968E' }, extra);
@@ -1567,22 +1570,21 @@ async function openClientPublicProfile(clientId) {
   };
 
   function init() {
-    waitForGlobals(async () => {
-      try {
-        const res  = await fetch(`${window.FLASK}/api/switch-role/me?user_id=${window.USER_ID}`, { credentials:'include' });
-        const data = await res.json();
-        if (data.error || (!data.can_switch_to_client && !data.can_switch_to_worker)) return;
-        window.SC_ACTIVE_ROLE = data.active_role;
-        if (data.active_role === 'worker') {
-          if (data.can_switch_to_client) injectBtn('Switch to Client', IC_SWITCH);
-        } else {
-          if (data.can_switch_to_worker) injectBtn('Switch to Artisan', IC_ARTISAN);
-          window.enforceCantAcceptJobs(data.active_role);
-        }
-      } catch (e) { console.warn('[role-switch] init error:', e); }
-    });
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  waitForGlobals(async () => {
+    try {
+      console.log('[role-switch] globals ready — USER_ID:', window.USER_ID, 'FLASK:', window.FLASK);
+      const res  = await fetch(`${window.FLASK}/api/switch-role/me?user_id=${window.USER_ID}`, { credentials:'include' });
+      const data = await res.json();
+      console.log('[role-switch] API response:', data);
+      if (data.error || (!data.can_switch_to_client && !data.can_switch_to_worker)) return;
+      window.SC_ACTIVE_ROLE = data.active_role;
+      if (data.active_role === 'worker') {
+        if (data.can_switch_to_client) injectBtn('Switch to Client', IC_SWITCH);
+      } else {
+        if (data.can_switch_to_worker) injectBtn('Switch to Artisan', IC_ARTISAN);
+        window.enforceCantAcceptJobs(data.active_role);
+      }
+    } catch (e) { console.warn('[role-switch] init error:', e); }
+  });
+}
 })();
