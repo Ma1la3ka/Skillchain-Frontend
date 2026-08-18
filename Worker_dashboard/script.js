@@ -1589,4 +1589,5 @@ async function openClientPublicProfile(clientId) {
     } catch (e) { console.warn('[role-switch] init error:', e); }
   });
 }
+init();
 })();
