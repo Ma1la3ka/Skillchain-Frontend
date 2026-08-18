@@ -1122,7 +1122,7 @@ async function resendBargainAt(jobId, price) {
 
 
 async function acceptClientOffer(jobId, bargainId) {
-  const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
+  const res = await fetch(`${FLASK}/api/worker/respond-bargain`, {   
     method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
     body: JSON.stringify({ bargain_id: bargainId, user_id: user.id, action: 'accept' })
   });
@@ -1136,11 +1136,10 @@ async function acceptClientOffer(jobId, bargainId) {
 }
 
 async function rejectClientOffer(jobId, bargainId) {
-  const { value: counterPrice, isConfirmed } = await Swal.fire({
+  const { isConfirmed } = await Swal.fire({
     title: 'Reject this offer?',
-    text: 'Optionally suggest a counter-price.',
-    input: 'number',
-    inputPlaceholder: 'e.g. 100000 (optional)',
+    text: 'The client will be notified and can choose to send a new offer.',
+    icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Reject',
     confirmButtonColor: '#DC2626',
@@ -1148,15 +1147,10 @@ async function rejectClientOffer(jobId, bargainId) {
     ...swalTheme()
   });
   if (!isConfirmed) return;
-  
-  const res = await fetch(`${FLASK}/api/client/respond-bargain`, {
+
+  const res = await fetch(`${FLASK}/api/worker/respond-bargain`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-    body: JSON.stringify({ 
-      bargain_id: bargainId, 
-      user_id: user.id, 
-      action: 'reject',
-      suggested_price: counterPrice || null 
-    })
+    body: JSON.stringify({ bargain_id: bargainId, user_id: user.id, action: 'reject' })
   });
   const data = await res.json();
   if (data.success) {
