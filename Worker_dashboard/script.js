@@ -1010,13 +1010,21 @@ function renderMyBargainsList(bargains) {
     return;
   }
   el.innerHTML = bargains.map(b => {
-    const isClientOffer = b.initiated_by === 'client' || b.initiated_by === null; // null if column dropped
+    const isClientOffer = b.initiated_by === 'client' || b.initiated_by === null;
+    const isPending      = b.status === 'pending';
     const offerLabel = isClientOffer ? 'Client offers' : 'Your offer';
-    const actionBtn = isClientOffer 
-      ? `<button class="btn btn--success btn--sm" onclick="acceptClientOffer(${b.job_id}, ${b.id})">${ic('check')} Accept</button>
-         <button class="btn btn--danger btn--sm" onclick="rejectClientOffer(${b.job_id}, ${b.id})">${ic('x')} Reject</button>`
-      : `<span style="font-size:.75rem;color:var(--text-3)">Awaiting client response</span>`;
-    
+
+    let actionArea = '';
+    if (isPending && isClientOffer) {
+      actionArea = `<div style="margin-top:10px;display:flex;gap:8px">
+        <button class="btn btn--success btn--sm" onclick="acceptClientOffer(${b.job_id}, ${b.id})">${ic('check')} Accept</button>
+        <button class="btn btn--danger btn--sm" onclick="rejectClientOffer(${b.job_id}, ${b.id})">${ic('x')} Reject</button>
+      </div>`;
+    } else if (isPending && !isClientOffer) {
+      actionArea = `<p style="font-size:.75rem;color:var(--text-3);margin-top:10px">Awaiting client response</p>`;
+    }
+    // resolved bargains (accepted/rejected/declined/cancelled) → no action area at all, just the status badge
+
     return `
     <div class="job-card" style="cursor:default">
       <div class="job-card__icon">${tradeIcon(b.trade)}</div>
@@ -1031,7 +1039,7 @@ function renderMyBargainsList(bargains) {
           <div class="notice notice--warning" style="margin-top:10px">
             <p>Client suggested <strong>₦${b.client_suggested_price.toLocaleString()}</strong> instead.</p>
           </div>` : ''}
-        ${isClientOffer ? `<div style="margin-top:10px;display:flex;gap:8px">${actionBtn}</div>` : ''}
+        ${actionArea}
       </div>
     </div>`;
   }).join('');
