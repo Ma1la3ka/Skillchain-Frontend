@@ -541,58 +541,91 @@ function renderConversationsList(conversations) {
     });
   }
 
-  /* ══════════════════════════════════════════════
-     ACCEPT / BARGAIN MODAL
-  ══════════════════════════════════════════════ */
-  function openAcceptModal(job) {
-    modalBody.innerHTML = `
-      <p class="modal-title">${job.title}</p>
-      <p class="modal-amount">₦${Number(job.amount).toLocaleString()}</p>
-      ${statusBadge('open')}
-      <div class="modal-divider"></div>
-      <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description||'—'}</p></div>
-      <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address||'—'}</p></div>
-      <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade||'—'}</p></div>
-      ${job.client_name ? `<div class="modal-field"><p class="modal-field__label">Posted By</p><p class="modal-field__val">${ic('user')} ${job.client_name}</p></div>` : ''}
-      <button class="btn btn--secondary btn--wide" style="margin-top:8px" onclick="openChatThread(${job.id}, ${job.client_id})">${ic('comment')} Message Client</button>
-      <div class="modal-divider"></div>
-      <button class="btn btn--primary btn--wide" id="confirm-accept-btn">Accept at ₦${Number(job.amount).toLocaleString()}</button>
-      <div class="bargain-box">
-        <p class="bargain-box__label">Counter-Offer</p>
-        <input type="number" id="bargain-price-input" placeholder="Your price, e.g. 12000" min="100" step="100">
-        <textarea id="bargain-message-input" placeholder="Optional message to client…"></textarea>
-        <button class="btn btn--secondary btn--wide" id="submit-bargain-btn">Send Counter-Offer</button>
-        <p class="bargain-box__err" id="bargain-err"></p>
-      </div>`;
-    modalOverlay.classList.add('is-open');
+async function openAcceptModal(job) {
+  modalBody.innerHTML = `
+    <p class="modal-title">${job.title}</p>
+    <p class="modal-amount">₦${Number(job.amount).toLocaleString()}</p>
+    ${statusBadge('open')}
+    <div class="modal-divider"></div>
+    <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description||'—'}</p></div>
+    <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address||'—'}</p></div>
+    <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade||'—'}</p></div>
+    ${job.client_name ? `<div class="modal-field"><p class="modal-field__label">Posted By</p><p class="modal-field__val">${ic('user')} ${job.client_name}</p></div>` : ''}
+    <button class="btn btn--secondary btn--wide" style="margin-top:8px" onclick="openChatThread(${job.id}, ${job.client_id})">${ic('comment')} Message Client</button>
+    <div class="modal-divider"></div>
+    <button class="btn btn--primary btn--wide" id="confirm-accept-btn">Accept at ₦${Number(job.amount).toLocaleString()}</button>
+    <div id="bargain-slot"></div>`;
+  modalOverlay.classList.add('is-open');
 
-    const acceptBtn = document.getElementById('confirm-accept-btn');
-    acceptBtn.addEventListener('click', () => acceptJob(job.id, acceptBtn, acceptBtn.textContent));
+  const acceptBtn = document.getElementById('confirm-accept-btn');
+  acceptBtn.addEventListener('click', () => acceptJob(job.id, acceptBtn, acceptBtn.textContent));
 
-    const submitBtn = document.getElementById('submit-bargain-btn');
-    submitBtn.addEventListener('click', async () => {
-      const price = parseFloat(document.getElementById('bargain-price-input').value);
-      const msg   = document.getElementById('bargain-message-input').value.trim();
-      const errEl = document.getElementById('bargain-err');
-      errEl.textContent = '';
-      if (!price || price < 100) { errEl.textContent = 'Enter a valid price (min ₦100).'; return; }
-      submitBtn.disabled = true; submitBtn.textContent = 'Sending…';
-      try {
-        const res  = await fetch(`${FLASK}/api/worker/bargain`, {
-          method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-          body: JSON.stringify({ job_id:job.id, user_id:user.id, proposed_price:price, message:msg })
-        });
-        const data = await res.json();
-        if (data.success) {
-          modalOverlay.classList.remove('is-open');
-          Swal.fire({ title:'Offer sent', text:`Counter-offer of ₦${price.toLocaleString()} sent.`, icon:'success', confirmButtonColor:'#E85C00', ...swalTheme() });
-        } else {
-          errEl.textContent = data.message || 'Could not send offer.';
-          submitBtn.disabled = false; submitBtn.textContent = 'Send Counter-Offer';
-        }
-      } catch { errEl.textContent = 'Network error.'; submitBtn.disabled = false; submitBtn.textContent = 'Send Counter-Offer'; }
-    });
+  const slot = document.getElementById('bargain-slot');
+  slot.innerHTML = `<div style="padding:14px 0;text-align:center;color:var(--text-3);font-size:.8rem">${ic('clock')} Checking offer status…</div>`;
+
+  try {
+    const res  = await fetch(`${FLASK}/api/worker/bargain-status?job_id=${job.id}&worker_id=${user.id}`, { credentials: 'include' });
+    const data = await res.json();
+
+    if (data.pending) {
+      if (data.initiated_by === 'client') {
+        slot.innerHTML = `
+          <div class="notice notice--warning" style="margin-top:16px">
+            <p class="notice__title">${ic('alert')} Client sent you an offer — ₦${Number(data.proposed_price).toLocaleString()}</p>
+            <p>Respond to it from <strong>My Bargains</strong> before sending your own.</p>
+            <button class="btn btn--secondary btn--wide" style="margin-top:10px" onclick="modalOverlay.classList.remove('is-open'); showView('my-bargains')">Go to My Bargains</button>
+          </div>`;
+      } else {
+        slot.innerHTML = `
+          <div class="notice notice--warning" style="margin-top:16px">
+            <p class="notice__title">${ic('clock')} Waiting for client to respond</p>
+            <p>You already sent a counter-offer of ₦${Number(data.proposed_price).toLocaleString()} on this job.</p>
+          </div>`;
+      }
+      return;
+    }
+
+    renderBargainBox(slot, job);
+  } catch (e) {
+    console.error('bargain-status check failed:', e);
+    renderBargainBox(slot, job); // fail open — don't block the worker if the check itself errors
   }
+}
+
+function renderBargainBox(slot, job) {
+  slot.innerHTML = `
+    <div class="bargain-box">
+      <p class="bargain-box__label">Counter-Offer</p>
+      <input type="number" id="bargain-price-input" placeholder="Your price, e.g. 12000" min="100" step="100">
+      <textarea id="bargain-message-input" placeholder="Optional message to client…"></textarea>
+      <button class="btn btn--secondary btn--wide" id="submit-bargain-btn">Send Counter-Offer</button>
+      <p class="bargain-box__err" id="bargain-err"></p>
+    </div>`;
+
+  const submitBtn = document.getElementById('submit-bargain-btn');
+  submitBtn.addEventListener('click', async () => {
+    const price = parseFloat(document.getElementById('bargain-price-input').value);
+    const msg   = document.getElementById('bargain-message-input').value.trim();
+    const errEl = document.getElementById('bargain-err');
+    errEl.textContent = '';
+    if (!price || price < 100) { errEl.textContent = 'Enter a valid price (min ₦100).'; return; }
+    submitBtn.disabled = true; submitBtn.textContent = 'Sending…';
+    try {
+      const res  = await fetch(`${FLASK}/api/worker/bargain`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+        body: JSON.stringify({ job_id:job.id, user_id:user.id, proposed_price:price, message:msg })
+      });
+      const data = await res.json();
+      if (data.success) {
+        modalOverlay.classList.remove('is-open');
+        Swal.fire({ title:'Offer sent', text:`Counter-offer of ₦${price.toLocaleString()} sent.`, icon:'success', confirmButtonColor:'#E85C00', ...swalTheme() });
+      } else {
+        errEl.textContent = data.message || 'Could not send offer.';
+        submitBtn.disabled = false; submitBtn.textContent = 'Send Counter-Offer';
+      }
+    } catch { errEl.textContent = 'Network error.'; submitBtn.disabled = false; submitBtn.textContent = 'Send Counter-Offer'; }
+  });
+}
 
   async function acceptJob(jobId, btn, originalText) {
     if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }

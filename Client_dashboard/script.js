@@ -2181,27 +2181,26 @@ async function openChatThread(jobId, otherId, otherName, jobTitle) {
 // Separate function — outside openChatThread
 async function checkPendingOffer(jobId, workerId) {
   try {
-    const res  = await fetch(
-      `${FLASK}/api/client/bargains?user_id=${user.id}`,
-      { credentials: 'include' }
-    );
+    const res  = await fetch(`${FLASK}/api/worker/bargain-status?job_id=${jobId}&worker_id=${workerId}`, { credentials: 'include' });
     const data = await res.json();
-    const hasPending = (data.bargains || []).some(b =>
-      b.job_id == jobId &&
-      b.other_id == workerId &&
-      b.status === 'pending' &&
-      (b.initiated_by || 'worker') === 'client'
-    );
 
     const offerBtn = document.getElementById('chat-send-offer-btn');
-    if (offerBtn) {
-      offerBtn.disabled      = hasPending;
-      offerBtn.title         = hasPending
-        ? 'Worker has not responded to your previous offer yet'
-        : 'Send a price offer';
-      offerBtn.style.opacity = hasPending ? '0.5' : '1';
-      offerBtn.style.cursor  = hasPending ? 'not-allowed' : 'pointer';
+    if (!offerBtn) return;
+
+    if (!data.pending) {
+      offerBtn.disabled = false;
+      offerBtn.title = 'Send a price offer';
+      offerBtn.style.opacity = '1';
+      offerBtn.style.cursor = 'pointer';
+      return;
     }
+
+    offerBtn.disabled = true;
+    offerBtn.style.opacity = '0.5';
+    offerBtn.style.cursor = 'not-allowed';
+    offerBtn.title = data.initiated_by === 'client'
+      ? 'Worker has not responded to your previous offer yet'
+      : 'This worker already sent you an offer — respond from Bargains';
   } catch { }
 }
 
