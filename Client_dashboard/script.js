@@ -393,33 +393,67 @@
     });
   }
 
-  /* ══════════════════════════════════════════════
-     JOB DETAIL MODAL
-  ══════════════════════════════════════════════ */
-  async function openJobModal(job) {
-    const created  = new Date(job.created_at).toLocaleString('en-NG');
-    const verified = job.verified_at ? new Date(job.verified_at).toLocaleString('en-NG') : '—';
+ async function openJobModal(job) {
+  const created  = new Date(job.created_at).toLocaleString('en-NG');
+  const verified = job.verified_at ? new Date(job.verified_at).toLocaleString('en-NG') : '—';
 
-    let paymentDetails = null;
-    try {
-      const pRes = await fetch(`${FLASK}/api/job/payment-details?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
-      if (pRes.ok) paymentDetails = await pRes.json();
-    } catch (e) {}
+  let paymentDetails = null;
+  try {
+    const pRes = await fetch(`${FLASK}/api/job/payment-details?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+    if (pRes.ok) paymentDetails = await pRes.json();
+  } catch (e) {}
 
-    let media = [];
-    try {
-      const mRes = await fetch(`${FLASK}/api/job/media?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
-      if (mRes.ok) { const md = await mRes.json(); media = md.media || []; }
-    } catch (e) {}
+  let media = [];
+  try {
+    const mRes = await fetch(`${FLASK}/api/job/media?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+    if (mRes.ok) { const md = await mRes.json(); media = md.media || []; }
+  } catch (e) {}
 
-    let comments = [];
-    try {
-      const cRes = await fetch(`${FLASK}/api/job/comments?job_id=${job.id}`, { credentials: 'include' });
-      if (cRes.ok) { const cd = await cRes.json(); comments = cd.comments || []; }
-    } catch (e) {}
+  let comments = [];
+  try {
+    const cRes = await fetch(`${FLASK}/api/job/comments?job_id=${job.id}`, { credentials: 'include' });
+    if (cRes.ok) { const cd = await cRes.json(); comments = cd.comments || []; }
+  } catch (e) {}
 
-    const pd     = paymentDetails || job;
-    const amount = Number(pd.amount || job.amount || 0);
+  // ── NEW: pull this job's pending bargains ──
+  let pendingBargains = [];
+  try {
+    const bRes = await fetch(`${FLASK}/api/client/bargains?user_id=${user.id}`, { credentials: 'include' });
+    if (bRes.ok) {
+      const bd = await bRes.json();
+      pendingBargains = (bd.bargains || []).filter(b => b.job_id === job.id && b.status === 'pending');
+    }
+  } catch (e) {}
+
+  const pd     = paymentDetails || job;
+  const amount = Number(pd.amount || job.amount || 0);
+
+  // ── NEW: build the pending-offers banner ──
+  let bargainSection = '';
+  if (pendingBargains.length) {
+    bargainSection = `
+      <div class="modal-divider"></div>
+      <p class="modal-field__label" style="margin-bottom:10px">Pending Offers</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${pendingBargains.map(b => {
+          const clientSent = b.initiated_by === 'client';
+          return `
+            <div class="notice ${clientSent ? 'notice--neutral' : 'notice--warning'}">
+              <p class="notice__title">
+                ${clientSent ? `${ic('clock')} Waiting for ${b.worker_name} to respond` : `${ic('alert')} ${b.worker_name} sent you an offer`}
+              </p>
+              <p>${clientSent ? 'You offered' : 'They offered'}: <strong style="color:var(--text)">₦${Number(b.proposed_price).toLocaleString()}</strong></p>
+              ${b.message ? `<p style="font-size:.78rem;color:var(--text-3);margin-top:4px">"${b.message}"</p>` : ''}
+              ${!clientSent ? `
+                <div class="notice__row" style="margin-top:10px">
+                  <button class="btn btn--success" onclick="respondBargain(${job.id}, 'accept', ${b.id})">${ic('check')} Accept ₦${Number(b.proposed_price).toLocaleString()}</button>
+                  <button class="btn btn--danger" onclick="rejectBargainWithPrompt(${job.id}, ${b.id})">${ic('x')} Reject</button>
+                </div>` : ''}
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
 
     // Review section
     let reviewSection = '';
@@ -557,29 +591,30 @@
       </div>`;
 
     modalBody.innerHTML = `
-      <p class="modal-title">${job.title}</p>
-      <p class="modal-amount">₦${amount.toLocaleString()}</p>
-      ${statusBadge(job.status)}
-      ${reviewSection}
-      ${escrowSection}
+  <p class="modal-title">${job.title}</p>
+  <p class="modal-amount">₦${amount.toLocaleString()}</p>
+  ${statusBadge(job.status)}
+  ${reviewSection}
+  ${escrowSection}
 
-      <div class="modal-divider"></div>
-      <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description || '—'}</p></div>
-      <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address || '—'}</p></div>
-      <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade || '—'}</p></div>
-      <div class="modal-field"><p class="modal-field__label">Worker</p><p class="modal-field__val">${job.worker_name
-        ? `<a href="#" onclick="openWorkerPublicProfile(${job.worker_id})">${job.worker_name}</a> · ${job.worker_trust ?? '—'} trust`
-        : 'No worker assigned yet'}</p></div>
-      <div class="modal-divider"></div>
-      <div class="modal-field"><p class="modal-field__label">Posted</p><p class="modal-field__val">${created}</p></div>
-      <div class="modal-field"><p class="modal-field__label">Verified At</p><p class="modal-field__val">${verified}</p></div>
-      ${job.distance_meters != null ? `<div class="modal-field"><p class="modal-field__label">GPS Distance</p><p class="modal-field__val">${Number(job.distance_meters).toFixed(0)}m from site</p></div>` : ''}
-      ${job.transfer_reference ? `<div class="modal-field"><p class="modal-field__label">Payout Ref</p><p class="modal-field__val" style="font-family:var(--font-mono);font-size:.8rem">${job.transfer_reference}</p></div>` : ''}
+  <div class="modal-divider"></div>
+  <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description || '—'}</p></div>
+  <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address || '—'}</p></div>
+  <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade || '—'}</p></div>
+  <div class="modal-field"><p class="modal-field__label">Worker</p><p class="modal-field__val">${job.worker_name
+    ? `<a href="#" onclick="openWorkerPublicProfile(${job.worker_id})">${job.worker_name}</a> · ${job.worker_trust ?? '—'} trust`
+    : 'No worker assigned yet'}</p></div>
+  ${bargainSection}
+  <div class="modal-divider"></div>
+  <div class="modal-field"><p class="modal-field__label">Posted</p><p class="modal-field__val">${created}</p></div>
+  <div class="modal-field"><p class="modal-field__label">Verified At</p><p class="modal-field__val">${verified}</p></div>
+  ${job.distance_meters != null ? `<div class="modal-field"><p class="modal-field__label">GPS Distance</p><p class="modal-field__val">${Number(job.distance_meters).toFixed(0)}m from site</p></div>` : ''}
+  ${job.transfer_reference ? `<div class="modal-field"><p class="modal-field__label">Payout Ref</p><p class="modal-field__val" style="font-family:var(--font-mono);font-size:.8rem">${job.transfer_reference}</p></div>` : ''}
 
-      ${ratingSection}
-      ${mediaSection}
-      ${commentsSection}
-    `;
+  ${ratingSection}
+  ${mediaSection}
+  ${commentsSection}
+`;
 
     window._selectedStar = job.client_rating || 0;
     modalOverlay.classList.add('is-open');
