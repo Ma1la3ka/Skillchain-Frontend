@@ -562,10 +562,10 @@
         <p class="modal-field__label" style="margin-bottom:10px">Proof Media</p>
         <div style="display:flex;flex-direction:column;gap:12px">
           ${media.map(m => `
-            <div class="proof-media">
-              ${m.media_type === 'video'
-                ? `<video src="${FLASK}/static/${m.file_path.replace('static/', '')}" controls></video>`
-                : `<img src="${FLASK}/static/${m.file_path.replace('static/', '')}">`}
+              <div class="proof-media">
+                ${m.media_type === 'video'
+                  ? `<video src="${m.file_path}" controls></video>`
+                  : `<img src="${m.file_path}">`}
               <div class="proof-media__bar">
                 ${m.proof_lat ? `<span class="proof-media__coords">${ic('pin')} ${Number(m.proof_lat).toFixed(4)}, ${Number(m.proof_lng).toFixed(4)}</span>` : ''}
                 <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}" class="icon-btn ${m.user_liked ? 'is-liked' : ''}" style="margin-left:auto">
@@ -779,8 +779,8 @@
         ${data.media.slice(0, 4).map(m => `
           <div class="proof-media">
             ${m.media_type === 'video'
-              ? `<video src="${FLASK}/static/${m.file_path.replace('static/', '')}" controls></video>`
-              : `<img src="${FLASK}/static/${m.file_path.replace('static/', '')}">`}
+              ? `<video src="${m.file_path}" controls></video>`
+              : `<img src="${m.file_path}">`}
             <div class="proof-media__bar">
               <span style="font-size:.74rem;color:var(--text-3)">${m.job_title || ''}</span>
               <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}" class="icon-btn ${m.viewer_liked ? 'is-liked' : ''}" style="margin-left:auto">${m.viewer_liked ? ic('heartFill') : ic('heart')} <span id="like-count-${m.id}">${m.likes}</span></button>

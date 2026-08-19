@@ -349,6 +349,38 @@
         Withdraw to Bank
       </button>
     </div>
+    
+        <!-- Shop Location (optional) -->
+    <div class="section-block" style="margin-top:20px">
+      <div class="section-block__header">
+        <div>
+          <h3 class="section-block__title">My Shop Location</h3>
+          <p class="section-block__sub">Optional — set this if clients can bring work to you instead of you going to them</p>
+        </div>
+      </div>
+
+      <div id="shop-address-display" style="display:none;background:var(--surface-sunk);border-radius:8px;padding:12px 14px;margin-bottom:12px">
+        <p style="font-size:.85rem;font-weight:600" id="shop-address-text">—</p>
+        <p style="font-size:.72rem;color:var(--text-3);font-family:var(--font-mono)" id="shop-address-coords"></p>
+      </div>
+
+      <div class="location-search" style="position:relative;margin-bottom:10px">
+        <input type="text" id="shop-location-search-input" placeholder="Search an address or area in Nigeria…" class="field__input" style="width:100%">
+        <div class="location-results" id="shop-location-results"></div>
+      </div>
+
+      <button class="btn btn--secondary btn--sm" id="btn-shop-my-loc" type="button" style="margin-bottom:10px">
+        📍 Use My Current Location
+      </button>
+
+      <div id="shop-map" style="width:100%;height:260px;border-radius:10px;overflow:hidden"></div>
+      <p style="font-size:.72rem;color:var(--text-3);margin-top:6px" id="shop-map-hint">Search above, use your location, or tap the map to set your shop.</p>
+
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn--primary" id="btn-save-shop-location" type="button" style="flex:1">Save Shop Location</button>
+        <button class="btn btn--outline" id="btn-clear-shop-location" type="button">Clear</button>
+      </div>
+    </div>
 
     <!-- Verification Stats -->
     <div class="section-block" style="margin-top:20px">

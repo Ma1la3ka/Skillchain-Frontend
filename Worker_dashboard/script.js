@@ -11,6 +11,8 @@
   let allOpenJobs  = [];
   let activeFilter = 'all';
   let user         = null;
+  let shopMap = null, shopMarker = null, shopMapReady = false;
+  let shopSelectedLat = null, shopSelectedLng = null;
 
   const sidebar      = document.getElementById('sidebar');
   const sidebarScrim = document.getElementById('sidebar-scrim');
@@ -88,6 +90,172 @@
     return { background: s.getPropertyValue('--surface').trim(), color: s.getPropertyValue('--text').trim() };
   }
 
+    /* ══════════════════════════════════════════════
+     SHOP LOCATION PICKER
+  ══════════════════════════════════════════════ */
+  
+
+  function makeShopIcon() {
+    return L.divIcon({
+      className: '',
+      html: `<div style="width:26px;height:26px;background:#E85C00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.35)"></div>`,
+      iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -28]
+    });
+  }
+
+  function initShopMap() {
+    if (shopMapReady) return;
+    const mapEl = document.getElementById('shop-map');
+    if (!mapEl || mapEl.offsetWidth === 0) { setTimeout(initShopMap, 100); return; }
+
+    const p = user.profile || {};
+    const startLat = p.shop_lat ? parseFloat(p.shop_lat) : 6.5244;
+    const startLng = p.shop_lng ? parseFloat(p.shop_lng) : 3.3792;
+
+    shopMap = L.map('shop-map', { zoomControl: true }).setView([startLat, startLng], p.shop_lat ? 15 : 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(shopMap);
+
+    shopMap.on('click', async e => { await setShopLocation(e.latlng.lat, e.latlng.lng); });
+
+    if (p.shop_lat && p.shop_lng) {
+      shopMarker = L.marker([startLat, startLng], { icon: makeShopIcon() }).addTo(shopMap);
+      shopSelectedLat = startLat; shopSelectedLng = startLng;
+      document.getElementById('shop-address-text').textContent = p.shop_address || 'Saved location';
+      document.getElementById('shop-address-coords').textContent = `${startLat.toFixed(5)}, ${startLng.toFixed(5)}`;
+      document.getElementById('shop-address-display').style.display = 'block';
+      document.getElementById('shop-map-hint').style.display = 'none';
+    }
+
+    shopMapReady = true;
+    setTimeout(() => shopMap.invalidateSize(), 50);
+  }
+
+  async function setShopLocation(lat, lng, addressOverride) {
+    shopSelectedLat = lat; shopSelectedLng = lng;
+    if (shopMarker) shopMarker.setLatLng([lat, lng]);
+    else shopMarker = L.marker([lat, lng], { icon: makeShopIcon() }).addTo(shopMap);
+    shopMap.panTo([lat, lng]);
+
+    let address = addressOverride;
+    if (!address) {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+        const d = await r.json();
+        address = d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      } catch { address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`; }
+    }
+
+    document.getElementById('shop-address-text').textContent = address;
+    document.getElementById('shop-address-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('shop-address-display').style.display = 'block';
+    document.getElementById('shop-map-hint').style.display = 'none';
+    window._shopAddressPending = address;
+  }
+
+  function clearShopLocation() {
+    shopSelectedLat = null; shopSelectedLng = null;
+    if (shopMarker) { shopMap.removeLayer(shopMarker); shopMarker = null; }
+    document.getElementById('shop-address-display').style.display = 'none';
+    document.getElementById('shop-map-hint').style.display = 'block';
+    window._shopAddressPending = null;
+  }
+  document.getElementById('btn-clear-shop-location')?.addEventListener('click', clearShopLocation);
+
+  document.getElementById('btn-shop-my-loc')?.addEventListener('click', () => {
+    if (!navigator.geolocation) { Swal.fire({ title: 'Geolocation not supported', icon: 'error', ...swalTheme() }); return; }
+    const btn = document.getElementById('btn-shop-my-loc');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '⏳ Locating…';
+    btn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        btn.innerHTML = orig; btn.disabled = false;
+        if (!shopMapReady) initShopMap();
+        await setShopLocation(pos.coords.latitude, pos.coords.longitude);
+        shopMap.setZoom(16);
+      },
+      err => {
+        btn.innerHTML = orig; btn.disabled = false;
+        Swal.fire({ title: 'Could not get location', text: err.message, icon: 'error', ...swalTheme() });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
+  let shopSearchTimeout = null;
+  document.getElementById('shop-location-search-input')?.addEventListener('input', function () {
+    clearTimeout(shopSearchTimeout);
+    const q = this.value.trim();
+    const results = document.getElementById('shop-location-results');
+    if (q.length < 3) { results.classList.remove('is-open'); return; }
+
+    shopSearchTimeout = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&countrycodes=ng`);
+        const places = await r.json();
+        if (!places.length) { results.classList.remove('is-open'); return; }
+
+        results.innerHTML = places.map((place, i) =>
+          `<div class="location-result" data-idx="${i}" data-lat="${place.lat}" data-lng="${place.lon}" data-name="${place.display_name}">
+             <strong>${place.display_name.split(',')[0]}</strong>
+             <span>${place.display_name.split(',').slice(1, 3).join(',')}</span>
+           </div>`).join('');
+        results.classList.add('is-open');
+
+        results.querySelectorAll('.location-result').forEach(item => {
+          item.addEventListener('click', async () => {
+            const lat = parseFloat(item.dataset.lat), lng = parseFloat(item.dataset.lng), name = item.dataset.name;
+            if (!shopMapReady) initShopMap();
+            await setShopLocation(lat, lng, name);
+            shopMap.setView([lat, lng], 16);
+            document.getElementById('shop-location-search-input').value = '';
+            results.classList.remove('is-open');
+          });
+        });
+      } catch (e) { console.error('Shop location search error:', e); }
+    }, 400);
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.location-search') && e.target.id !== 'shop-location-search-input') {
+      document.getElementById('shop-location-results')?.classList.remove('is-open');
+    }
+  });
+
+  document.getElementById('btn-save-shop-location')?.addEventListener('click', async () => {
+    if (!shopSelectedLat || !shopSelectedLng) {
+      Swal.fire({ title: 'No location selected', text: 'Search, use your location, or tap the map first.', icon: 'warning', confirmButtonColor: '#E85C00', ...swalTheme() });
+      return;
+    }
+    const btn = document.getElementById('btn-save-shop-location');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res  = await fetch(`${FLASK}/api/worker/update-profile`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          user_id: user.id,
+          shop_lat: shopSelectedLat,
+          shop_lng: shopSelectedLng,
+          shop_address: window._shopAddressPending || document.getElementById('shop-address-text').textContent
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        user.profile = user.profile || {};
+        user.profile.shop_lat = shopSelectedLat;
+        user.profile.shop_lng = shopSelectedLng;
+        user.profile.shop_address = window._shopAddressPending || document.getElementById('shop-address-text').textContent;
+        Swal.fire({ title: 'Shop location saved', icon: 'success', timer: 1400, showConfirmButton: false, ...swalTheme() });
+      } else {
+        Swal.fire({ title: 'Could not save', text: data.message, icon: 'error', confirmButtonColor: '#E85C00', ...swalTheme() });
+      }
+    } catch {
+      Swal.fire({ title: 'Network error', icon: 'error', confirmButtonColor: '#E85C00', ...swalTheme() });
+    } finally {
+      btn.disabled = false; btn.textContent = 'Save Shop Location';
+    }
+  });
+
   /* ══════════════════════════════════════════════
      AUTH / NAVIGATION
   ══════════════════════════════════════════════ */
@@ -111,7 +279,11 @@
     if (viewId === 'find-jobs') loadOpenJobs();
     if (viewId === 'my-jobs')   renderMyJobsList(allMyJobs);
     if (viewId === 'earnings')  renderEarnings();
-    if (viewId === 'profile')   renderProfile();
+    if (viewId === 'profile') {
+    renderProfile();
+    if (!shopMapReady) requestAnimationFrame(() => requestAnimationFrame(initShopMap));
+  else shopMap.invalidateSize();
+}
     if (viewId === 'my-bargains') loadMyBargains();
     if (viewId === 'messages') loadConversations();
   }
@@ -542,6 +714,8 @@ function renderConversationsList(conversations) {
   }
 
 async function openAcceptModal(job) {
+  const hasShop = user.profile && user.profile.shop_lat && user.profile.shop_lng;
+
   modalBody.innerHTML = `
     <p class="modal-title">${job.title}</p>
     <p class="modal-amount">₦${Number(job.amount).toLocaleString()}</p>
@@ -553,12 +727,31 @@ async function openAcceptModal(job) {
     ${job.client_name ? `<div class="modal-field"><p class="modal-field__label">Posted By</p><p class="modal-field__val">${ic('user')} ${job.client_name}</p></div>` : ''}
     <button class="btn btn--secondary btn--wide" style="margin-top:8px" onclick="openChatThread(${job.id}, ${job.client_id})">${ic('comment')} Message Client</button>
     <div class="modal-divider"></div>
+    ${hasShop ? `
+      <div class="modal-field" style="margin-bottom:10px">
+        <p class="modal-field__label">Where will this job happen?</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+            <input type="radio" name="accept-location" value="client_site" checked>
+            <span style="font-size:.85rem">${ic('pin')} I'll go to the client's site (${job.site_address||'—'})</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+            <input type="radio" name="accept-location" value="worker_shop">
+            <span style="font-size:.85rem">${ic('pin')} Client brings it to my shop (${user.profile.shop_address||'Saved location'})</span>
+          </label>
+        </div>
+      </div>` : ''}
     <button class="btn btn--primary btn--wide" id="confirm-accept-btn">Accept at ₦${Number(job.amount).toLocaleString()}</button>
     <div id="bargain-slot"></div>`;
   modalOverlay.classList.add('is-open');
 
   const acceptBtn = document.getElementById('confirm-accept-btn');
-  acceptBtn.addEventListener('click', () => acceptJob(job.id, acceptBtn, acceptBtn.textContent));
+  acceptBtn.addEventListener('click', () => {
+    const chosen = hasShop
+      ? (document.querySelector('input[name="accept-location"]:checked')?.value || 'client_site')
+      : 'client_site';
+    acceptJob(job.id, acceptBtn, acceptBtn.textContent, chosen);
+  });
 
   const slot = document.getElementById('bargain-slot');
   slot.innerHTML = `<div style="padding:14px 0;text-align:center;color:var(--text-3);font-size:.8rem">${ic('clock')} Checking offer status…</div>`;
@@ -588,7 +781,29 @@ async function openAcceptModal(job) {
     renderBargainBox(slot, job);
   } catch (e) {
     console.error('bargain-status check failed:', e);
-    renderBargainBox(slot, job); // fail open — don't block the worker if the check itself errors
+    renderBargainBox(slot, job);
+  }
+}
+
+async function acceptJob(jobId, btn, originalText, requestedLocation) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }
+  try {
+    const res  = await fetch(`${FLASK}/api/worker/accept-job`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({ job_id:jobId, user_id:user.id, requested_location: requestedLocation || 'client_site' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      modalOverlay.classList.remove('is-open');
+      await loadMyJobs(); await loadOpenJobs();
+      Swal.fire({ title:'Job accepted', text:'Application sent. Wait for client approval.', icon:'success', confirmButtonColor:'#E85C00', ...swalTheme() });
+    } else {
+      Swal.fire({ title:'Error', text:data.message||'Could not accept job.', icon:'error', ...swalTheme() });
+      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    }
+  } catch {
+    Swal.fire({ title:'Network error', text:'Could not reach the server.', icon:'error', ...swalTheme() });
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
   }
 }
 
@@ -626,28 +841,6 @@ function renderBargainBox(slot, job) {
     } catch { errEl.textContent = 'Network error.'; submitBtn.disabled = false; submitBtn.textContent = 'Send Counter-Offer'; }
   });
 }
-
-  async function acceptJob(jobId, btn, originalText) {
-    if (btn) { btn.disabled = true; btn.textContent = 'Accepting…'; }
-    try {
-      const res  = await fetch(`${FLASK}/api/worker/accept-job`, {
-        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-        body: JSON.stringify({ job_id:jobId, user_id:user.id })
-      });
-      const data = await res.json();
-      if (data.success) {
-        modalOverlay.classList.remove('is-open');
-        await loadMyJobs(); await loadOpenJobs();
-        Swal.fire({ title:'Job accepted', text:'Application sent. Wait for client approval.', icon:'success', confirmButtonColor:'#E85C00', ...swalTheme() });
-      } else {
-        Swal.fire({ title:'Error', text:data.message||'Could not accept job.', icon:'error', ...swalTheme() });
-        if (btn) { btn.disabled = false; btn.textContent = originalText; }
-      }
-    } catch {
-      Swal.fire({ title:'Network error', text:'Could not reach the server.', icon:'error', ...swalTheme() });
-      if (btn) { btn.disabled = false; btn.textContent = originalText; }
-    }
-  }
 
   /* ══════════════════════════════════════════════
      MY JOB DETAIL MODAL
