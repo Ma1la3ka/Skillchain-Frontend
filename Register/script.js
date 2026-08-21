@@ -282,10 +282,9 @@
         alert('Server error. Check the Flask console for details.');
         return;
       }
-
       const data = await res.json();
 
-        if (data.success && data.needs_verify) {
+      if (data.success && data.needs_verify) {
         resetBtn();
         verifyEmailDisplay.textContent = data.email;
         goToStep(4);
@@ -298,12 +297,49 @@
         return;
       }
 
+      // ── NEW: handle the failure case — this was completely missing ──
+      resetBtn();
+      const errs = data.errors || {};
+
+      if (errs.role)  { showBanner(errs.role); goToStep(1); }
+      if (errs.name)  { showError(nameInput,  errName,  errs.name);  goToStep(2); }
+      if (errs.phone) { showError(phoneInput, errPhone, errs.phone); goToStep(2); }
+      if (errs.trade) { showError(tradeSelect, errTrade, errs.trade); goToStep(2); }
+      if (errs.password) { showError(pwInput, errPw, errs.password); goToStep(3); }
+
+      if (errs.email) {
+        goToStep(2);
+        if (errs.email.toLowerCase().includes('already registered')) {
+          showError(emailInput, errEmail, errs.email);
+          Swal.fire({
+            title: 'You already have an account',
+            html: `The email <strong>${emailInput.value.trim()}</strong> is already registered.`,
+            icon: 'info',
+            confirmButtonText: 'Go to Login',
+            confirmButtonColor: '#e85c00',
+            showCancelButton: true,
+            cancelButtonText: 'Use a different email'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.location.href = '/Login/index.html';
+            } else {
+              emailInput.focus();
+              emailInput.select();
+            }
+          });
+        } else {
+          showError(emailInput, errEmail, errs.email);
+        }
+      }
+
+      if (errs.general) Swal.fire({ title: 'Error', text: errs.general, icon: 'error', confirmButtonColor: '#e85c00' });
+
     } catch (err) {
       console.error('Fetch error:', err);
       resetBtn();
       showBanner('Network error — make sure Flask is running on port 5000.');
     }
-  });       
+  });
   
   submitVerifyBtn.addEventListener('click', async () => {
     const code = verifyCodeInput.value.trim();
