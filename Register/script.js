@@ -7,7 +7,6 @@
   /* ── DOM refs ─────────────────────────────────────── */
   const workerRadio   = document.getElementById('role-worker');
   const clientRadio   = document.getElementById('role-client');
-  const walletNotice  = document.getElementById('wallet-notice');
   const tradeField    = document.getElementById('trade-field');
 
   const nameInput     = document.getElementById('name');
@@ -121,7 +120,6 @@
   /* ── Role toggle ──────────────────────────────────── */
   function updateRole() {
     const isWorker = workerRadio.checked;
-    walletNotice.classList.toggle('is-visible', isWorker);
     tradeField.classList.toggle('is-visible', isWorker);
     if (!isWorker) { tradeSelect.value = ''; tradeSelect.required = false; }
     else           { tradeSelect.required = true; }
@@ -287,7 +285,7 @@
 
       const data = await res.json();
 
-      if (data.success && data.needs_verify) {
+        if (data.success && data.needs_verify) {
         resetBtn();
         verifyEmailDisplay.textContent = data.email;
         goToStep(4);
