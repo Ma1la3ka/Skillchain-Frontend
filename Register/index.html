@@ -5,193 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Account — SkillChain</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/Register/style.css">
 </head>
 <body>
-
+ 
+  <!-- ICON SPRITE — custom-drawn line icons, no emoji -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 4.6L3 17.2V21h3.8l6.3-6.3a4 4 0 0 0 4.6-5.4l-2.7 2.7-2-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-home" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9h5v-5h2v5h5v-9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-signal" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7M5.5 18.5a9 9 0 0 1 0-13M18.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="icon-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor"/></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="icon-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 6.5l8 6.5 8-6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-phone" viewBox="0 0 24 24"><path d="M5 4h3.2l1.4 4.2-2 1.7c1 2.4 3 4.4 5.4 5.4l1.7-2 4.2 1.4V18a2 2 0 0 1-2.2 2A15.8 15.8 0 0 1 3 5.2 2 2 0 0 1 5 4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="icon-key" viewBox="0 0 24 24"><circle cx="7.5" cy="14.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 12 18 4.5M15 7.5l2 2M18 4.5l2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-hash" viewBox="0 0 24 24"><path d="M9 3 7 21M17 3l-2 18M4 9h16M3 15h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+ 
   <!-- NAV -->
   <nav class="nav">
     <a href="/" class="nav-logo">
-      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      <svg class="icon nav-logo__icon" viewBox="0 0 24 24"><use href="#icon-shield"/></svg>
       SkillChain
     </a>
-    <a href="/login" class="nav-login">Already have an account? <span>Log in →</span></a>
+    <a href="/login" class="nav-login">Already have an account? <span>Log in</span></a>
   </nav>
-
+ 
   <!-- PAGE WRAPPER -->
   <main class="page">
-
+ 
     <!-- LEFT PANEL -->
     <aside class="panel panel--left">
       <div class="panel__content">
         <div class="panel__badge">
-          <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
-            <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <svg class="icon" viewBox="0 0 24 24"><use href="#icon-shield"/></svg>
           Proof of Life · GPS Verified
         </div>
-
+ 
         <h2 class="panel__title">Your skills.<br>Your proof.<br><em>Your money.</em></h2>
         <p class="panel__sub">Join workers building verified reputations across Nigeria — one GPS-confirmed job at a time.</p>
-    <ul class="panel__perks">
-      <li class="perk">
-        <span class="perk__icon">📡</span>
-        <div>
-          <strong>GPS Trust Score</strong>
-          <p>Every verified job builds a score that speaks louder than any certificate.</p>
-        </div>
-      </li>
-      <li class="perk">
-        <span class="perk__icon">🔒</span>
-        <div>
-          <strong>Escrow-Secured Payments</strong>
-          <p>Clients fund the job upfront — you're never chasing payment after the work is done.</p>
-        </div>
-      </li>
-      <li class="perk">
-        <span class="perk__icon">💸</span>
-        <div>
-          <strong>Fast Payouts</strong>
-          <p>Once a job is approved, your money is on its way to your bank account.</p>
-        </div>
-      </li>
-    </ul>
+ 
+        <ul class="panel__perks">
+          <li class="perk">
+            <span class="perk__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-signal"/></svg></span>
+            <div>
+              <strong>GPS trust score</strong>
+              <p>Every verified job builds a score that speaks louder than any certificate.</p>
+            </div>
+          </li>
+          <li class="perk">
+            <span class="perk__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-lock"/></svg></span>
+            <div>
+              <strong>Escrow-secured payments</strong>
+              <p>Clients fund the job upfront — you're never chasing payment after the work is done.</p>
+            </div>
+          </li>
+          <li class="perk">
+            <span class="perk__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-bolt"/></svg></span>
+            <div>
+              <strong>Fast payouts</strong>
+              <p>Once a job is approved, your money is on its way to your bank account.</p>
+            </div>
+          </li>
+        </ul>
       </div>
-      <div class="panel__glow" aria-hidden="true"></div>
+ 
+      <!-- Signature: verification stamp -->
+      <div class="stamp" aria-hidden="true">
+        <svg class="icon stamp__ring" viewBox="0 0 24 24"><use href="#icon-check"/></svg>
+        <span class="stamp__label">GPS · VERIFIED</span>
+      </div>
+      <div class="panel__grid" aria-hidden="true"></div>
     </aside>
-
+ 
     <section class="panel panel--right">
       <div class="form-wrap">
-
+ 
         <div class="form-header">
           <h1 class="form-header__title">Create account</h1>
           <p class="form-header__sub">Join the trust economy for skilled workers.</p>
         </div>
-
+ 
         <div class="progress-steps" aria-label="Form progress">
-        <div class="progress-step is-active" data-step="1">
-          <span class="progress-step__dot">1</span><span class="progress-step__label">Role</span>
+          <div class="progress-step is-active" data-step="1">
+            <span class="progress-step__dot">1</span><span class="progress-step__label">Role</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="2">
+            <span class="progress-step__dot">2</span><span class="progress-step__label">Details</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="3">
+            <span class="progress-step__dot">3</span><span class="progress-step__label">Security</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="4">
+            <span class="progress-step__dot">4</span><span class="progress-step__label">Verify</span>
+          </div>
         </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="2">
-          <span class="progress-step__dot">2</span><span class="progress-step__label">Details</span>
+ 
+        <!-- STEP 4: VERIFY (kept outside the form, matches original behaviour) -->
+        <div class="form-step" id="step-4">
+          <p class="step-label">Check your email</p>
+          <p class="step-copy">We sent a 6-digit code to <strong id="verify-email-display">—</strong>. Enter it below to activate your account.</p>
+ 
+          <div class="field">
+            <label class="field__label" for="verify-code">Verification code</label>
+            <div class="field__wrap">
+              <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-hash"/></svg></span>
+              <input class="field__input field__input--mono" type="text" id="verify-code" maxlength="6" inputmode="numeric" placeholder="123456">
+            </div>
+            <p class="field__error" id="err-verify"></p>
+          </div>
+ 
+          <div class="step-btns step-btns--single">
+            <button type="button" class="btn btn--orange btn--full" id="submit-verify-btn">
+              <span id="verify-text">Verify &amp; continue</span>
+              <svg class="icon btn__arrow" viewBox="0 0 24 24"><use href="#icon-arrow"/></svg>
+              <span id="verify-spinner" class="spinner" style="display:none"></span>
+            </button>
+          </div>
+ 
+          <p class="step-resend">Didn't get it? <a href="#" id="resend-code-link">Resend code</a></p>
         </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="3">
-          <span class="progress-step__dot">3</span><span class="progress-step__label">Security</span>
-        </div>
-        <div class="progress-line"></div>
-        <div class="progress-step" data-step="4">
-          <span class="progress-step__dot">4</span><span class="progress-step__label">Verify</span>
-        </div>
-      </div>
-
-      <div class="form-step" id="step-4">
-      <p class="step-label">Check your email</p>
-      <p style="font-size:.85rem;color:var(--light-muted);margin-bottom:1.25rem;line-height:1.6">
-      We sent a 6-digit code to <strong id="verify-email-display">—</strong>. Enter it below to activate your account.
-      </p>
-
-      <div class="field">
-      <label class="field__label" for="verify-code">Verification code</label>
-      <div class="field__wrap">
-      <span class="field__icon">🔢</span>
-      <input class="field__input" type="text" id="verify-code" maxlength="6" inputmode="numeric" placeholder="123456">
-      </div>
-      <p class="field__error" id="err-verify"></p>
-      </div>
-
-      <button type="button" class="btn btn--orange btn--full" id="submit-verify-btn" style="margin-top:1rem">
-      <span id="verify-text">Verify & Continue →</span>
-      <span id="verify-spinner" class="spinner" style="display:none"></span>
-      </button>
-
-      <p style="text-align:center;font-size:.8rem;color:var(--light-muted);margin-top:1rem">
-      Didn't get it? <a href="#" id="resend-code-link" style="color:var(--orange);font-weight:600">Resend code</a>
-      </p>
-      </div>
+ 
         <!-- NOTE: action="register" — connect to Flask route when backend is ready -->
         <form method="POST" action="/register" id="register-form" novalidate>
-
+ 
           <!-- STEP 1: ROLE -->
           <div class="form-step is-active" id="step-1">
             <p class="step-label">Who are you joining as?</p>
-
+ 
             <div class="role-grid">
               <label class="role-card" id="card-worker">
                 <input type="radio" name="role" value="worker" id="role-worker" required>
                 <div class="role-card__inner" id="box-worker">
-                  <span class="role-card__icon">🔧</span>
-                  <strong class="role-card__title">I'm a Worker</strong>
+                  <span class="role-card__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-wrench"/></svg></span>
+                  <strong class="role-card__title">I'm a worker</strong>
                   <p class="role-card__sub">Mechanic, plumber, electrician, tailor…</p>
-                  <span class="role-card__check" aria-hidden="true">✓</span>
+                  <span class="role-card__check" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-check"/></svg></span>
                 </div>
               </label>
-
+ 
               <label class="role-card" id="card-client">
                 <input type="radio" name="role" value="client" id="role-client" required>
                 <div class="role-card__inner" id="box-client">
-                  <span class="role-card__icon">🏠</span>
-                  <strong class="role-card__title">I'm a Client</strong>
+                  <span class="role-card__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-home"/></svg></span>
+                  <strong class="role-card__title">I'm a client</strong>
                   <p class="role-card__sub">I need reliable skilled help for a job.</p>
-                  <span class="role-card__check" aria-hidden="true">✓</span>
+                  <span class="role-card__check" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-check"/></svg></span>
                 </div>
               </label>
             </div>
-
-            
-
-            <button type="button" class="btn btn--orange btn--full" id="next-1">
-              Continue <span>→</span>
-            </button>
+ 
+            <div class="step-btns step-btns--single">
+              <button type="button" class="btn btn--orange btn--full" id="next-1">
+                Continue
+                <svg class="icon btn__arrow" viewBox="0 0 24 24"><use href="#icon-arrow"/></svg>
+              </button>
+            </div>
           </div>
-
+ 
           <!-- STEP 2: PERSONAL DETAILS -->
           <div class="form-step" id="step-2">
             <p class="step-label">Tell us about yourself</p>
-
+ 
             <div class="field-group">
               <div class="field">
                 <label class="field__label" for="name">Full name</label>
                 <div class="field__wrap">
-                  <span class="field__icon">👤</span>
+                  <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-user"/></svg></span>
                   <input class="field__input" type="text" name="name" id="name"
                          placeholder="Emeka Okafor" required autocomplete="name">
                 </div>
                 <p class="field__error" id="err-name"></p>
               </div>
-
+ 
               <div class="field">
                 <label class="field__label" for="email">Email address</label>
                 <div class="field__wrap">
-                  <span class="field__icon">✉️</span>
+                  <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-mail"/></svg></span>
                   <input class="field__input" type="email" name="email" id="email"
                          placeholder="emeka@example.com" required autocomplete="email">
                 </div>
                 <p class="field__error" id="err-email"></p>
               </div>
-
+ 
               <div class="field">
                 <label class="field__label" for="phone">Phone number</label>
                 <div class="field__wrap">
-                  <span class="field__icon">📱</span>
+                  <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-phone"/></svg></span>
                   <input class="field__input" type="tel" name="phone" id="phone"
                          placeholder="08012345678" autocomplete="tel">
                 </div>
                 <p class="field__error" id="err-phone"></p>
               </div>
-
+ 
               <!-- Trade — shown only for workers -->
               <div class="field trade-field" id="trade-field">
                 <label class="field__label" for="trade">Your trade</label>
                 <div class="field__wrap field__wrap--select">
-                  <span class="field__icon">⚙️</span>
+                  <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-gear"/></svg></span>
                   <select class="field__input field__input--select" name="trade" id="trade">
                     <option value="">Select your trade…</option>
                     <option>Mechanic</option>
@@ -205,37 +228,40 @@
                     <option>HVAC Technician</option>
                     <option>Other</option>
                   </select>
-                  <span class="field__chevron" aria-hidden="true">▾</span>
+                  <span class="field__chevron" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-chevron"/></svg></span>
                 </div>
               </div>
               <p class="field__error" id="err-trade"></p>
             </div>
-
+ 
             <div class="step-btns">
-              <button type="button" class="btn btn--ghost" id="back-2">← Back</button>
-              <button type="button" class="btn btn--orange" id="next-2">Continue →</button>
+              <button type="button" class="btn btn--ghost" id="back-2">Back</button>
+              <button type="button" class="btn btn--orange" id="next-2">Continue
+                <svg class="icon btn__arrow" viewBox="0 0 24 24"><use href="#icon-arrow"/></svg>
+              </button>
             </div>
           </div>
-
+ 
           <!-- STEP 3: SECURITY -->
           <div class="form-step" id="step-3">
             <p class="step-label">Secure your account</p>
-
+ 
             <div class="field-group">
-
+ 
               <!-- Password -->
               <div class="field">
                 <label class="field__label" for="password">Password</label>
                 <div class="field__wrap">
-                  <span class="field__icon">🔒</span>
+                  <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-lock"/></svg></span>
                   <input class="field__input" type="password" name="password" id="password"
                          placeholder="Min 6 characters" minlength="6" required
                          autocomplete="new-password">
-                  <button type="button" class="field__toggle" id="toggle-pw"
-                          aria-label="Show password">👁</button>
+                  <button type="button" class="field__toggle" id="toggle-pw" aria-label="Show password">
+                    <svg class="icon" viewBox="0 0 24 24"><use href="#icon-eye"/></svg>
+                  </button>
                 </div>
                 <p class="field__error" id="err-pw"></p>
-
+ 
                 <!-- Password strength -->
                 <div class="pw-strength">
                   <div class="pw-strength__bars">
@@ -247,25 +273,26 @@
                   <span class="pw-strength__label" id="pw-label">Enter a password</span>
                 </div>
               </div>
-
-              <!-- Confirm password — NEW -->
+ 
+              <!-- Confirm password -->
               <div class="field">
                 <label class="field__label" for="confirm-password">Confirm password</label>
                 <div class="field__wrap">
-                  <span class="field__icon">🔑</span>
+                  <span class="field__icon"><svg class="icon" viewBox="0 0 24 24"><use href="#icon-key"/></svg></span>
                   <input class="field__input" type="password" id="confirm-password"
                          placeholder="Repeat your password" autocomplete="new-password">
-                  <button type="button" class="field__toggle" id="toggle-confirm"
-                          aria-label="Show confirm password">👁</button>
+                  <button type="button" class="field__toggle" id="toggle-confirm" aria-label="Show confirm password">
+                    <svg class="icon" viewBox="0 0 24 24"><use href="#icon-eye"/></svg>
+                  </button>
                 </div>
                 <p class="field__error" id="err-confirm"></p>
               </div>
-
+ 
             </div>
-
+ 
             <!-- Summary card -->
             <div class="summary-card">
-              <p class="summary-card__label">ACCOUNT SUMMARY</p>
+              <p class="summary-card__label">Account summary</p>
               <div class="summary-row">
                 <span class="summary-key">Role</span>
                 <span class="summary-val" id="sum-role">—</span>
@@ -283,30 +310,30 @@
                 <span class="summary-val" id="sum-trade">—</span>
               </div>
             </div>
-
+ 
             <div class="step-btns">
-              <button type="button" class="btn btn--ghost" id="back-3">← Back</button>
+              <button type="button" class="btn btn--ghost" id="back-3">Back</button>
               <button type="submit" class="btn btn--orange" id="submit-btn">
-                <span id="submit-text">Create account →</span>
+                <span id="submit-text">Create account</span>
+                <svg class="icon btn__arrow" viewBox="0 0 24 24"><use href="#icon-arrow"/></svg>
                 <span id="submit-spinner" class="spinner" style="display:none"></span>
               </button>
             </div>
           </div>
-
+ 
         </form>
-
-        <!-- UPDATED footer with forgot password link -->
+ 
         <p class="form-footer">
           Already have an account? <a href="/login">Log in</a>
-          &nbsp;·&nbsp;
+          <span class="form-footer__dot">·</span>
           <a href="/forgot-password" class="form-footer__forgot">Forgot password?</a>
         </p>
-
+ 
       </div>
     </section>
-
+ 
   </main>
-
+ 
   <script src="/Register/script.js"></script>
 </body>
 </html>
