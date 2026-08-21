@@ -39,30 +39,29 @@
 
         <h2 class="panel__title">Your skills.<br>Your proof.<br><em>Your money.</em></h2>
         <p class="panel__sub">Join workers building verified reputations across Nigeria — one GPS-confirmed job at a time.</p>
-
-        <ul class="panel__perks">
-          <li class="perk">
-            <span class="perk__icon">🏦</span>
-            <div>
-              <strong>Free Squad Wallet</strong>
-              <p>Auto-created on signup. Receive payments directly, no bank stress.</p>
-            </div>
-          </li>
-          <li class="perk">
-            <span class="perk__icon">📡</span>
-            <div>
-              <strong>GPS Trust Score</strong>
-              <p>Every verified job builds a score that speaks louder than any certificate.</p>
-            </div>
-          </li>
-          <li class="perk">
-            <span class="perk__icon">💸</span>
-            <div>
-              <strong>Instant Payouts</strong>
-              <p>Geofence passes? Money hits your wallet automatically. Zero waiting.</p>
-            </div>
-          </li>
-        </ul>
+    <ul class="panel__perks">
+      <li class="perk">
+        <span class="perk__icon">📡</span>
+        <div>
+          <strong>GPS Trust Score</strong>
+          <p>Every verified job builds a score that speaks louder than any certificate.</p>
+        </div>
+      </li>
+      <li class="perk">
+        <span class="perk__icon">🔒</span>
+        <div>
+          <strong>Escrow-Secured Payments</strong>
+          <p>Clients fund the job upfront — you're never chasing payment after the work is done.</p>
+        </div>
+      </li>
+      <li class="perk">
+        <span class="perk__icon">💸</span>
+        <div>
+          <strong>Fast Payouts</strong>
+          <p>Once a job is approved, your money is on its way to your bank account.</p>
+        </div>
+      </li>
+    </ul>
       </div>
       <div class="panel__glow" aria-hidden="true"></div>
     </aside>
@@ -75,24 +74,48 @@
           <p class="form-header__sub">Join the trust economy for skilled workers.</p>
         </div>
 
-        <!-- PROGRESS STEPS -->
         <div class="progress-steps" aria-label="Form progress">
-          <div class="progress-step is-active" data-step="1">
-            <span class="progress-step__dot">1</span>
-            <span class="progress-step__label">Role</span>
-          </div>
-          <div class="progress-line"></div>
-          <div class="progress-step" data-step="2">
-            <span class="progress-step__dot">2</span>
-            <span class="progress-step__label">Details</span>
-          </div>
-          <div class="progress-line"></div>
-          <div class="progress-step" data-step="3">
-            <span class="progress-step__dot">3</span>
-            <span class="progress-step__label">Security</span>
-          </div>
+        <div class="progress-step is-active" data-step="1">
+          <span class="progress-step__dot">1</span><span class="progress-step__label">Role</span>
         </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="2">
+          <span class="progress-step__dot">2</span><span class="progress-step__label">Details</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="3">
+          <span class="progress-step__dot">3</span><span class="progress-step__label">Security</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="4">
+          <span class="progress-step__dot">4</span><span class="progress-step__label">Verify</span>
+        </div>
+      </div>
 
+      <div class="form-step" id="step-4">
+      <p class="step-label">Check your email</p>
+      <p style="font-size:.85rem;color:var(--light-muted);margin-bottom:1.25rem;line-height:1.6">
+      We sent a 6-digit code to <strong id="verify-email-display">—</strong>. Enter it below to activate your account.
+      </p>
+
+      <div class="field">
+      <label class="field__label" for="verify-code">Verification code</label>
+      <div class="field__wrap">
+      <span class="field__icon">🔢</span>
+      <input class="field__input" type="text" id="verify-code" maxlength="6" inputmode="numeric" placeholder="123456">
+      </div>
+      <p class="field__error" id="err-verify"></p>
+      </div>
+
+      <button type="button" class="btn btn--orange btn--full" id="submit-verify-btn" style="margin-top:1rem">
+      <span id="verify-text">Verify & Continue →</span>
+      <span id="verify-spinner" class="spinner" style="display:none"></span>
+      </button>
+
+      <p style="text-align:center;font-size:.8rem;color:var(--light-muted);margin-top:1rem">
+      Didn't get it? <a href="#" id="resend-code-link" style="color:var(--orange);font-weight:600">Resend code</a>
+      </p>
+      </div>
         <!-- NOTE: action="register" — connect to Flask route when backend is ready -->
         <form method="POST" action="/register" id="register-form" novalidate>
 
@@ -122,13 +145,7 @@
               </label>
             </div>
 
-            <div class="wallet-notice" id="wallet-notice">
-              <span class="wallet-notice__icon">🏦</span>
-              <div>
-                <strong>Squad Wallet included</strong>
-                <p>A virtual bank account is auto-created when you sign up as a Worker — ready to receive payments immediately.</p>
-              </div>
-            </div>
+            
 
             <button type="button" class="btn btn--orange btn--full" id="next-1">
               Continue <span>→</span>

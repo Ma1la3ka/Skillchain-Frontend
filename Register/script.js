@@ -29,6 +29,14 @@
   const step1 = document.getElementById('step-1');
   const step2 = document.getElementById('step-2');
   const step3 = document.getElementById('step-3');
+  const step4 = document.getElementById('step-4');
+  const verifyCodeInput   = document.getElementById('verify-code');
+  const errVerify         = document.getElementById('err-verify');
+  const verifyEmailDisplay = document.getElementById('verify-email-display');
+  const submitVerifyBtn   = document.getElementById('submit-verify-btn');
+  const verifyText        = document.getElementById('verify-text');
+  const verifySpinner     = document.getElementById('verify-spinner');
+  const resendLink        = document.getElementById('resend-code-link');
 
   const next1Btn      = document.getElementById('next-1');
   const next2Btn      = document.getElementById('next-2');
@@ -47,6 +55,9 @@
   const sumTrade    = document.getElementById('sum-trade');
   const sumTradeRow = document.getElementById('sum-trade-row');
 
+
+
+
   const pwBars = [
     document.getElementById('pw-bar-1'),
     document.getElementById('pw-bar-2'),
@@ -57,7 +68,7 @@
 
   /* ── Helpers ──────────────────────────────────────── */
   function goToStep(n) {
-    [step1, step2, step3].forEach((s, i) => {
+    [step1, step2, step3, step4].forEach((s, i) => {
       s.classList.toggle('is-active', i + 1 === n);
     });
     dots.forEach((dot, i) => {
@@ -276,52 +287,17 @@
 
       const data = await res.json();
 
-      if (data.success) {
-        // Build wallet HTML for success popup
-        let html = 'Your SkillChain account has been created.';
-        if (data.squad) {
-          html = `
-            <p style="margin-bottom:12px">Your account is live and your Squad wallet is ready.</p>
-            <div style="background:#f5f2ee;border-radius:8px;padding:12px 14px;text-align:left;font-size:0.875rem">
-              <div style="margin-bottom:4px"><strong>Bank:</strong> ${data.squad.bank_name}</div>
-              <div><strong>Account No:</strong>
-                <span style="font-family:monospace;font-weight:700;color:#e85c00">
-                  ${data.squad.account_number}
-                </span>
-              </div>
-            </div>
-          `;
-        }
-
-        // Use SweetAlert2 if available, else plain alert
-        if (window.Swal) {
-          Swal.fire({
-            title: '🎉 Account Created!',
-            html,
-            icon: 'success',
-            confirmButtonColor: '#e85c00',
-            confirmButtonText: 'Go to Login →',
-            allowOutsideClick: false
-          }).then((result) => {
-            if (result.isConfirmed) window.location.href = data.redirect;
-          });
-        } else {
-          alert('Account created successfully!');
-          window.location.href = data.redirect;
-        }
-
-      } else {
+      if (data.success && data.needs_verify) {
         resetBtn();
-        const errs = data.errors || {};
+        verifyEmailDisplay.textContent = data.email;
+        goToStep(4);
+        return;
+      }
 
-        // Route each server error back to the correct step + field
-        if (errs.role)     { showBanner(errs.role);                              goToStep(1); }
-        if (errs.name)     { showError(nameInput,   errName,    errs.name);      goToStep(2); }
-        if (errs.email)    { showError(emailInput,  errEmail,   errs.email);     goToStep(2); }
-        if (errs.phone)    { showError(phoneInput,  errPhone,   errs.phone);     goToStep(2); }
-        if (errs.trade)    { showError(tradeSelect, errTrade,   errs.trade);     goToStep(2); }
-        if (errs.password) { showError(pwInput,     errPw,      errs.password);  goToStep(3); }
-        if (errs.general)  { showBanner(errs.general); }
+      if (data.success) {
+        // fallback — shouldn't normally hit this path anymore
+        window.location.href = data.redirect;
+        return;
       }
 
     } catch (err) {
@@ -329,7 +305,72 @@
       resetBtn();
       showBanner('Network error — make sure Flask is running on port 5000.');
     }
+  });       
+  
+  submitVerifyBtn.addEventListener('click', async () => {
+    const code = verifyCodeInput.value.trim();
+    if (!/^\d{6}$/.test(code)) {
+      showError(verifyCodeInput, errVerify, 'Enter the 6-digit code.');
+      return;
+    }
+    clearError(verifyCodeInput, errVerify);
+
+    verifyText.style.display = 'none';
+    verifySpinner.style.display = 'inline-block';
+    submitVerifyBtn.disabled = true;
+
+    try {
+      const res  = await fetch(`${FLASK_URL}/verify-email`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verifyEmailDisplay.textContent, code })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        if (window.Swal) {
+          Swal.fire({
+            title: '🎉 Account Verified!',
+            text: 'Your SkillChain account is ready.',
+            icon: 'success',
+            confirmButtonColor: '#e85c00',
+            confirmButtonText: 'Go to Login →',
+            allowOutsideClick: false
+          }).then(() => { window.location.href = data.redirect; });
+        } else {
+          window.location.href = data.redirect;
+        }
+      } else {
+        showError(verifyCodeInput, errVerify, data.message || 'Invalid code.');
+        verifyText.style.display = 'inline';
+        verifySpinner.style.display = 'none';
+        submitVerifyBtn.disabled = false;
+      }
+    } catch {
+      showError(verifyCodeInput, errVerify, 'Network error. Please try again.');
+      verifyText.style.display = 'inline';
+      verifySpinner.style.display = 'none';
+      submitVerifyBtn.disabled = false;
+    }
   });
+
+  resendLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    resendLink.textContent = 'Sending…';
+    try {
+      const res  = await fetch(`${FLASK_URL}/resend-verification`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verifyEmailDisplay.textContent })
+      });
+      const data = await res.json();
+      resendLink.textContent = 'Resend code';
+      Swal.fire({ title: data.success ? 'Code sent' : 'Error', text: data.message, icon: data.success ? 'success' : 'error', confirmButtonColor: '#e85c00', timer: 2200, showConfirmButton: false });
+    } catch {
+      resendLink.textContent = 'Resend code';
+    }
+  });
+
+
+
 
   /* ── Shake animation ──────────────────────────────── */
   const style = document.createElement('style');

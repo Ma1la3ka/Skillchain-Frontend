@@ -183,16 +183,35 @@
         }
       }, 1800);
   
-      } else {
+            } else {
         setLoading(false);
-        Swal.fire({
-          icon:               'error',
-          title:              'Authentication Failed',
-          text:               data.message || 'Invalid email or password.',
-          confirmButtonColor: '#d33'
-        });
+        if (data.needs_verify) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Email not verified',
+            html: `Please verify <strong>${data.email}</strong> before logging in.`,
+            confirmButtonText: 'Resend code',
+            confirmButtonColor: '#e85c00',
+            showCancelButton: true,
+            cancelButtonText: 'Close'
+          }).then(async (r) => {
+            if (r.isConfirmed) {
+              await fetch(`${FLASK_URL}/resend-verification`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: data.email })
+              });
+              Swal.fire({ title: 'Code sent', text: 'Check your email.', icon: 'success', confirmButtonColor: '#e85c00' });
+            }
+          });
+        } else {
+          Swal.fire({
+            icon:               'error',
+            title:              'Authentication Failed',
+            text:               data.message || 'Invalid email or password.',
+            confirmButtonColor: '#d33'
+          });
+        }
       }
-
     } catch (err) {
       console.error('Login error:', err);
       setLoading(false);
