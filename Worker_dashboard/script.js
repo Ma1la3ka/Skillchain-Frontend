@@ -1362,6 +1362,91 @@ async function rejectClientOffer(jobId, bargainId) {
   }
 }
 
+/* ══════════════════════════════════════════════
+   WITHDRAW PIN CHECK & BANNER
+════════════════════════════════════════════════ */
+async function checkWithdrawPin() {
+  try {
+    const res = await fetch(`${FLASK}/api/worker/pin-status?user_id=${user.id}`, {
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (data.pin_set === false) showPinBanner();
+  } catch (e) { console.error('checkWithdrawPin:', e); }
+}
+
+function showPinBanner() {
+  if (sessionStorage.getItem('pin-banner-dismissed')) return;
+  if (document.getElementById('pin-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'pin-banner';
+  banner.innerHTML = `
+    <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#FF4D2E,#ff8c66);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:0.9rem;font-weight:500;box-shadow:0 4px 20px rgba(255,77,46,0.3);">
+      <span>🔒 Secure your earnings — set a withdraw PIN to protect your payouts.</span>
+      <button onclick="openPinModal()" style="background:#fff;color:#FF4D2E;border:none;padding:8px 18px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;white-space:nowrap;">Set PIN</button>
+      <button onclick="dismissPinBanner()" style="background:transparent;color:rgba(255,255,255,0.8);border:none;font-size:1.2rem;cursor:pointer;padding:4px;">✕</button>
+    </div>`;
+
+  document.body.style.paddingTop = '52px';
+  document.body.appendChild(banner);
+}
+
+function dismissPinBanner() {
+  document.getElementById('pin-banner')?.remove();
+  document.body.style.paddingTop = '';
+  sessionStorage.setItem('pin-banner-dismissed', '1');
+}
+
+async function openPinModal(onComplete) {
+  const { value: formValues, isConfirmed } = await Swal.fire({
+    title: 'Set Withdraw PIN',
+    html: `
+      <p style="color:var(--text-2);font-size:.82rem;margin-bottom:14px;text-align:left">
+        This PIN is required every time you withdraw funds. Choose 4–6 digits.
+      </p>
+      <input type="password" id="pin-new" class="wd-field" placeholder="New PIN (4–6 digits)" maxlength="6" inputmode="numeric">
+      <input type="password" id="pin-confirm" class="wd-field" placeholder="Confirm PIN" maxlength="6" inputmode="numeric">`,
+    confirmButtonText: 'Save PIN',
+    confirmButtonColor: '#E85C00',
+    showCancelButton: true,
+    cancelButtonColor: '#9A968E',
+    ...swalTheme(),
+    preConfirm: () => {
+      const p1 = document.getElementById('pin-new').value;
+      const p2 = document.getElementById('pin-confirm').value;
+      if (!p1 || p1.length < 4) { Swal.showValidationMessage('PIN must be 4–6 digits'); return false; }
+      if (!/^\d+$/.test(p1)) { Swal.showValidationMessage('PIN must be numbers only'); return false; }
+      if (p1 !== p2) { Swal.showValidationMessage('PINs do not match'); return false; }
+      return { pin: p1 };
+    }
+  });
+
+  if (!isConfirmed || !formValues) return;
+
+  try {
+    const res = await fetch(`${FLASK}/api/worker/set-pin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ user_id: user.id, new_pin: formValues.pin })
+    });
+    const data = await res.json();
+    if (data.success) {
+      dismissPinBanner();
+      Swal.fire({ title: 'PIN saved!', text: 'Your withdrawals are now protected.', icon: 'success', confirmButtonColor: '#E85C00', timer: 1500, showConfirmButton: false, ...swalTheme() });
+      if (onComplete) onComplete(); // resume withdraw flow
+    } else {
+      Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+    }
+  } catch {
+    Swal.fire({ title: 'Network error', icon: 'error', ...swalTheme() });
+  }
+}
+
+window.openPinModal = openPinModal;
+window.dismissPinBanner = dismissPinBanner;
+
   window.openWithdrawModal   = openWithdrawModal;
   window.openCertModal       = openCertModal;
   window.closeCertModal      = closeCertModal;
@@ -1538,99 +1623,119 @@ document.getElementById('chat-send-offer-btn')?.addEventListener('click', async 
     Swal.fire({ title: 'Network error', icon: 'error', ...swalTheme() });
   }
 });
+async function openWithdrawModal() {
+  // ── Check PIN first ───────────────────────────────────────────────────
+  let pinSet = false;
+  try {
+    const pinRes = await fetch(`${FLASK}/api/worker/pin-status?user_id=${user.id}`, { credentials: 'include' });
+    const pinData = await pinRes.json();
+    pinSet = pinData.pin_set === true;
+  } catch (e) { console.error('pin-check:', e); }
 
-  /* ══════════════════════════════════════════════
-     WITHDRAW TO BANK
-  ══════════════════════════════════════════════ */
-  async function openWithdrawModal() {
-    Swal.fire({ title:'Loading banks…', allowOutsideClick:false, ...swalTheme(), didOpen:()=>Swal.showLoading() });
-    try {
-      const [profileRes, banksRes] = await Promise.all([
-        fetch(`${FLASK}/api/worker/profile?user_id=${user.id}`, { credentials:'include' }),
-        fetch(`${FLASK}/api/banks`, { credentials:'include' })
-      ]);
-      const profileData = await profileRes.json();
-      const banksData   = await banksRes.json();
-      const profile     = profileData.profile || profileData || {};
-      const banks       = banksData.banks || [];
-      Swal.close();
-
-      if (!banks.length) {
-        Swal.fire({ title:'Bank list unavailable', text:'Could not load banks. Please try again.', icon:'warning', confirmButtonColor:'#E85C00', ...swalTheme() });
-        return;
-      }
-
-      const hasSaved       = profile.bank_account_no && profile.bank_code;
-      const bankOptionsHTML = banks.map(b=>`<option value="${b.code}" ${profile.bank_code===b.code?'selected':''}>${b.name}</option>`).join('');
-
-      await Swal.fire({
-        title:'Withdraw to Bank',
-        html:`
-          <p style="color:var(--text-2);font-size:.82rem;margin-bottom:14px;text-align:left">Funds arrive in your bank within 1–5 minutes.</p>
-          <select id="wd-bank-code" class="wd-field"><option value="">Select your bank</option>${bankOptionsHTML}</select>
-          <input id="wd-account-no" maxlength="10" placeholder="10-digit account number" value="${profile.bank_account_no||''}" class="wd-field">
-          <div id="wd-acct-name" class="wd-acct-name"></div>
-          <input type="number" id="wd-amount" min="100" placeholder="Amount in ₦ (min ₦100)" class="wd-field">`,
-        confirmButtonText:'Withdraw Now', confirmButtonColor:'#E85C00',
-        showCancelButton:true, cancelButtonText:'Cancel', cancelButtonColor:'#9A968E',
-        ...swalTheme(),
-        didOpen: () => {
-          let t = null;
-          async function tryVerify() {
-            const acct   = document.getElementById('wd-account-no').value.trim();
-            const bank   = document.getElementById('wd-bank-code').value;
-            const nameEl = document.getElementById('wd-acct-name');
-            if (acct.length===10 && bank) {
-              nameEl.style.color='#D97706'; nameEl.textContent='Verifying account…';
-              try {
-                const res  = await fetch(`${FLASK}/api/verify-account?account_no=${acct}&bank_code=${bank}`, {credentials:'include'});
-                const data = await res.json();
-                if (data.success) { nameEl.style.color='#16A34A'; nameEl.textContent=data.account_name; nameEl.dataset.verified='true'; nameEl.dataset.accountName=data.account_name; }
-                else { nameEl.style.color='#DC2626'; nameEl.textContent=data.message||'Account not found'; nameEl.dataset.verified='false'; nameEl.dataset.accountName=''; }
-              } catch { nameEl.style.color='#DC2626'; nameEl.textContent='Could not verify — check connection'; nameEl.dataset.verified='false'; }
-            } else { nameEl.textContent=''; nameEl.dataset.verified='false'; }
-          }
-          document.getElementById('wd-account-no').addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(tryVerify,700); });
-          document.getElementById('wd-bank-code').addEventListener('change',  ()=>{ clearTimeout(t); t=setTimeout(tryVerify,300); });
-          if (hasSaved) tryVerify();
-        },
-        preConfirm: () => {
-          const amount   = document.getElementById('wd-amount')?.value;
-          const bankCode = document.getElementById('wd-bank-code')?.value;
-          const acctNo   = document.getElementById('wd-account-no')?.value?.trim();
-          const nameEl   = document.getElementById('wd-acct-name');
-          const bankSel  = document.getElementById('wd-bank-code');
-          const bankName = bankSel?.options[bankSel.selectedIndex]?.text||'';
-          if (!bankCode)                      { Swal.showValidationMessage('Please select your bank'); return false; }
-          if (!acctNo||acctNo.length!==10)    { Swal.showValidationMessage('Enter a valid 10-digit account number'); return false; }
-          if (!amount||Number(amount)<100)    { Swal.showValidationMessage('Minimum withdrawal is ₦100'); return false; }
-          return { amount, bankCode, accountNo:acctNo, bankName, acctName:nameEl?.dataset.accountName||'' };
-        }
-      }).then(async result => {
-        if (!result.isConfirmed||!result.value) return;
-        const { amount, bankCode, accountNo, bankName, acctName } = result.value;
-        Swal.fire({ title:'Processing…', text:'Sending withdrawal request.', allowOutsideClick:false, ...swalTheme(), didOpen:()=>Swal.showLoading() });
-        try {
-          const res  = await fetch(`${FLASK}/api/worker/withdraw`, {
-            method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-            body: JSON.stringify({ user_id:user.id, amount:Number(amount), bank_code:bankCode, account_no:accountNo, bank_name:bankName, account_name:acctName })
-          });
-          const data = await res.json();
-          Swal.fire({ title:data.success?'Withdrawal initiated':'Failed', text:data.message, icon:data.success?'success':'error', confirmButtonColor:'#E85C00', ...swalTheme() });
-          if (data.success) {
-            user.profile = user.profile||{};
-            user.profile.total_withdrawn = (parseFloat(user.profile.total_withdrawn)||0) + Number(amount);
-            renderStats(user.profile);
-            renderEarnings();
-          }
-        } catch { Swal.fire({ title:'Network error', text:'Could not reach the server.', icon:'error', confirmButtonColor:'#E85C00', ...swalTheme() }); }
-      });
-    } catch (e) {
-      Swal.close();
-      Swal.fire({ title:'Error', text:'Something went wrong loading the form.', icon:'error', ...swalTheme() });
-    }
+  if (!pinSet) {
+    // Force them to set PIN before they can even see the withdraw form
+    openPinModal(() => openWithdrawModal()); // retry after PIN is set
+    return;
   }
 
+  Swal.fire({ title:'Loading banks…', allowOutsideClick:false, ...swalTheme(), didOpen:()=>Swal.showLoading() });
+  try {
+    const [profileRes, banksRes] = await Promise.all([
+      fetch(`${FLASK}/api/worker/profile?user_id=${user.id}`, { credentials:'include' }),
+      fetch(`${FLASK}/api/banks`, { credentials:'include' })
+    ]);
+    const profileData = await profileRes.json();
+    const banksData   = await banksRes.json();
+    const profile     = profileData.profile || profileData || {};
+    const banks       = banksData.banks || [];
+    Swal.close();
+
+    if (!banks.length) {
+      Swal.fire({ title:'Bank list unavailable', text:'Could not load banks. Please try again.', icon:'warning', confirmButtonColor:'#E85C00', ...swalTheme() });
+      return;
+    }
+
+    const hasSaved       = profile.bank_account_no && profile.bank_code;
+    const bankOptionsHTML = banks.map(b=>`<option value="${b.code}" ${profile.bank_code===b.code?'selected':''}>${b.name}</option>`).join('');
+
+    await Swal.fire({
+      title:'Withdraw to Bank',
+      html:`
+        <p style="color:var(--text-2);font-size:.82rem;margin-bottom:14px;text-align:left">Funds arrive in your bank within 1–5 minutes.</p>
+        <select id="wd-bank-code" class="wd-field"><option value="">Select your bank</option>${bankOptionsHTML}</select>
+        <input id="wd-account-no" maxlength="10" placeholder="10-digit account number" value="${profile.bank_account_no||''}" class="wd-field">
+        <div id="wd-acct-name" class="wd-acct-name"></div>
+        <input type="number" id="wd-amount" min="100" placeholder="Amount in ₦ (min ₦100)" class="wd-field">
+        <input type="password" id="wd-pin" maxlength="6" placeholder="Withdraw PIN" class="wd-field" inputmode="numeric">`,
+      confirmButtonText:'Withdraw Now', confirmButtonColor:'#E85C00',
+      showCancelButton:true, cancelButtonText:'Cancel', cancelButtonColor:'#9A968E',
+      ...swalTheme(),
+      didOpen: () => {
+        let t = null;
+        async function tryVerify() {
+          const acct   = document.getElementById('wd-account-no').value.trim();
+          const bank   = document.getElementById('wd-bank-code').value;
+          const nameEl = document.getElementById('wd-acct-name');
+          if (acct.length===10 && bank) {
+            nameEl.style.color='#D97706'; nameEl.textContent='Verifying account…';
+            try {
+              const res  = await fetch(`${FLASK}/api/verify-account?account_no=${acct}&bank_code=${bank}`, {credentials:'include'});
+              const data = await res.json();
+              if (data.success) { nameEl.style.color='#16A34A'; nameEl.textContent=data.account_name; nameEl.dataset.verified='true'; nameEl.dataset.accountName=data.account_name; }
+              else { nameEl.style.color='#DC2626'; nameEl.textContent=data.message||'Account not found'; nameEl.dataset.verified='false'; nameEl.dataset.accountName=''; }
+            } catch { nameEl.style.color='#DC2626'; nameEl.textContent='Could not verify — check connection'; nameEl.dataset.verified='false'; }
+          } else { nameEl.textContent=''; nameEl.dataset.verified='false'; }
+        }
+        document.getElementById('wd-account-no').addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(tryVerify,700); });
+        document.getElementById('wd-bank-code').addEventListener('change',  ()=>{ clearTimeout(t); t=setTimeout(tryVerify,300); });
+        if (hasSaved) tryVerify();
+      },
+      preConfirm: () => {
+        const amount   = document.getElementById('wd-amount')?.value;
+        const bankCode = document.getElementById('wd-bank-code')?.value;
+        const acctNo   = document.getElementById('wd-account-no')?.value?.trim();
+        const pin      = document.getElementById('wd-pin')?.value?.trim();
+        const nameEl   = document.getElementById('wd-acct-name');
+        const bankSel  = document.getElementById('wd-bank-code');
+        const bankName = bankSel?.options[bankSel.selectedIndex]?.text||'';
+        if (!bankCode)                      { Swal.showValidationMessage('Please select your bank'); return false; }
+        if (!acctNo||acctNo.length!==10)    { Swal.showValidationMessage('Enter a valid 10-digit account number'); return false; }
+        if (!amount||Number(amount)<100)    { Swal.showValidationMessage('Minimum withdrawal is ₦100'); return false; }
+        if (!pin||pin.length<4)             { Swal.showValidationMessage('Enter your withdraw PIN'); return false; }
+        return { amount, bankCode, accountNo:acctNo, bankName, acctName:nameEl?.dataset.accountName||'', pin };
+      }
+    }).then(async result => {
+      if (!result.isConfirmed||!result.value) return;
+      const { amount, bankCode, accountNo, bankName, acctName, pin } = result.value;
+      Swal.fire({ title:'Processing…', text:'Sending withdrawal request.', allowOutsideClick:false, ...swalTheme(), didOpen:()=>Swal.showLoading() });
+      try {
+        const res  = await fetch(`${FLASK}/api/worker/withdraw`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+          body: JSON.stringify({ user_id:user.id, amount:Number(amount), bank_code:bankCode, account_no:accountNo, bank_name:bankName, account_name:acctName, pin })
+        });
+        const data = await res.json();
+
+        // ── Catch "needs PIN setup" fallback ─────────────────────────────
+        if (!data.success && data.needs_pin_setup) {
+          Swal.close();
+          openPinModal(() => openWithdrawModal());
+          return;
+        }
+
+        Swal.fire({ title:data.success?'Withdrawal initiated':'Failed', text:data.message, icon:data.success?'success':'error', confirmButtonColor:'#E85C00', ...swalTheme() });
+        if (data.success) {
+          user.profile = user.profile||{};
+          user.profile.total_withdrawn = (parseFloat(user.profile.total_withdrawn)||0) + Number(amount);
+          renderStats(user.profile);
+          renderEarnings();
+        }
+      } catch { Swal.fire({ title:'Network error', text:'Could not reach the server.', icon:'error', confirmButtonColor:'#E85C00', ...swalTheme() }); }
+    });
+  } catch (e) {
+    Swal.close();
+    Swal.fire({ title:'Error', text:'Something went wrong loading the form.', icon:'error', ...swalTheme() });
+  }
+}
 
 async function openClientPublicProfile(clientId) {
   if (!clientId) return;
@@ -1674,6 +1779,7 @@ async function openClientPublicProfile(clientId) {
     if (!ok) return;
     await Promise.all([loadProfile(), loadMyJobs()]);
     if (user.profile) renderStats(user.profile);
+    checkWithdrawPin();
     setInterval(loadMyJobs, 15_000);
     setInterval(loadConversations, 15_000);
     setInterval(() => {
