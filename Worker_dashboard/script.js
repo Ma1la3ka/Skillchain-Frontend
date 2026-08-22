@@ -425,7 +425,7 @@ function renderConversationsList(conversations) {
       const data = await res.json();
       user.profile = data;
       renderTrustCard(data.trust_score, data.jobs_completed);
-      renderWalletCard(data);
+      renderEarningsOverview(data);
     } catch (e) {
       console.error('loadProfile:', e);
       renderTrustCard(user.trust_score || 0, user.jobs_completed || 0);
@@ -512,21 +512,124 @@ function renderConversationsList(conversations) {
   /* ══════════════════════════════════════════════
      WALLET CARD (overview — kept for backward compat)
   ══════════════════════════════════════════════ */
-  function renderWalletCard(profile) {
-    const numEl    = document.getElementById('wallet-num');
-    const bankEl   = document.getElementById('wallet-bank');
-    const statusEl = document.getElementById('wallet-status');
-    if (!numEl) return; // overview wallet card may not exist on all pages
-    if (profile.squad_account_number) {
-      numEl.textContent      = profile.squad_account_number;
-      bankEl.textContent     = profile.squad_bank_name || 'Squad Sandbox Bank';
-      statusEl.style.display = 'flex';
-    } else {
-      numEl.textContent      = 'Wallet not linked yet';
-      bankEl.textContent     = 'Complete a verified job to activate your wallet';
-      statusEl.style.display = 'none';
-    }
-  }
+  function renderEarningsOverview(profile) {
+  const container = document.getElementById('earnings-overview');
+  if (!container) return;
+
+  const available = profile.escrow_balance != null
+    ? parseFloat(profile.escrow_balance)
+    : Math.max(0, allMyJobs
+        .filter(j => j.status === 'paid')
+        .reduce((s, j) => s + parseFloat(j.amount || 0), 0)
+        - parseFloat(profile.total_withdrawn || 0));
+
+  const pending = allMyJobs
+    .filter(j => ['assigned', 'pending_verification', 'verified'].includes(j.status))
+    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+
+  const totalEarned = allMyJobs
+    .filter(j => j.status === 'paid')
+    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+
+  const hasBank = profile.bank_account_no && profile.bank_code;
+
+  container.innerHTML = `
+    <div class="earnings-card">
+      <div class="earnings-card__label">Available Balance</div>
+      <div class="earnings-card__amount">
+        <span>₦</span>${available.toLocaleString()}
+      </div>
+      <div class="earnings-card__meta">
+        <div class="earnings-card__meta-item">
+          <span class="earnings-card__meta-label">Total Earned</span>
+          <span class="earnings-card__meta-value">₦${totalEarned.toLocaleString()}</span>
+        </div>
+        <div class="earnings-card__meta-item">
+          <span class="earnings-card__meta-label">In Escrow</span>
+          <span class="earnings-card__meta-value" style="color: var(--verified);">₦${pending.toLocaleString()}</span>
+        </div>
+        <div class="earnings-card__meta-item">
+          <span class="earnings-card__meta-label">Jobs Done</span>
+          <span class="earnings-card__meta-value">${profile.jobs_completed || 0}</span>
+        </div>
+      </div>
+      <div class="earnings-card__actions">
+        ${available >= 100 ? `
+          <button class="btn-earnings btn-earnings--primary" onclick="openWithdrawModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Withdraw to Bank
+          </button>
+        ` : `
+          <button class="btn-earnings btn-earnings--primary" disabled style="opacity:0.5;cursor:not-allowed;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Min. ₦100 to withdraw
+          </button>
+        `}
+        <button class="btn-earnings btn-earnings--ghost" onclick="showView('earnings')">
+          View History →
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-tile">
+        <div class="stat-tile__icon stat-tile__icon--jobs">✓</div>
+        <div class="stat-tile__label">Completed</div>
+        <div class="stat-tile__value">${profile.jobs_completed || 0}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__icon stat-tile__icon--rating">★</div>
+        <div class="stat-tile__label">Trust Score</div>
+        <div class="stat-tile__value">${parseFloat(profile.trust_score || 0).toFixed(1)}<span style="font-size:0.6em;color:var(--text-faint)">/5</span></div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__icon stat-tile__icon--balance">₦</div>
+        <div class="stat-tile__label">This Month</div>
+        <div class="stat-tile__value">₦${getThisMonthEarnings().toLocaleString()}</div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <a class="quick-action" onclick="showView('find-jobs')">
+        <div class="quick-action__icon">🔍</div>
+        <div class="quick-action__text">
+          <span class="quick-action__title">Find Jobs</span>
+          <span class="quick-action__sub">Browse available work</span>
+        </div>
+      </a>
+      <a class="quick-action" onclick="showView('my-jobs')">
+        <div class="quick-action__icon">📋</div>
+        <div class="quick-action__text">
+          <span class="quick-action__title">My Jobs</span>
+          <span class="quick-action__sub">${allMyJobs.filter(j => ['assigned','pending_review'].includes(j.status)).length} active</span>
+        </div>
+      </a>
+      <a class="quick-action" onclick="showView('profile')">
+        <div class="quick-action__icon">👤</div>
+        <div class="quick-action__text">
+          <span class="quick-action__title">Profile</span>
+          <span class="quick-action__sub">Edit skills & shop</span>
+        </div>
+      </a>
+      <a class="quick-action" onclick="openCertModal()">
+        <div class="quick-action__icon">🏆</div>
+        <div class="quick-action__text">
+          <span class="quick-action__title">Certificate</span>
+          <span class="quick-action__sub">Download proof</span>
+        </div>
+      </a>
+    </div>
+  `;
+}
+
+// Helper for monthly earnings
+function getThisMonthEarnings() {
+  const now = new Date();
+  return allMyJobs
+    .filter(j => j.status === 'paid' && new Date(j.paid_at || j.created_at).getMonth() === now.getMonth())
+    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+}
+
 
   /* ══════════════════════════════════════════════
      STATS + LIFECYCLE + SPARKLINE

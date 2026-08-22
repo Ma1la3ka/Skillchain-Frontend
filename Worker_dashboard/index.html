@@ -13,7 +13,211 @@
     document.documentElement.setAttribute('data-theme', theme);
   })();
 </script>
+
+<style>
+  /* Earnings Overview Card */
+  .earnings-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+    border: 1px solid rgba(255, 77, 46, 0.15);
+    border-radius: 20px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .earnings-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255,77,46,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .earnings-card__label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .earnings-card__amount {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .earnings-card__amount span {
+    font-size: 0.5em;
+    color: var(--text-dim);
+    vertical-align: super;
+  }
+  .earnings-card__meta {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .earnings-card__meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .earnings-card__meta-label {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+  }
+  .earnings-card__meta-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .earnings-card__actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .btn-earnings {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-earnings--primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-earnings--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(255, 77, 46, 0.25);
+  }
+  .btn-earnings--ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-earnings--ghost:hover {
+    border-color: var(--text-dim);
+    background: rgba(255,255,255,0.03);
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .stat-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .stat-tile:hover {
+    border-color: var(--border-hover);
+  }
+  .stat-tile__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+  }
+  .stat-tile__icon--jobs { background: rgba(0, 229, 176, 0.1); color: var(--verified); }
+  .stat-tile__icon--rating { background: rgba(255, 179, 71, 0.1); color: #ffb347; }
+  .stat-tile__icon--balance { background: rgba(255, 77, 46, 0.1); color: var(--accent); }
+  .stat-tile__label {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .stat-tile__value {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Quick Actions */
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .quick-action {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .quick-action:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .quick-action__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--surface-raised);
+    display: grid;
+    place-items: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .quick-action__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .quick-action__title {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .quick-action__sub {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .quick-actions { grid-template-columns: 1fr; }
+    .earnings-card__meta { flex-direction: column; gap: 12px; }
+    .earnings-card__actions { flex-direction: column; }
+    .btn-earnings { width: 100%; justify-content: center; }
+  }
+</style>
+
+
 </head>
+
+
 <body>
 
 <div class="sidebar-scrim" id="sidebar-scrim"></div>

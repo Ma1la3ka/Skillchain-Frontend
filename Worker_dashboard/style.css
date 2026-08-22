@@ -736,3 +736,5 @@ svg{ display:block; }
 .chat-date-divider{text-align:center;font-size:.7rem;color:var(--text-3);margin:12px 0;position:relative}
 .chat-date-divider span{background:var(--surface);padding:0 10px;position:relative;z-index:1}
 .chat-date-divider::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border)}
+
+
