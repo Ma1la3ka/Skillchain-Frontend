@@ -1,9 +1,7 @@
 /* ═══════════════════════════════════════════════════
-   SKILLCHAIN — Landing Page JS
-   Purposeful interactions only — no scattered effects
+   SKILLCHAIN — Landing Page Interactions
 ═══════════════════════════════════════════════════ */
 
-/* ── Nav scroll shadow ── */
 function initNavScroll() {
   const nav = document.getElementById('sc-nav');
   if (!nav) return;
@@ -12,9 +10,8 @@ function initNavScroll() {
   tick();
 }
 
-/* ── Mobile nav ── */
 function initMobileNav() {
-  const btn   = document.getElementById('sc-hamburger');
+  const btn = document.getElementById('sc-hamburger');
   const links = document.getElementById('sc-nav-links');
   if (!btn || !links) return;
 
@@ -30,91 +27,53 @@ function initMobileNav() {
     btn.setAttribute('aria-expanded', String(open));
   });
 
-  links.querySelectorAll('a, button').forEach(el => el.addEventListener('click', close));
-  document.addEventListener('click', e => {
+  links.querySelectorAll('a, button').forEach((el) => el.addEventListener('click', close));
+  document.addEventListener('click', (e) => {
     if (!btn.contains(e.target) && !links.contains(e.target)) close();
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
-/* ── Hero artisan cards: staggered slide-in from right ── */
-function initHeroCards() {
-  const cards = document.querySelectorAll('.artisan-card');
-  cards.forEach((card, i) => {
-    setTimeout(() => card.classList.add('card-in'), 420 + i * 90);
-  });
-}
-
-/* ── How-it-works: step activates when it enters viewport ──
-   Uses IntersectionObserver to light up each step in sequence
-   as the user scrolls through, like following the process.     */
 function initHowSteps() {
-  const steps = document.querySelectorAll('.js-howstep');
+  const steps = document.querySelectorAll('.js-step');
   if (!steps.length) return;
-
-  // We track which is the current "deepest seen" step
   let deepest = -1;
 
   const obs = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       if (!entry.isIntersecting) return;
       const idx = [...steps].indexOf(entry.target);
       if (idx > deepest) deepest = idx;
-
-      // Mark all before as done, current as active
       steps.forEach((s, i) => {
-        s.classList.remove('step-active', 'step-done');
-        if (i < deepest) s.classList.add('step-done');
-        if (i === deepest) s.classList.add('step-active');
+        s.classList.remove('is-active', 'is-done');
+        if (i < deepest) s.classList.add('is-done');
+        if (i === deepest) s.classList.add('is-active');
       });
     });
   }, { threshold: 0.6, rootMargin: '-80px 0px -120px 0px' });
 
-  steps.forEach(s => obs.observe(s));
+  steps.forEach((s) => obs.observe(s));
 }
 
-/* ── Diff section items: stagger in when parent enters view ── */
-function initDiffItems() {
-  const items = document.querySelectorAll('.js-diffitem');
+function initRevealGroup(selector, parentSelector, delayStep) {
+  const items = document.querySelectorAll(selector);
   if (!items.length) return;
-
   const obs = new IntersectionObserver((entries) => {
-    if (entries.some(e => e.isIntersecting)) {
-      items.forEach((item, i) => {
-        setTimeout(() => item.classList.add('item-in'), i * 100);
-      });
+    if (entries.some((e) => e.isIntersecting)) {
+      items.forEach((item, i) => setTimeout(() => item.classList.add('is-in'), i * delayStep));
       obs.disconnect();
     }
-  }, { threshold: 0.15 });
-
-  // Observe the parent grid
-  const grid = items[0].closest('.diff-grid');
-  if (grid) obs.observe(grid);
+  }, { threshold: 0.1 });
+  const parent = items[0].closest(parentSelector);
+  obs.observe(parent || items[0]);
 }
 
-/* ── Talent cards: stagger in as grid enters view ── */
-function initTalentCards() {
-  const cards = document.querySelectorAll('.js-talentcard');
-  if (!cards.length) return;
-
-  const obs = new IntersectionObserver((entries) => {
-    if (entries.some(e => e.isIntersecting)) {
-      cards.forEach((card, i) => {
-        setTimeout(() => card.classList.add('card-in'), i * 70);
-      });
-      obs.disconnect();
-    }
-  }, { threshold: 0.08 });
-
-  const grid = cards[0].closest('.talent-grid');
-  if (grid) obs.observe(grid);
-}
-
-/* ── Smooth anchor scrolling ── */
 function initSmoothScroll() {
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener('click', e => {
-      const t = document.querySelector(a.getAttribute('href'));
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href');
+      if (href.length < 2) return;
+      const t = document.querySelector(href);
       if (!t) return;
       e.preventDefault();
       t.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -122,135 +81,106 @@ function initSmoothScroll() {
   });
 }
 
-/* ── Active artisan card: cycle highlight every 3s
-   Gives the list a sense of a live, real-time feed    ── */
-function initActiveCard() {
-  const cards = document.querySelectorAll('.artisan-card');
-  if (!cards.length) return;
+function initManifestCycle() {
+  const rows = document.querySelectorAll('.js-mrow');
+  if (!rows.length) return;
   let current = 0;
+  rows[0].classList.add('is-active');
 
   function advance() {
-    cards[current].classList.remove('artisan-card--active');
-    current = (current + 1) % cards.length;
-    cards[current].classList.add('artisan-card--active');
+    rows[current].classList.remove('is-active');
+    current = (current + 1) % rows.length;
+    rows[current].classList.add('is-active');
   }
-  
-// ── Contact Modal ─────────────────────────────────────────────
-const overlay = document.getElementById('modal-overlay');
-const openBtns = [
-    document.getElementById('open-contact'),
-    document.getElementById('footer-contact')
-];
-const closeBtn = document.getElementById('modal-close');
 
-function openModal() {
-    overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
+  const obs = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      const interval = setInterval(advance, 2600);
+      const cleanup = new IntersectionObserver((e) => { if (!e[0].isIntersecting) clearInterval(interval); });
+      cleanup.observe(rows[0].closest('.manifest-list'));
+      obs.disconnect();
+    }
+  }, { threshold: 0.4 });
+
+  obs.observe(rows[0].closest('.manifest-list'));
 }
 
-function closeModal() {
-    overlay.classList.remove('open');
-    document.body.style.overflow = '';
-}
+function initContactModal() {
+  const overlay = document.getElementById('modal-overlay');
+  const closeBtn = document.getElementById('modal-close');
+  const openBtns = [document.getElementById('footer-contact')].filter(Boolean);
+  if (!overlay || !closeBtn) return;
 
-openBtns.forEach(btn => btn && btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    openModal();
-}));
+  function openModal(e) { e.preventDefault(); overlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeModal() { overlay.classList.remove('open'); document.body.style.overflow = ''; }
 
-closeBtn.addEventListener('click', closeModal);
+  openBtns.forEach((btn) => btn.addEventListener('click', openModal));
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeModal();
-});
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-});
-
-
-const form = document.getElementById('contact-form');
-const submitBtn = document.getElementById('submit-btn');
+  const form = document.getElementById('contact-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const result = document.getElementById('result');
+  if (!form) return;
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-
     const name = form.querySelector('input[name="name"]').value;
     const message = form.querySelector('textarea[name="message"]').value;
 
-    if (name.length < 3) {
-        result.textContent = "Please enter your full name.";
-        result.style.color = "#ff4d4d";
-        return;
+    if (name.trim().length < 3) {
+      result.textContent = 'Please enter your full name.';
+      result.style.color = '#c0392b';
+      return;
     }
-
-    if (message.length < 10) {
-        result.textContent = "Message is too short. Please give more detail.";
-        result.style.color = "#ff4d4d";
-        return;
+    if (message.trim().length < 10) {
+      result.textContent = 'Message is too short — please give more detail.';
+      result.style.color = '#c0392b';
+      return;
     }
 
     const formData = new FormData(form);
     const json = JSON.stringify(Object.fromEntries(formData));
 
-    result.textContent = "Sending...";
-    result.style.color = "#6366f1";
+    result.textContent = 'Sending…';
+    result.style.color = '#857a63';
     submitBtn.disabled = true;
 
     fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: json
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: json
     })
-    .then(async response => {
+      .then(async (response) => {
         const data = await response.json();
         if (response.status === 200) {
-            result.textContent = "✓ Message sent successfully!";
-            result.style.color = "#00DFD8";
-            form.reset();
+          result.textContent = 'Message sent successfully.';
+          result.style.color = '#1f7a4d';
+          form.reset();
         } else {
-            result.textContent = data.message || "Something went wrong.";
-            result.style.color = "#ff4d4d";
+          result.textContent = data.message || 'Something went wrong.';
+          result.style.color = '#c0392b';
         }
-    })
-    .catch(() => {
-        result.textContent = "Network error. Please try again.";
-        result.style.color = "#ff4d4d";
-    })
-    .finally(() => {
+      })
+      .catch(() => {
+        result.textContent = 'Network error — please try again.';
+        result.style.color = '#c0392b';
+      })
+      .finally(() => {
         submitBtn.disabled = false;
-        setTimeout(() => { result.textContent = ""; }, 5000);
-    });
-});
-
-
-  // Don't start until cards are in view
-  const obs = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) {
-      const interval = setInterval(advance, 3000);
-      // Clean up if list leaves view
-      const cleanup = new IntersectionObserver((e) => {
-        if (!e[0].isIntersecting) clearInterval(interval);
+        setTimeout(() => { result.textContent = ''; }, 5000);
       });
-      cleanup.observe(cards[0].closest('.artisan-list'));
-      obs.disconnect();
-    }
-  }, { threshold: 0.5 });
-
-  const list = cards[0].closest('.artisan-list');
-  if (list) obs.observe(list);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initNavScroll();
   initMobileNav();
-  initHeroCards();
   initHowSteps();
-  initDiffItems();
-  initTalentCards();
+  initRevealGroup('.js-diffitem', '.diff__grid', 100);
+  initRevealGroup('.js-talentcard', '.talent__grid', 70);
   initSmoothScroll();
-  initActiveCard();
+  initManifestCycle();
+  initContactModal();
 });
