@@ -40,9 +40,6 @@
     alert:   '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>',
     download:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 4v11M7 11l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     shield:  '<svg width="46" height="46" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    comment: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v12H8l-4 4V4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
-    trophy:  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M8 4h8v5a4 4 0 01-8 0V4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 5H5a2 2 0 002 4M16 5h3a2 2 0 01-2 4M10 13v3m4-3v3M8 20h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
-    naira:   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M6 4v16M18 4v16M6 9h12M6 15h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
     star: '★', starEmpty: '☆'
   };
   function ic(name) { return ICON[name] || ''; }
@@ -494,38 +491,26 @@ function renderConversationsList(conversations) {
 
   /* ══════════════════════════════════════════════
      TRUST CARD
-     NOTE: the ring/stars markup this used to write to (trust-score-val,
-     trust-ring-circle, trust-stars, trust-verified-pill) was part of the
-     old three-card overview row. That row has been replaced by the single
-     #earnings-overview card, which now surfaces trust score as one of its
-     stat tiles instead. This function is guarded so it's safe to keep
-     calling — if those legacy elements ever come back it'll still work,
-     and if they don't, it's a no-op instead of throwing.
   ══════════════════════════════════════════════ */
   const RING_CIRCUMFERENCE = 2 * Math.PI * 66;
 
   function renderTrustCard(score, jobsDone) {
-    const scoreEl = document.getElementById('trust-score-val');
-    if (!scoreEl) return; // legacy trust ring markup no longer in the DOM
-
     score = parseFloat(score) || 0;
     const pct    = Math.min(100, Math.round((score / 5) * 100));
     const filled = Math.round(score);
-    scoreEl.textContent = score.toFixed(1);
+    document.getElementById('trust-score-val').textContent       = score.toFixed(1);
     document.getElementById('trust-verified-pill').innerHTML     = `${ic('check')} ${jobsDone || 0} Verified Job${jobsDone === 1 ? '' : 's'}`;
     document.getElementById('trust-stars').innerHTML = Array.from({ length: 5 }, (_, i) =>
       `<span class="${i < filled ? 'is-filled' : ''}">${i < filled ? ICON.star : ICON.starEmpty}</span>`).join('');
     requestAnimationFrame(() => {
-      const ring = document.getElementById('trust-ring-circle');
-      if (!ring) return;
       const offset = RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * pct / 100);
-      ring.style.strokeDasharray  = RING_CIRCUMFERENCE;
-      ring.style.strokeDashoffset = offset;
+      document.getElementById('trust-ring-circle').style.strokeDasharray  = RING_CIRCUMFERENCE;
+      document.getElementById('trust-ring-circle').style.strokeDashoffset = offset;
     });
   }
 
   /* ══════════════════════════════════════════════
-     EARNINGS OVERVIEW CARD (renders into #earnings-overview)
+     WALLET CARD (overview — kept for backward compat)
   ══════════════════════════════════════════════ */
   function renderEarningsOverview(profile) {
   const container = document.getElementById('earnings-overview');
@@ -545,6 +530,8 @@ function renderConversationsList(conversations) {
   const totalEarned = allMyJobs
     .filter(j => j.status === 'paid')
     .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+
+  const hasBank = profile.bank_account_no && profile.bank_code;
 
   container.innerHTML = `
     <div class="earnings-card">
@@ -569,12 +556,12 @@ function renderConversationsList(conversations) {
       <div class="earnings-card__actions">
         ${available >= 100 ? `
           <button class="btn-earnings btn-earnings--primary" onclick="openWithdrawModal()">
-            ${ic('naira')}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             Withdraw to Bank
           </button>
         ` : `
           <button class="btn-earnings btn-earnings--primary" disabled style="opacity:0.5;cursor:not-allowed;">
-            ${ic('naira')}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             Min. ₦100 to withdraw
           </button>
         `}
@@ -586,17 +573,17 @@ function renderConversationsList(conversations) {
 
     <div class="stats-grid">
       <div class="stat-tile">
-        <div class="stat-tile__icon stat-tile__icon--jobs">${ic('check')}</div>
+        <div class="stat-tile__icon stat-tile__icon--jobs">✓</div>
         <div class="stat-tile__label">Completed</div>
         <div class="stat-tile__value">${profile.jobs_completed || 0}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-tile__icon stat-tile__icon--rating">${ICON.star}</div>
+        <div class="stat-tile__icon stat-tile__icon--rating">★</div>
         <div class="stat-tile__label">Trust Score</div>
         <div class="stat-tile__value">${parseFloat(profile.trust_score || 0).toFixed(1)}<span style="font-size:0.6em;color:var(--text-faint)">/5</span></div>
       </div>
       <div class="stat-tile">
-        <div class="stat-tile__icon stat-tile__icon--balance">${ic('naira')}</div>
+        <div class="stat-tile__icon stat-tile__icon--balance">₦</div>
         <div class="stat-tile__label">This Month</div>
         <div class="stat-tile__value">₦${getThisMonthEarnings().toLocaleString()}</div>
       </div>
@@ -604,28 +591,28 @@ function renderConversationsList(conversations) {
 
     <div class="quick-actions">
       <a class="quick-action" onclick="showView('find-jobs')">
-        <div class="quick-action__icon">${ic('search')}</div>
+        <div class="quick-action__icon">🔍</div>
         <div class="quick-action__text">
           <span class="quick-action__title">Find Jobs</span>
           <span class="quick-action__sub">Browse available work</span>
         </div>
       </a>
       <a class="quick-action" onclick="showView('my-jobs')">
-        <div class="quick-action__icon">${ic('box')}</div>
+        <div class="quick-action__icon">📋</div>
         <div class="quick-action__text">
           <span class="quick-action__title">My Jobs</span>
           <span class="quick-action__sub">${allMyJobs.filter(j => ['assigned','pending_review'].includes(j.status)).length} active</span>
         </div>
       </a>
       <a class="quick-action" onclick="showView('profile')">
-        <div class="quick-action__icon">${ic('user')}</div>
+        <div class="quick-action__icon">👤</div>
         <div class="quick-action__text">
           <span class="quick-action__title">Profile</span>
           <span class="quick-action__sub">Edit skills & shop</span>
         </div>
       </a>
       <a class="quick-action" onclick="openCertModal()">
-        <div class="quick-action__icon">${ic('trophy')}</div>
+        <div class="quick-action__icon">🏆</div>
         <div class="quick-action__text">
           <span class="quick-action__title">Certificate</span>
           <span class="quick-action__sub">Download proof</span>
@@ -646,8 +633,6 @@ function getThisMonthEarnings() {
 
   /* ══════════════════════════════════════════════
      STATS + LIFECYCLE + SPARKLINE
-     NOTE: stat-done / stat-active belonged to the old "Jobs Performance"
-     card and are guarded the same way as renderTrustCard above.
   ══════════════════════════════════════════════ */
   function renderStats(profile) {
     profile = profile || {};
@@ -662,10 +647,8 @@ function getThisMonthEarnings() {
       - parseFloat(profile.total_withdrawn || 0));
     const pendingEscrow    = allMyJobs.filter(j => ['assigned','pending_verification','verified'].includes(j.status)).reduce((s,j) => s + parseFloat(j.amount), 0);
 
-    const doneEl = document.getElementById('stat-done');
-    if (doneEl) doneEl.textContent = profile.jobs_completed ?? done;
-    const activeEl = document.getElementById('stat-active');
-    if (activeEl) activeEl.textContent = active;
+    document.getElementById('stat-done').textContent   = profile.jobs_completed ?? done;
+    document.getElementById('stat-active').textContent = active;
 
     const balEl  = document.getElementById('stat-earned');
     const hintEl = document.getElementById('stat-earned-hint');
@@ -1490,7 +1473,6 @@ async function checkWithdrawPin() {
     const res = await fetch(`${FLASK}/api/worker/pin-status?user_id=${user.id}`, {
       credentials: 'include'
     });
-    if (!res.ok) { console.error('checkWithdrawPin: pin-status returned', res.status); return; }
     const data = await res.json();
     if (data.pin_set === false) showPinBanner();
   } catch (e) { console.error('checkWithdrawPin:', e); }
@@ -1749,11 +1731,8 @@ async function openWithdrawModal() {
   let pinSet = false;
   try {
     const pinRes = await fetch(`${FLASK}/api/worker/pin-status?user_id=${user.id}`, { credentials: 'include' });
-    if (!pinRes.ok) { console.error('pin-check: pin-status returned', pinRes.status); }
-    else {
-      const pinData = await pinRes.json();
-      pinSet = pinData.pin_set === true;
-    }
+    const pinData = await pinRes.json();
+    pinSet = pinData.pin_set === true;
   } catch (e) { console.error('pin-check:', e); }
 
   if (!pinSet) {
