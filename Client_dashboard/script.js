@@ -14,7 +14,7 @@
   // ── Map state ──
   let map = null, marker = null, mapReady = false;
   let selectedLat = null, selectedLng = null;
-
+  let heartbeatInterval = null;
   // ── Media state ──
   let mediaFiles = [];
 
@@ -194,6 +194,7 @@
       ...swalTheme()
     }).then(r => {
       if (r.isConfirmed) {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
         localStorage.removeItem('userData');
         fetch(`${FLASK}/logout-api`, { method: 'POST', credentials: 'include' }).finally(() => window.location.replace(LOGIN_PAGE));
       }
@@ -393,6 +394,81 @@
     });
   }
 
+  async function loadRecommendedWorkers() {
+  const container = document.getElementById('recommended-workers');
+  if (!container) return;
+
+  const activeJob = allJobs.find(j => ['open', 'assigned', 'pending_review'].includes(j.status));
+  const jobId = activeJob?.id || '';
+  const trade = activeJob?.trade || '';
+
+  let userLat = null, userLng = null;
+  try {
+    const pos = await new Promise((resolve, reject) => 
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000, enableHighAccuracy: false })
+    );
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+  } catch {}
+
+  const params = new URLSearchParams({ user_id: user.id, limit: '5' });
+  if (jobId) params.append('job_id', jobId);
+  if (trade) params.append('trade', trade);
+  if (userLat) { params.append('lat', userLat); params.append('lng', userLng); }
+
+  try {
+    const res = await fetch(`${FLASK}/api/worker/recommend?${params}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    renderRecommendedWorkers(container, data.workers || [], data.based_on_trade);
+  } catch (e) {
+    console.error('loadRecommendedWorkers:', e);
+    container.style.display = 'none';
+  }
+}
+
+function renderRecommendedWorkers(container, workers, basedOnTrade) {
+  if (!workers.length) { container.style.display = 'none'; return; }
+  container.style.display = 'block';
+
+  const title = basedOnTrade 
+    ? `Top ${basedOnTrade}s for you` 
+    : 'Suggested artisans near you';
+
+  let html = `<p style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:14px">${title}</p>
+    <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px">`;
+
+  html += workers.map(w => {
+    const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const color = avatarColor(w.name);
+    const photo = w.profile_photo_path;
+    const dist = w.distance_km != null ? `${w.distance_km}km` : '';
+    const avatar = photo
+      ? `<div style="width:48px;height:48px;border-radius:50%;background-image:url(${photo});background-size:cover;background-position:center;border:2px solid ${color};flex-shrink:0"></div>`
+      : `<div style="width:48px;height:48px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};display:grid;place-items:center;font-weight:800;flex-shrink:0">${initials}</div>`;
+
+    return `
+      <div class="worker-card" style="min-width:260px;cursor:pointer" onclick="openWorkerProfileModal(${w.id})">
+        <div class="worker-card__top">
+          ${avatar}
+          <div class="worker-card__id">
+            <p class="worker-card__name">${w.name}</p>
+            <p class="worker-card__trade">${w.trade || 'General'}</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;color:var(--text-2)">
+          <span style="color:var(--warning)">★ ${Number(w.trust_score).toFixed(1)}</span>
+          <span>·</span>
+          <span>${w.jobs_completed || 0} jobs</span>
+          ${dist ? `<span>·</span><span>${dist}</span>` : ''}
+        </div>
+        ${w.shop_address ? `<p style="font-size:.75rem;color:var(--text-3);margin-top:6px">${ic('pin')} ${w.shop_address.split(',')[0]}</p>` : ''}
+      </div>`;
+  }).join('');
+
+  html += `</div>`;
+  container.innerHTML = html;
+}
  async function openJobModal(job) {
   const created  = new Date(job.created_at).toLocaleString('en-NG');
   const verified = job.verified_at ? new Date(job.verified_at).toLocaleString('en-NG') : '—';
@@ -484,7 +560,7 @@
 
     // Escrow section
     let escrowSection = '';
-    if (['open', 'assigned', 'pending_review'].includes(job.status)) {
+    if (['assigned', 'pending_verification'].includes(job.status)) {
       const hasAccount = !!pd.collection_account_number;
       const funded = pd.escrow_paid || false;
 
@@ -810,24 +886,125 @@
   }
 
   // ── Payments ──
-  function renderPayments() {
+    async function renderPayments() {
     const paid   = allJobs.filter(j => j.status === 'paid');
-    const escrow = allJobs.filter(j => ['open', 'assigned', 'pending_verification'].includes(j.status));
+    // Only assigned / in-progress jobs need escrow funding now
+    const pendingEscrow = allJobs.filter(j => ['assigned', 'pending_verification'].includes(j.status));
+
     document.getElementById('pay-total').textContent  = '₦' + paid.reduce((s, j) => s + Number(j.amount || 0), 0).toLocaleString();
-    document.getElementById('pay-escrow').textContent = '₦' + escrow.reduce((s, j) => s + Number(j.amount || 0), 0).toLocaleString();
+    document.getElementById('pay-escrow').textContent = '₦' + pendingEscrow.reduce((s, j) => s + Number(j.amount || 0), 0).toLocaleString();
     document.getElementById('pay-count').textContent  = paid.length;
 
     const list = document.getElementById('payments-list');
-    list.innerHTML = paid.length ? paid.map(job => {
+    let html = '';
+
+    /* ── ACTIVE ESCROW PAYMENTS ── */
+    if (pendingEscrow.length) {
+      html += `<div style="margin-bottom:28px">
+        <p style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:14px">Active Escrow Payments</p>`;
+
+      // Pull payment details for each pending job in parallel
+      const details = await Promise.all(
+        pendingEscrow.map(async job => {
+          try {
+            const res = await fetch(`${FLASK}/api/job/payment-details?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+            if (res.ok) return { job, pd: await res.json() };
+          } catch (e) {}
+          return { job, pd: null };
+        })
+      );
+
+      html += details.map(({job, pd}) => {
+        const amount   = Number(pd?.amount || job.amount || 0);
+        const isFunded = pd?.escrow_paid || job.escrow_paid || false;
+        const acctNum  = pd?.collection_account_number || job.collection_account_number;
+        const bankName = pd?.collection_bank_name || job.collection_bank_name || 'GTBank';
+        const hasAccount = !!acctNum;
+        const isCheckout = hasAccount && acctNum.startsWith('http');
+
+        // Already funded
+        if (isFunded) {
+          return `<div class="payment-row" style="background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.2);border-radius:12px;padding:14px;margin-bottom:10px">
+            <div class="payment-row__icon" style="color:var(--success)">${ic('check')}</div>
+            <div class="payment-row__info">
+              <p class="payment-row__title">${job.title}</p>
+              <p class="payment-row__date">${job.worker_name || 'Worker assigned'}</p>
+            </div>
+            <span class="payment-row__amount" style="color:var(--success)">Funded</span>
+          </div>`;
+        }
+
+        // Checkout URL (Paystack / external link)
+        if (isCheckout) {
+          return `<div class="payment-row" style="background:var(--surface-sunk);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;flex-direction:column;align-items:stretch;gap:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="payment-row__info">
+                <p class="payment-row__title">${job.title}</p>
+                <p class="payment-row__date">${job.worker_name ? `Assigned to ${job.worker_name}` : 'Worker assigned'}</p>
+              </div>
+              <span class="payment-row__amount" style="color:var(--accent)">₦${amount.toLocaleString()}</span>
+            </div>
+            <a href="${acctNum}" target="_blank" class="btn btn--primary btn--wide" style="text-decoration:none;text-align:center">Pay ₦${amount.toLocaleString()} now</a>
+            <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
+          </div>`;
+        }
+
+        // Virtual account number (transfer)
+        if (hasAccount) {
+          return `<div class="payment-row" style="background:var(--surface-sunk);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;flex-direction:column;align-items:stretch;gap:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div class="payment-row__info">
+                <p class="payment-row__title">${job.title}</p>
+                <p class="payment-row__date">${job.worker_name ? `Assigned to ${job.worker_name}` : 'Worker assigned'}</p>
+              </div>
+              <span class="payment-row__amount" style="color:var(--accent)">₦${amount.toLocaleString()}</span>
+            </div>
+            <div class="acct-box" style="margin:4px 0">
+              <p class="acct-box__label">Bank</p>
+              <p class="acct-box__bank">${bankName}</p>
+              <p class="acct-box__label">Account Number</p>
+              <p class="acct-box__num">${acctNum}</p>
+            </div>
+            <button onclick="copyAccNum('${acctNum}')" class="btn btn--secondary btn--wide btn--sm">${ic('copy')} Copy Account Number</button>
+            <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
+          </div>`;
+        }
+
+        // No account generated yet
+        return `<div class="payment-row" style="background:var(--surface-sunk);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;flex-direction:column;align-items:stretch;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="payment-row__info">
+              <p class="payment-row__title">${job.title}</p>
+              <p class="payment-row__date">${job.worker_name ? `Assigned to ${job.worker_name}` : 'Worker assigned'}</p>
+            </div>
+            <span class="payment-row__amount" style="color:var(--accent)">₦${amount.toLocaleString()}</span>
+          </div>
+          <div class="notice notice--neutral" style="margin:0">
+            <p style="font-size:.8rem">Payment account not generated yet.</p>
+          </div>
+          <button onclick="retryPaymentAccount(${job.id})" class="btn btn--secondary btn--sm" style="width:100%">${ic('refresh')} Generate Payment Account</button>
+        </div>`;
+      }).join('');
+
+      html += `</div>`;
+
+      if (paid.length) {
+        html += `<p style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:14px;margin-top:24px">Transaction History</p>`;
+      }
+    }
+
+    /* ── TRANSACTION HISTORY ── */
+    html += paid.length ? paid.map(job => {
       const date = new Date(job.paid_at || job.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
       return `<div class="payment-row">
         <div class="payment-row__icon">${ic('card')}</div>
         <div class="payment-row__info"><p class="payment-row__title">${job.title}</p><p class="payment-row__date">${date} · ${job.transfer_reference || 'No ref'}</p></div>
         <span class="payment-row__amount">₦${Number(job.amount).toLocaleString()}</span>
       </div>`;
-    }).join('') : `<div class="empty-state"><div class="icon-sq">${ic('wallet')}</div><p>No transactions yet.</p></div>`;
-  }
+    }).join('') : (!pendingEscrow.length ? `<div class="empty-state"><div class="icon-sq">${ic('wallet')}</div><p>No transactions yet.</p></div>` : '');
 
+    list.innerHTML = html;
+  }
   /* ══════════════════════════════════════════════
      MAP PICKER
   ══════════════════════════════════════════════ */
@@ -941,6 +1118,13 @@
       } catch (e) { console.error('Nominatim search error:', e); }
     }, 400);
   });
+    searchInput?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const first = searchResults.querySelector('.location-result');
+      if (first) first.click();
+    }
+  });
 
   document.addEventListener('click', e => { if (!e.target.closest('.location-search')) searchResults.classList.remove('is-open'); });
 
@@ -1038,36 +1222,22 @@
       const res  = await fetch(`${FLASK}/api/client/post-job`, { method: 'POST', body: formData, credentials: 'include' });
       const data = await res.json();
 
-      if (data.success) {
+            if (data.success) {
         document.getElementById('post-job-form').reset();
         clearLocation();
         mediaFiles = [];
         renderMediaPreviews();
         await loadJobs();
-
-        if (data.payment?.account_number) {
-          showView('my-jobs'); renderJobsList(allJobs);
-          await Swal.fire({
-            title: 'Job Posted',
-            html: `
-              <p style="margin-bottom:16px;color:var(--text-2)">Now fund the escrow so workers can begin.</p>
-              <div class="acct-box" style="text-align:left">
-                <p class="acct-box__label">Transfer Exactly</p>
-                <p style="font-family:var(--font-display);font-size:1.5rem;font-weight:800;color:var(--accent)">₦${Number(data.payment.amount).toLocaleString()}</p>
-                <div style="height:1px;background:var(--border);margin:12px 0"></div>
-                <p class="acct-box__label">To This Account</p>
-                <p class="acct-box__num" style="font-size:1.2rem">${data.payment.account_number}</p>
-                <p style="font-size:.8rem;color:var(--text-2);margin-top:3px">${data.payment.bank_name}</p>
-                <div style="height:1px;background:var(--border);margin:12px 0"></div>
-                <p style="font-size:.75rem;color:var(--text-3)">Transfer the exact amount. Any difference will be flagged. Workers can only start after your payment lands.</p>
-              </div>`,
-            confirmButtonText: "I'll transfer now", confirmButtonColor: '#E85C00', width: '480px', ...swalTheme()
-          });
-        } else {
-          showView('my-jobs'); renderJobsList(allJobs);
-          Swal.fire({ title: 'Job Posted', text: 'Payment account could not be generated right now. Check job details to retry.', icon: 'warning', confirmButtonColor: '#E85C00', ...swalTheme() });
-        }
-      } else {
+        showView('my-jobs');
+        renderJobsList(allJobs);
+        Swal.fire({
+          title: 'Job Posted',
+          text: 'Your job is live. Fund escrow only after a worker is assigned and you agree on a final price.',
+          icon: 'success',
+          confirmButtonColor: '#E85C00',
+          ...swalTheme()
+        });
+      }else {
         const errs = data.errors || {};
         if (errs.title)   document.getElementById('err-title').textContent   = errs.title;
         if (errs.amount)  document.getElementById('err-amount').textContent  = errs.amount;
@@ -1118,42 +1288,47 @@
   document.getElementById('worker-search-trade')?.addEventListener('change', searchWorkers);
 
   function workerCardHTML(w) {
-    const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-    const score = Number(w.trust_score || 0).toFixed(1);
-    const filled = Math.round(w.trust_score || 0);
-    const stars = ICON.star.repeat(filled) + ICON.starEmpty.repeat(5 - filled);
-    const color = avatarColor(w.name);
+  const initials = w.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const score = Number(w.trust_score || 0).toFixed(1);
+  const filled = Math.round(w.trust_score || 0);
+  const stars = ICON.star.repeat(filled) + ICON.starEmpty.repeat(5 - filled);
+  const color = avatarColor(w.name);
+  const photo = w.profile_photo_path; // Cloudinary URL from API
 
-    let locationRow;
-    if (w.distance_km !== null && w.distance_km !== undefined) {
-      const label = w.distance_km < 1 ? `${Math.round(w.distance_km * 1000)}m away` : `${w.distance_km}km away`;
-      locationRow = `<span class="avail-dot"></span> ${label} <span class="avail-label">Available</span>`;
-    } else if (w.avg_lat) {
-      locationRow = `<span class="avail-dot"></span> Location known <span class="avail-label">Available</span>`;
-    } else {
-      locationRow = `<span class="avail-dot avail-dot--off"></span> No location yet <span class="avail-label avail-label--off">—</span>`;
-    }
-
-    return `
-      <div class="worker-card" data-worker-id="${w.id}">
-        <div class="worker-card__top">
-          <div class="worker-card__avatar" style="background:${color}18;border:2px solid ${color};color:${color}">${initials}</div>
-          <div class="worker-card__id">
-            <p class="worker-card__name">${w.name}</p>
-            <p class="worker-card__trade">${w.trade || 'General'}</p>
-          </div>
-          <span class="trust-pill">${score} Trust</span>
-        </div>
-        <div class="worker-card__rating"><span class="stars">${stars}</span> ${score} <span style="color:var(--text-3)">(${w.jobs_completed || 0} reviews)</span></div>
-        <div class="worker-card__stats">
-          <div class="worker-stat"><strong>${w.jobs_completed || 0}</strong>Jobs Done</div>
-          <div class="worker-stat"><strong>${score}</strong>Trust Score</div>
-        </div>
-        <div class="worker-card__location">${locationRow}</div>
-        <button class="worker-card__hire" data-worker-id="${w.id}">View Profile & Connect</button>
-      </div>`;
+  let locationRow;
+  if (w.distance_km !== null && w.distance_km !== undefined) {
+    const label = w.distance_km < 1 ? `${Math.round(w.distance_km * 1000)}m away` : `${w.distance_km}km away`;
+    locationRow = `<span class="avail-dot"></span> ${label} <span class="avail-label">Available</span>`;
+  } else if (w.shop_address) {
+    locationRow = `<span class="avail-dot"></span> ${w.shop_address.split(',')[0]} <span class="avail-label">Available</span>`;
+  } else {
+    locationRow = `<span class="avail-dot avail-dot--off"></span> No location yet <span class="avail-label avail-label--off">—</span>`;
   }
 
+  // Avatar: photo if exists, else initials
+  const avatarHTML = photo
+    ? `<div class="worker-card__avatar" style="background-image:url(${photo});background-size:cover;background-position:center;border:2px solid ${color}"></div>`
+    : `<div class="worker-card__avatar" style="background:${color}18;border:2px solid ${color};color:${color}">${initials}</div>`;
+
+  return `
+    <div class="worker-card" data-worker-id="${w.id}">
+      <div class="worker-card__top">
+        ${avatarHTML}
+        <div class="worker-card__id">
+          <p class="worker-card__name">${w.name}</p>
+          <p class="worker-card__trade">${w.trade || 'General'}</p>
+        </div>
+        <span class="trust-pill">${score} Trust</span>
+      </div>
+      <div class="worker-card__rating"><span class="stars">${stars}</span> ${score} <span style="color:var(--text-3)">(${w.jobs_completed || 0} reviews)</span></div>
+      <div class="worker-card__stats">
+        <div class="worker-stat"><strong>${w.jobs_completed || 0}</strong>Jobs Done</div>
+        <div class="worker-stat"><strong>${score}</strong>Trust Score</div>
+      </div>
+      <div class="worker-card__location">${locationRow}</div>
+      <button class="worker-card__hire" data-worker-id="${w.id}">View Profile & Connect</button>
+    </div>`;
+}
   function renderWorkers(grid, workers, hasLocation) {
     window._lastWorkerResults = workers;
     const sub = document.getElementById('workers-count-sub');
@@ -1221,6 +1396,7 @@ async function openWorkerProfileModal(workerId, jobId, jobTitle) {
 
 /* ── Render profile data ── */
 function renderWorkerProfile(data, workerId) {
+  const data = apiData.worker || apiData;
   // ── Avatar ──
   const avatarEl = document.getElementById('wp-avatar');
   const initial  = (data.name || '?')[0].toUpperCase();
@@ -2433,18 +2609,20 @@ async function openClientPublicProfile(clientId) {
     await loadBargains();
     await loadPendingWorkers();
     await loadReviewSubmissions();
+    await loadConversations();
+     await loadRecommendedWorkers(); 
     setInterval(loadBargains, 30_000);
     setInterval(loadPendingWorkers, 20_000);
     setInterval(loadReviewSubmissions, 20_000);
     setInterval(loadConversations, 15_000);
-    setInterval(() => {
-  if (!window.USER_ID) return;  // don't fire if user not loaded yet
+    heartbeatInterval = setInterval(() => {
+  if (!window.USER_ID) return;
   fetch(`${FLASK}/api/heartbeat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: window.USER_ID }),
     credentials: 'include'
-  }).catch(() => {});  // silently ignore — UptimeRobot keeps server alive
+  }).catch(() => {});
 }, 120000);  
   }
   init();
@@ -2475,8 +2653,8 @@ async function openClientPublicProfile(clientId) {
 (function () {
   'use strict';
 
-  const WORKER_URL = 'https://skillchain-frontend-omega.vercel.app//Worker_dashboard/index.html';
-  const CLIENT_URL = 'https://skillchain-frontend-omega.vercel.app//Client_dashboard/index.html';
+  const WORKER_URL = 'https://skillchain-frontend-omega.vercel.app/Worker_dashboard/index.html';
+  const CLIENT_URL = 'https://skillchain-frontend-omega.vercel.app/Client_dashboard/index.html';
 
   function waitForGlobals(cb, n) {
     n = n || 0;

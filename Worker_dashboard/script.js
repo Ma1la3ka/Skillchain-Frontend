@@ -13,6 +13,7 @@
   let user         = null;
   let shopMap = null, shopMarker = null, shopMapReady = false;
   let shopSelectedLat = null, shopSelectedLng = null;
+  let heartbeatInterval = null;
 
   const sidebar      = document.getElementById('sidebar');
   const sidebarScrim = document.getElementById('sidebar-scrim');
@@ -305,6 +306,7 @@
       confirmButtonText: 'Log out', cancelButtonText: 'Stay signed in', ...swalTheme()
     }).then(r => {
       if (r.isConfirmed) {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
         localStorage.removeItem('userData');
         fetch(`${FLASK}/logout-api`, { method: 'POST', credentials: 'include' })
           .finally(() => window.location.replace(LOGIN_PAGE));
@@ -1885,14 +1887,14 @@ async function openClientPublicProfile(clientId) {
     checkWithdrawPin();
     setInterval(loadMyJobs, 15_000);
     setInterval(loadConversations, 15_000);
-    setInterval(() => {
-  if (!window.USER_ID) return;  // don't fire if user not loaded yet
+    heartbeatInterval = setInterval(() => {
+  if (!window.USER_ID) return;
   fetch(`${FLASK}/api/heartbeat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: window.USER_ID }),
     credentials: 'include'
-  }).catch(() => {});  // silently ignore — UptimeRobot keeps server alive
+  }).catch(() => {});
 }, 120000);  
   }
   init();
@@ -1906,8 +1908,8 @@ async function openClientPublicProfile(clientId) {
 (function () {
   'use strict';
 
-  const WORKER_URL = 'https://skillchain-frontend-omega.vercel.app//Worker_dashboard/index.html';
-  const CLIENT_URL = 'https://skillchain-frontend-omega.vercel.app//Client_dashboard/index.html';
+  const WORKER_URL = 'https://skillchain-frontend-omega.vercel.app/Worker_dashboard/index.html';
+  const CLIENT_URL = 'https://skillchain-frontend-omega.vercel.app/Client_dashboard/index.html';
 
   function waitForGlobals(cb, n) {
   n = n || 0;
@@ -2006,6 +2008,16 @@ async function openClientPublicProfile(clientId) {
         }, true);
       })
     );
+  };
+
+    window.openWorkerPublicProfile = function(workerId) {
+    Swal.fire({
+      title: 'Coming soon',
+      text: 'Viewing other artisan profiles will be available in a later update.',
+      icon: 'info',
+      confirmButtonColor: '#E85C00',
+      ...swalTheme()
+    });
   };
 
   function init() {
