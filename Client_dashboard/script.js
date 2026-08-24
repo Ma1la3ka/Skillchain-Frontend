@@ -1396,7 +1396,6 @@ async function openWorkerProfileModal(workerId, jobId, jobTitle) {
 
 /* ── Render profile data ── */
 function renderWorkerProfile(data, workerId) {
-  const data = apiData.worker || apiData;
   // ── Avatar ──
   const avatarEl = document.getElementById('wp-avatar');
   const initial  = (data.name || '?')[0].toUpperCase();
