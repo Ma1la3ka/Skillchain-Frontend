@@ -1693,10 +1693,68 @@ if (certStrip && certInner) {
   const jobId    = overlay.dataset.jobId;
   const jobTitle = overlay.dataset.jobTitle;
 
-  document.getElementById('wp-chat-btn').onclick = () => {
-    closeWorkerProfileModal();
-    openChatThread(workerId, data.name, jobId, jobTitle);  
+  document.getElementById('wp-chat-btn').onclick = async () => {
+  const overlay = document.getElementById('wp-overlay');
+  let jid = overlay.dataset.jobId;
+  const workerName = data.name;
+
+  if (!jid) {
+    // No job context — this is a cold outreach from Find Workers.
+    // Create a private invite first so there's a job_id to hang the chat on.
+    const { value: formValues, isConfirmed } = await Swal.fire({
+      title: `Start a conversation with ${workerName}`,
+      html: `
+        <input id="dh-title" class="field__input" placeholder="What do you need done?" style="width:100%;margin-bottom:10px">
+        <input id="dh-amount" type="number" class="field__input" placeholder="Budget (₦)" style="width:100%;margin-bottom:10px">
+        <input id="dh-address" class="field__input" placeholder="Site address" style="width:100%">
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Start Chat',
+      confirmButtonColor: '#E85C00',
+      cancelButtonColor: '#9A968E',
+      ...swalTheme?.() || {},
+      preConfirm: () => {
+        const title   = document.getElementById('dh-title').value.trim();
+        const amount  = document.getElementById('dh-amount').value;
+        const address = document.getElementById('dh-address').value.trim();
+        if (!title)   { Swal.showValidationMessage('Please describe the job'); return false; }
+        if (!amount || Number(amount) < 100) { Swal.showValidationMessage('Enter a budget of at least ₦100'); return false; }
+        if (!address) { Swal.showValidationMessage('Please enter a site address'); return false; }
+        return { title, amount, address };
+      }
+    });
+    if (!isConfirmed || !formValues) return;
+
+    try {
+      const res = await fetch(`${FLASK}/api/client/direct-hire`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({
+          user_id: user.id,
+          worker_id: workerId,
+          title: formValues.title,
+          amount: formValues.amount,
+          site_address: formValues.address,
+          trade: data.trade || 'Other'
+        })
+      });
+      const rd = await res.json();
+      if (!rd.success) {
+        Swal.fire({ title: 'Could not start conversation', text: rd.message, icon: 'error', ...swalTheme?.() || {} });
+        return;
+      }
+      jid = rd.job_id;
+      await loadJobs();
+      Swal.fire({ title: 'Invitation sent', text: rd.message, icon: 'success', timer: 1600, showConfirmButton: false, ...swalTheme?.() || {} });
+    } catch (e) {
+      Swal.fire({ title: 'Network error', icon: 'error', ...swalTheme?.() || {} });
+      return;
+    }
+  }
+
+  closeWorkerProfileModal();
+  openChatThread(jid, workerId, workerName, overlay.dataset.jobTitle || formValues?.title || '');
 };
+
   document.getElementById('wp-hire-btn').onclick = () => {
     if (!jobId) {
       Swal.fire({
@@ -2196,10 +2254,7 @@ function renderConversationsList(conversations) {
   });
 }
 
-function openChatThread(jobId, otherId, otherName, jobTitle) {
-  // Pass job context through to openChat
-  openChat(otherId, otherName, jobId, jobTitle);
-}
+
   /* ══════════════════════════════════════════════
      DEMO PAYMENT VERIFY/* ══ CLIENT PROFILE ══════════════════════════════ */
 function renderClientProfile() {
