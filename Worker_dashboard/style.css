@@ -737,4 +737,81 @@ svg{ display:block; }
 .chat-date-divider span{background:var(--surface);padding:0 10px;position:relative;z-index:1}
 .chat-date-divider::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border)}
 
+/* ═══ Shop Location — polish + mobile ═══ */
+.shop-loc-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:14px;
+}
+.shop-loc-btn svg{ color:var(--accent); flex-shrink:0; }
 
+#shop-address-display{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  margin-bottom:14px;
+}
+#shop-address-display p:first-child{
+  font-size:.86rem;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:2px;
+}
+#shop-address-display p:last-child{
+  font-size:.72rem;
+  color:var(--text-3);
+  font-family:var(--font-mono);
+}
+
+.location-search{ margin-bottom:14px; }
+.location-search .field__input{
+  width:100%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:11px 14px;
+  font-size:.86rem;
+  color:var(--text);
+  outline:none;
+  transition:border-color .15s;
+}
+.location-search .field__input:focus{ border-color:var(--accent); }
+
+.shop-map-frame{
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  box-shadow:var(--shadow-sm);
+}
+#shop-map{ width:100%; height:280px; }
+
+.shop-map-hint{
+  font-size:.76rem;
+  color:var(--text-3);
+  margin-top:10px;
+  line-height:1.5;
+}
+
+.shop-loc-actions{
+  display:flex;
+  gap:10px;
+  margin-top:16px;
+}
+.shop-loc-actions .btn--primary{ flex:1; }
+.shop-loc-actions .btn--outline{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-2);
+}
+.shop-loc-actions .btn--outline:hover{
+  border-color:var(--border-strong);
+  color:var(--text);
+}
+
+@media (max-width:640px){
+  #shop-map{ height:220px; }
+  .shop-loc-actions{ flex-direction:column; }
+  .shop-loc-actions .btn{ width:100%; }
+}

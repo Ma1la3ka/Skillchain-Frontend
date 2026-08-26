@@ -166,7 +166,7 @@
     if (!navigator.geolocation) { Swal.fire({ title: 'Geolocation not supported', icon: 'error', ...swalTheme() }); return; }
     const btn = document.getElementById('btn-shop-my-loc');
     const orig = btn.innerHTML;
-    btn.innerHTML = '⏳ Locating…';
+    btn.innerHTML = '<span class="spinner spinner--dark" style="width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:6px"></span>Locating…';
     btn.disabled = true;
     navigator.geolocation.getCurrentPosition(
       async pos => {
@@ -593,28 +593,28 @@ function renderConversationsList(conversations) {
 
     <div class="quick-actions">
       <a class="quick-action" onclick="showView('find-jobs')">
-        <div class="quick-action__icon">🔍</div>
+        <div class="quick-action__icon">${ic('search')}</div>
         <div class="quick-action__text">
           <span class="quick-action__title">Find Jobs</span>
           <span class="quick-action__sub">Browse available work</span>
         </div>
       </a>
       <a class="quick-action" onclick="showView('my-jobs')">
-        <div class="quick-action__icon">📋</div>
+        <div class="quick-action__icon">${ic('box')}</div>
         <div class="quick-action__text">
           <span class="quick-action__title">My Jobs</span>
           <span class="quick-action__sub">${allMyJobs.filter(j => ['assigned','pending_review'].includes(j.status)).length} active</span>
         </div>
       </a>
       <a class="quick-action" onclick="showView('profile')">
-        <div class="quick-action__icon">👤</div>
+        <div class="quick-action__icon">${ic('user')}</div>
         <div class="quick-action__text">
           <span class="quick-action__title">Profile</span>
           <span class="quick-action__sub">Edit skills & shop</span>
         </div>
       </a>
       <a class="quick-action" onclick="openCertModal()">
-        <div class="quick-action__icon">🏆</div>
+        <div class="quick-action__icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M8 4h8v6a4 4 0 01-8 0V4z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5a2 2 0 000 4h1M16 6h3a2 2 0 010 4h-1" stroke="currentColor" stroke-width="1.8"/><path d="M10 15v2h4v-2" stroke="currentColor" stroke-width="1.8"/><path d="M8 20h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
         <div class="quick-action__text">
           <span class="quick-action__title">Certificate</span>
           <span class="quick-action__sub">Download proof</span>
@@ -1488,7 +1488,7 @@ function showPinBanner() {
   banner.id = 'pin-banner';
   banner.innerHTML = `
     <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#FF4D2E,#ff8c66);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:0.9rem;font-weight:500;box-shadow:0 4px 20px rgba(255,77,46,0.3);">
-      <span>🔒 Secure your earnings — set a withdraw PIN to protect your payouts.</span>
+      <span style="display:inline-flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="2"/></svg>Secure your earnings, set a withdraw PIN to protect your payouts.</span>
       <button onclick="openPinModal()" style="background:#fff;color:#FF4D2E;border:none;padding:8px 18px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;white-space:nowrap;">Set PIN</button>
       <button onclick="dismissPinBanner()" style="background:transparent;color:rgba(255,255,255,0.8);border:none;font-size:1.2rem;cursor:pointer;padding:4px;">✕</button>
     </div>`;

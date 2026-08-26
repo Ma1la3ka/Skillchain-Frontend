@@ -573,17 +573,21 @@
         <div class="location-results" id="shop-location-results"></div>
       </div>
 
-      <button class="btn btn--secondary btn--sm" id="btn-shop-my-loc" type="button" style="margin-bottom:10px">
-        📍 Use My Current Location
+      <button class="btn btn--secondary btn--sm shop-loc-btn" id="btn-shop-my-loc" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.2" stroke="currentColor" stroke-width="2"/></svg>
+      Use My Current Location
       </button>
 
-      <div id="shop-map" style="width:100%;height:260px;border-radius:10px;overflow:hidden"></div>
-      <p style="font-size:.72rem;color:var(--text-3);margin-top:6px" id="shop-map-hint">Search above, use your location, or tap the map to set your shop.</p>
-
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn--primary" id="btn-save-shop-location" type="button" style="flex:1">Save Shop Location</button>
-        <button class="btn btn--outline" id="btn-clear-shop-location" type="button">Clear</button>
+      <div class="shop-map-frame">
+        <div id="shop-map"></div>
       </div>
+        <p class="shop-map-hint" id="shop-map-hint">Search above, use your location, or tap the map to set your shop.</p>
+
+        <div class="shop-loc-actions">
+        <button class="btn btn--primary" id="btn-save-shop-location" type="button">Save Shop Location</button>
+        <button class="btn btn--outline" id="btn-clear-shop-location" type="button">Clear</button>
+        </div>
+
     </div>
 
     <!-- Verification Stats -->
@@ -634,7 +638,7 @@
     <div id="chat-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px"></div>
 
     <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn--secondary btn--sm" id="chat-send-offer-btn" style="align-self:flex-start">💰 Send Price Offer</button>
+      <button class="btn btn--secondary btn--sm" id="chat-send-offer-btn" style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v10M9 9.5c0-1 1-1.5 3-1.5s3 .7 3 1.8-1 1.7-3 1.7-3 .6-3 1.8 1.3 1.7 3 1.7 3-.5 3-1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Send Price Offer</button>
       <div style="display:flex;gap:8px">
         <input type="text" id="chat-input" placeholder="Type a message…" class="field__input" style="flex:1">
         <button class="btn btn--primary" id="chat-send-btn">Send</button>
