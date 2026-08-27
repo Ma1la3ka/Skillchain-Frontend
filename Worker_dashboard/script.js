@@ -819,6 +819,7 @@ function getThisMonthEarnings() {
   }
 
 async function openAcceptModal(job) {
+  window._activeAcceptJobId = job.id;
   const hasShop = user.profile && user.profile.shop_lat && user.profile.shop_lng;
 
   modalBody.innerHTML = `
@@ -865,6 +866,8 @@ async function openAcceptModal(job) {
     const res  = await fetch(`${FLASK}/api/worker/bargain-status?job_id=${job.id}&worker_id=${user.id}`, { credentials: 'include' });
     const data = await res.json();
 
+    if (window._activeAcceptJobId !== job.id) return;
+
     if (data.pending) {
       if (data.initiated_by === 'client') {
         slot.innerHTML = `
@@ -886,6 +889,7 @@ async function openAcceptModal(job) {
     renderBargainBox(slot, job);
   } catch (e) {
     console.error('bargain-status check failed:', e);
+    if (window._activeAcceptJobId !== job.id) return;
     renderBargainBox(slot, job);
   }
 }
