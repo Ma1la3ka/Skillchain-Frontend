@@ -816,8 +816,8 @@ function renderRecommendedWorkers(container, workers, basedOnTrade) {
     if (!res.ok) { Swal.fire({ title: 'Could not load profile', icon: 'error', ...swalTheme() }); return; }
     const data = await res.json();
 
-    const w  = data.worker || {};
-    const rs = data.rating_summary || {};
+    const w  = data;   // the worker fields ARE the top-level response
+    const rs = { total_ratings: data.total_ratings, avg_rating: data.avg_rating };
     const initials = w.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'W';
     const color = avatarColor(w.name || 'W');
 
