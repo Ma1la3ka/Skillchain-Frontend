@@ -1874,6 +1874,24 @@ async function openClientPublicProfile(clientId) {
   `;
   workerModalOverlay.classList.add('is-open');
 }
+/* ══════════════════════════════════════════════
+   WORKER MODAL CLOSE HANDLERS  (client profile)
+════════════════════════════════════════════════ */
+const workerModalClose = document.getElementById('worker-modal-close');
+
+workerModalClose?.addEventListener('click', e => {
+  e.stopPropagation();
+  workerModalOverlay.classList.remove('is-open');
+});
+
+workerModalOverlay?.addEventListener('click', e => {
+  if (e.target === workerModalOverlay) workerModalOverlay.classList.remove('is-open');
+});
+
+// Also close with Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') workerModalOverlay.classList.remove('is-open');
+});
 
 
   /* ══════════════════════════════════════════════
