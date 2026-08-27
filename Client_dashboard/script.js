@@ -277,8 +277,11 @@
         <div class="job-card__info">
           <p class="job-card__title">${job.title}</p>
           <div class="job-card__meta">
-            ${statusBadge(job.status)}
-            <span>${ic('user')} ${job.worker_name || 'No worker yet'}</span>
+         ${statusBadge(job.status)}
+          ${job.status === 'open' && job.applicant_count > 0
+            ? `<span class="badge" style="background:var(--accent)18;color:var(--accent)">${job.applicant_count} applicant${job.applicant_count === 1 ? '' : 's'}</span>`
+            : ''}
+          <span>${ic('user')} ${job.worker_name || 'No worker yet'}</span>
             <span>${date}</span>
           </div>
         </div>
@@ -503,7 +506,37 @@ function renderRecommendedWorkers(container, workers, basedOnTrade) {
 
   const pd     = paymentDetails || job;
   const amount = Number(pd.amount || job.amount || 0);
+    let applicants = [];
+  if (job.status === 'open') {
+    try {
+      const aRes = await fetch(`${FLASK}/api/client/applicants?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+      if (aRes.ok) { const ad = await aRes.json(); applicants = ad.applicants || []; }
+    } catch (e) {}
+  }
 
+  let applicantsSection = '';
+  if (applicants.length) {
+    const shown = applicants.slice(0, 5);
+    applicantsSection = `
+      <div class="modal-divider"></div>
+      <p class="modal-field__label" style="margin-bottom:10px">Applicants (${applicants.length})</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${shown.map(a => `
+          <div class="applicant-card">
+            <div class="applicant-card__avatar">${a.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
+            <div class="applicant-card__body">
+              <p class="applicant-card__name">${a.name}</p>
+              <p class="applicant-card__meta">${a.trade || 'General'} · ${Number(a.trust_score).toFixed(1)} trust · ${a.jobs_completed} jobs done</p>
+            </div>
+            <div class="applicant-card__actions">
+              <button class="btn btn--secondary" onclick="openWorkerPublicProfile(${a.worker_id})">${ic('user')} View</button>
+              <button class="btn btn--success" onclick="reviewWorker(${job.id}, ${a.worker_id}, 'assign')">${ic('check')} Assign</button>
+              <button class="btn btn--danger" onclick="reviewWorker(${job.id}, ${a.worker_id}, 'decline')">${ic('x')} Decline</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      ${applicants.length > 5 ? `<p style="font-size:.75rem;color:var(--text-3);margin-top:8px">+ ${applicants.length - 5} more applicants</p>` : ''}`;
+  }
   // ── NEW: build the pending-offers banner ──
   let bargainSection = '';
   if (pendingBargains.length) {
@@ -681,6 +714,7 @@ function renderRecommendedWorkers(container, workers, basedOnTrade) {
     ? `<a href="#" onclick="openWorkerPublicProfile(${job.worker_id})">${job.worker_name}</a> · ${job.worker_trust ?? '—'} trust`
     : 'No worker assigned yet'}</p></div>
   ${bargainSection}
+  ${applicantsSection}
   <div class="modal-divider"></div>
   <div class="modal-field"><p class="modal-field__label">Posted</p><p class="modal-field__val">${created}</p></div>
   <div class="modal-field"><p class="modal-field__label">Verified At</p><p class="modal-field__val">${verified}</p></div>
@@ -802,89 +836,173 @@ function renderRecommendedWorkers(container, workers, basedOnTrade) {
     return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
   }
 
-  async function openWorkerPublicProfile(workerId) {
+async function openWorkerPublicProfile(workerId) {
   const wid = parseInt(workerId);
   if (!wid || isNaN(wid)) {
     console.error('[openWorkerPublicProfile] Invalid workerId:', workerId);
     Swal.fire({ title: 'Could not load profile', text: 'Invalid worker ID.', icon: 'error', ...swalTheme() });
     return;
   }
-  
+
   modalOverlay.classList.remove('is-open');
 
-    const res = await fetch(`${FLASK}/api/worker/public-profile?worker_id=${wid}&viewer_id=${user.id}`, { credentials: 'include' });
-    if (!res.ok) { Swal.fire({ title: 'Could not load profile', icon: 'error', ...swalTheme() }); return; }
-    const data = await res.json();
+  const res = await fetch(`${FLASK}/api/worker/public-profile?worker_id=${wid}&viewer_id=${user.id}`, { credentials: 'include' });
+  if (!res.ok) { Swal.fire({ title: 'Could not load profile', icon: 'error', ...swalTheme() }); return; }
+  const data = await res.json();
 
-    const w  = data;   // the worker fields ARE the top-level response
-    const rs = { total_ratings: data.total_ratings, avg_rating: data.avg_rating };
-    const initials = w.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'W';
-    const color = avatarColor(w.name || 'W');
+  const w  = data;
+  const rs = { total_ratings: data.total_ratings, avg_rating: data.avg_rating };
+  const initials = (w.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const color = avatarColor(w.name || 'W');
+  const photoSrc = w.profile_photo_path || null;
 
-    workerModalBody.innerHTML = `
-      <div style="text-align:center;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
-        <div style="width:60px;height:60px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};font-family:var(--font-display);font-size:1.3rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px">${initials}</div>
-        <p style="font-family:var(--font-display);font-size:1.15rem;font-weight:800">${w.name || '—'}</p>
-        <p style="color:var(--accent);font-size:.84rem;font-weight:600;margin:3px 0">${w.trade || 'General'}</p>
-        <p style="font-size:.76rem;color:var(--text-3)">${w.jobs_completed || 0} verified jobs</p>
+  const avatarHTML = photoSrc
+    ? `<div style="width:60px;height:60px;border-radius:50%;background-image:url(${photoSrc});background-size:cover;background-position:center;border:2px solid ${color};margin:0 auto 10px"></div>`
+    : `<div style="width:60px;height:60px;border-radius:50%;background:${color}18;border:2px solid ${color};color:${color};font-family:var(--font-display);font-size:1.3rem;font-weight:800;display:grid;place-items:center;margin:0 auto 10px">${initials}</div>`;
+
+  // ── Certificate block (built BEFORE the innerHTML string) ──
+  const jobs   = w.jobs_completed || 0;
+  const trust  = parseFloat(w.trust_score || 0);
+  const tier   = jobs >= 20 && trust >= 4 ? 'gold' : jobs >= 5 && trust >= 3 ? 'silver' : 'bronze';
+
+  const TIER_PALETTE = {
+    bronze:{ bg:'linear-gradient(145deg,#2C1A08,#1A0F05)', accent:'#D4822A', accent2:'#F0A84A', badge:'linear-gradient(135deg,#C97B28,#E8A050)', border:'rgba(212,130,42,.4)', inner:'rgba(212,130,42,.12)', label:'#F5C98A', sub:'rgba(245,201,138,.6)', metric:'rgba(212,130,42,.15)', skill:'rgba(212,130,42,.18)' },
+    silver:{ bg:'linear-gradient(145deg,#141820,#0D1118)', accent:'#8CA0BE', accent2:'#B0C4DE', badge:'linear-gradient(135deg,#6B80A0,#9AAFC8)', border:'rgba(140,160,190,.4)', inner:'rgba(140,160,190,.1)', label:'#C8D8EE', sub:'rgba(200,216,238,.6)', metric:'rgba(140,160,190,.15)', skill:'rgba(140,160,190,.18)' },
+    gold:  { bg:'linear-gradient(145deg,#1E1500,#120D00)', accent:'#D4AF37', accent2:'#F0D060', badge:'linear-gradient(135deg,#C9A227,#EDD050)', border:'rgba(212,175,55,.5)', inner:'rgba(212,175,55,.14)', label:'#F5E090', sub:'rgba(245,224,144,.65)', metric:'rgba(212,175,55,.18)', skill:'rgba(212,175,55,.2)' }
+  };
+  const TIER_LABEL = { bronze:'Bronze Certified', silver:'Silver Certified', gold:'Gold Verified' };
+  const p = TIER_PALETTE[tier];
+
+  const initial = (w.name || '?')[0].toUpperCase();
+  const avatarCertHTML = photoSrc
+    ? `<div style="width:64px;height:64px;border-radius:12px;background-image:url(${photoSrc});background-size:cover;background-position:center;border:2px solid rgba(255,255,255,.15);flex-shrink:0"></div>`
+    : `<div style="width:64px;height:64px;border-radius:12px;background:${p.metric};border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:rgba(255,255,255,.7);flex-shrink:0">${initial}</div>`;
+
+  const skills  = Array.isArray(w.top_skills) && w.top_skills.length ? w.top_skills : [w.trade || 'General', 'GPS Verified', 'Escrow Payments'];
+  const issued  = new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'});
+  const verId   = `SC-${String(w.id||0).padStart(5,'0')}-${(Date.now()%1000000).toString(36).toUpperCase()}`;
+  const filled  = Math.round(trust);
+  const stars   = Array.from({length:5},(_,i)=>`<span style="color:${i<filled?p.accent2:'rgba(255,255,255,.2)'}">${i<filled?'★':'☆'}</span>`).join('');
+  const tierDesc = { bronze:'Completing their first verified jobs on SkillChain.', silver:'Consistently delivering GPS-verified, escrow-secured work.', gold:'An elite verified artisan with an outstanding trust record.' }[tier];
+
+  const certHTML = `
+    <p class="modal-field__label" style="margin-bottom:10px">SkillChain Certificate</p>
+    <div style="background:${p.bg};border:1.5px solid ${p.border};border-radius:16px;overflow:hidden;position:relative">
+      <div style="position:absolute;top:10px;left:10px;width:16px;height:16px;border-top:2px solid ${p.accent};border-left:2px solid ${p.accent};border-radius:3px 0 0 0"></div>
+      <div style="position:absolute;top:10px;right:10px;width:16px;height:16px;border-top:2px solid ${p.accent};border-right:2px solid ${p.accent};border-radius:0 3px 0 0"></div>
+      <div style="position:absolute;bottom:10px;left:10px;width:16px;height:16px;border-bottom:2px solid ${p.accent};border-left:2px solid ${p.accent};border-radius:0 0 0 3px"></div>
+      <div style="position:absolute;bottom:10px;right:10px;width:16px;height:16px;border-bottom:2px solid ${p.accent};border-right:2px solid ${p.accent};border-radius:0 0 3px 0"></div>
+
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:22px 22px 16px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:inline-flex;align-items:center;gap:6px;background:${p.badge};border-radius:999px;padding:4px 12px;font-size:.63rem;font-weight:800;letter-spacing:.1em;color:#fff;width:fit-content">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="white" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            ${TIER_LABEL[tier].toUpperCase()}
+          </div>
+          <p style="font-family:monospace;font-size:.6rem;letter-spacing:.1em;color:${p.sub}">SkillChain Artisan Certificate</p>
+          <p style="font-family:monospace;font-size:.6rem;font-weight:700;color:${p.accent}">skillchain.app</p>
+        </div>
+        ${avatarCertHTML}
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
-        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--accent)">${Number(w.trust_score || 0).toFixed(1)}</p><p style="font-size:.66rem;color:var(--text-3)">Trust Score</p></div>
-        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800">${rs.total_ratings || 0}</p><p style="font-size:.66rem;color:var(--text-3)">Ratings</p></div>
-        <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--warning)">${rs.avg_rating ? Number(rs.avg_rating).toFixed(1) : '—'}</p><p style="font-size:.66rem;color:var(--text-3)">Avg Rating</p></div>
+      <div style="padding:0 22px 16px;border-bottom:1px solid ${p.inner}">
+        <p style="font-size:1.5rem;font-weight:800;letter-spacing:-.03em;color:${p.label};line-height:1.1;margin-bottom:4px">${w.name||'Artisan'}</p>
+        <p style="font-size:.85rem;font-weight:700;color:${p.accent2};margin-bottom:6px">${w.trade||'General'}</p>
+        <p style="font-size:.76rem;color:${p.sub};line-height:1.5">${tierDesc}</p>
       </div>
 
-      ${rs.total_ratings > 0 ? `
-      <div style="margin-bottom:18px">
-        ${[5,4,3,2,1].map(star => {
-          const key = ['one','two','three','four','five'][star - 1];
-          const count = Number(rs[`${key}_star`] || 0);
-          const pct = rs.total_ratings > 0 ? Math.round((count / rs.total_ratings) * 100) : 0;
-          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-            <span style="font-size:.74rem;color:var(--warning);width:20px">${star}★</span>
-            <div style="flex:1;height:6px;background:var(--surface-sunk);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--warning);border-radius:99px"></div></div>
-            <span style="font-size:.7rem;color:var(--text-3);width:28px;text-align:right">${pct}%</span>
-          </div>`;
-        }).join('')}
-      </div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 22px">
+        <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
+          <div style="font-family:monospace;font-size:1.3rem;font-weight:700;color:${p.accent2};line-height:1;margin-bottom:4px">${jobs}</div>
+          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Jobs Done</div>
+        </div>
+        <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
+          <div style="font-family:monospace;font-size:1.3rem;font-weight:700;color:${p.accent2};line-height:1;margin-bottom:4px">${trust.toFixed(1)}</div>
+          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Trust Score</div>
+        </div>
+        <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:.95rem;letter-spacing:1px;margin-bottom:4px">${stars}</div>
+          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Rating</div>
+        </div>
+      </div>
 
-      ${(data.media || []).length ? `
-      <p class="modal-field__label" style="margin-bottom:10px">Proof Media</p>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
-        ${data.media.slice(0, 4).map(m => `
-          <div class="proof-media">
-            ${m.media_type === 'video'
-              ? `<video src="${m.file_path}" controls></video>`
-              : `<img src="${m.file_path}">`}
-            <div class="proof-media__bar">
-              <span style="font-size:.74rem;color:var(--text-3)">${m.job_title || ''}</span>
-              <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}" class="icon-btn ${m.viewer_liked ? 'is-liked' : ''}" style="margin-left:auto">${m.viewer_liked ? ic('heartFill') : ic('heart')} <span id="like-count-${m.id}">${m.likes}</span></button>
-              <button onclick="openMediaComments(${m.id})" class="icon-btn">${ic('comment')} ${m.comment_count}</button>
-            </div>
-          </div>`).join('')}
-      </div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 22px 16px">
+        ${skills.map(s=>`<span style="background:${p.skill};border:1px solid ${p.inner};border-radius:6px;padding:3px 10px;font-size:.7rem;font-weight:600;color:${p.label}">${s}</span>`).join('')}
+      </div>
 
-      ${(data.job_history || []).length ? `
-      <p class="modal-field__label" style="margin-bottom:10px">Job History</p>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
-        ${data.job_history.slice(0, 5).map(h => `
-          <div class="acct-box">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <p style="font-size:.85rem;font-weight:600">${h.title}</p>
-              <span style="font-family:var(--font-display);font-size:.85rem;font-weight:700;color:var(--accent)">₦${Number(h.amount).toLocaleString()}</span>
-            </div>
-            <p style="font-size:.72rem;color:var(--text-3);margin-top:3px">${ic('pin')} ${h.site_address || '—'}</p>
-            ${h.client_rating ? `<p style="font-size:.78rem;color:var(--warning);margin-top:5px">${ICON.star.repeat(h.client_rating)}${ICON.starEmpty.repeat(5 - h.client_rating)} ${h.client_rating_comment ? `"${h.client_rating_comment}"` : ''}</p>` : ''}
-          </div>`).join('')}
-      </div>` : ''}
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:14px 22px 20px;border-top:1px solid ${p.inner}">
+        <div style="font-family:monospace;line-height:1.65">
+          <span style="font-size:.58rem;letter-spacing:.1em;color:${p.sub}">CERTIFICATE ID</span><br>
+          <strong style="color:${p.label};font-size:.72rem">${verId}</strong><br>
+          <span style="font-size:.62rem;color:${p.sub}">Issued ${issued} · GPS-authenticated</span>
+        </div>
+      </div>
+    </div>`;
 
-      <p class="modal-field__label" style="margin-bottom:10px">SkillChain Certificate</p>
-      
-    `;
-    workerModalOverlay.classList.add('is-open');
-  }
+  // ── ONE single innerHTML assignment ──
+  workerModalBody.innerHTML = `
+    <div style="text-align:center;padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px">
+      ${avatarHTML}
+      <p style="font-family:var(--font-display);font-size:1.15rem;font-weight:800">${w.name || '—'}</p>
+      <p style="color:var(--accent);font-size:.84rem;font-weight:600;margin:3px 0">${w.trade || 'General'}</p>
+      <p style="font-size:.76rem;color:var(--text-3)">${w.jobs_completed || 0} verified jobs</p>
+    </div>
 
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px">
+      <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--accent)">${Number(w.trust_score || 0).toFixed(1)}</p><p style="font-size:.66rem;color:var(--text-3)">Trust Score</p></div>
+      <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800">${rs.total_ratings || 0}</p><p style="font-size:.66rem;color:var(--text-3)">Ratings</p></div>
+      <div class="acct-box" style="text-align:center;padding:12px"><p style="font-family:var(--font-display);font-size:1.2rem;font-weight:800;color:var(--warning)">${rs.avg_rating ? Number(rs.avg_rating).toFixed(1) : '—'}</p><p style="font-size:.66rem;color:var(--text-3)">Avg Rating</p></div>
+    </div>
+
+    ${rs.total_ratings > 0 ? `
+    <div style="margin-bottom:18px">
+      ${[5,4,3,2,1].map(star => {
+        const key = ['one','two','three','four','five'][star - 1];
+        const count = Number(rs[`${key}_star`] || 0);
+        const pct = rs.total_ratings > 0 ? Math.round((count / rs.total_ratings) * 100) : 0;
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:.74rem;color:var(--warning);width:20px">${star}★</span>
+          <div style="flex:1;height:6px;background:var(--surface-sunk);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--warning);border-radius:99px"></div></div>
+          <span style="font-size:.7rem;color:var(--text-3);width:28px;text-align:right">${pct}%</span>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    ${(data.media || []).length ? `
+    <p class="modal-field__label" style="margin-bottom:10px">Proof Media</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      ${data.media.slice(0, 4).map(m => `
+        <div class="proof-media">
+          ${m.media_type === 'video'
+            ? `<video src="${m.file_path}" controls></video>`
+            : `<img src="${m.file_path}">`}
+          <div class="proof-media__bar">
+            <span style="font-size:.74rem;color:var(--text-3)">${m.job_title || ''}</span>
+            <button onclick="toggleLikeMedia(${m.id})" id="like-media-${m.id}" class="icon-btn ${m.viewer_liked ? 'is-liked' : ''}" style="margin-left:auto">${m.viewer_liked ? ic('heartFill') : ic('heart')} <span id="like-count-${m.id}">${m.likes}</span></button>
+            <button onclick="openMediaComments(${m.id})" class="icon-btn">${ic('comment')} ${m.comment_count}</button>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${(data.job_history || []).length ? `
+    <p class="modal-field__label" style="margin-bottom:10px">Job History</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
+      ${data.job_history.slice(0, 5).map(h => `
+        <div class="acct-box">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <p style="font-size:.85rem;font-weight:600">${h.title}</p>
+            <span style="font-family:var(--font-display);font-size:.85rem;font-weight:700;color:var(--accent)">₦${Number(h.amount).toLocaleString()}</span>
+          </div>
+          <p style="font-size:.72rem;color:var(--text-3);margin-top:3px">${ic('pin')} ${h.site_address || '—'}</p>
+          ${h.client_rating ? `<p style="font-size:.78rem;color:var(--warning);margin-top:5px">${ICON.star.repeat(h.client_rating)}${ICON.starEmpty.repeat(5 - h.client_rating)} ${h.client_rating_comment ? `"${h.client_rating_comment}"` : ''}</p>` : ''}
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${certHTML}
+  `;
+
+  workerModalOverlay.classList.add('is-open');
+}
   // ── Payments ──
     async function renderPayments() {
     const paid   = allJobs.filter(j => j.status === 'paid');
@@ -2122,58 +2240,28 @@ async function rejectBargainWithPrompt(jobId, bargainId) {
      WORKER APPLICATION REVIEW
   ══════════════════════════════════════════════ */
   async function reviewWorker(jobId, workerId, action) {
-    const res = await fetch(`${FLASK}/api/client/review-worker`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: jobId, user_id: user.id, worker_id: workerId, action })
-    });
-    const data = await res.json();
-    if (data.success) {
+  const res = await fetch(`${FLASK}/api/client/review-worker`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ job_id: jobId, user_id: user.id, worker_id: workerId, action })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadJobs();
+    if (action === 'assign') {
       modalOverlay.classList.remove('is-open');
-      await loadJobs(); await loadPendingWorkers();
-      Swal.fire({
-        title: action === 'assign' ? 'Worker assigned' : 'Worker declined',
-        text: action === 'assign' ? 'Worker has been assigned and can now complete the job.' : 'Worker declined. They can no longer complete this job.',
-        icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme()
-      });
+      Swal.fire({ title: 'Worker assigned', text: 'Worker has been assigned and notified.', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
     } else {
-      Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+      const refreshedJob = allJobs.find(j => j.id === jobId);
+      if (refreshedJob) openJobModal(refreshedJob);   // re-render modal, minus the declined applicant
+      Swal.fire({ title: 'Applicant declined', text: 'They have been notified.', icon: 'success', timer: 1200, showConfirmButton: false, confirmButtonColor: '#E85C00', ...swalTheme() });
     }
+  } else {
+    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
   }
+}
+  
 
-  async function loadPendingWorkers() {
-    try {
-      const res = await fetch(`${FLASK}/api/client/job-applicants?user_id=${user.id}`, { credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json();
-      renderPendingWorkersBanner(data.applicants || []);
-    } catch (e) { console.error('loadPendingWorkers:', e); }
-  }
-
-  function renderPendingWorkersBanner(applicants) {
-    const container = document.getElementById('pending-workers-banner');
-    if (!container) return;
-    if (!applicants.length) { container.innerHTML = ''; container.style.display = 'none'; return; }
-    container.style.display = 'block';
-    container.innerHTML = applicants.map(p => {
-      const initials = p.worker_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-      return `
-        <div class="applicant-card">
-          <div class="applicant-card__avatar">${initials}</div>
-          <div class="applicant-card__body">
-            <p class="applicant-card__label">Worker applied for your job</p>
-            <p class="applicant-card__name">${p.worker_name}</p>
-            <p class="applicant-card__meta">${p.worker_trade || 'General'} · ${Number(p.worker_trust).toFixed(1)} trust · ${p.worker_jobs} jobs done</p>
-            <p class="applicant-card__job">For: <strong>${p.title}</strong></p>
-          </div>
-          <div class="applicant-card__actions">
-            <button class="btn btn--secondary" onclick="openWorkerPublicProfile(${p.worker_id})">${ic('user')} View</button>
-            <button class="btn btn--success" onclick="reviewWorker(${p.job_id}, ${p.worker_id}, 'assign')">${ic('check')} Assign</button>
-            <button class="btn btn--danger" onclick="reviewWorker(${p.job_id}, ${p.worker_id}, 'decline')">${ic('x')} Decline</button>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
+  
 let conversationsPollInterval = null;
 
 async function loadConversations() {
@@ -2661,12 +2749,12 @@ async function openClientPublicProfile(clientId) {
     if (!ok) return;
     await loadJobs();
     await loadBargains();
-    await loadPendingWorkers();
+   
     await loadReviewSubmissions();
     await loadConversations();
      await loadRecommendedWorkers(); 
     setInterval(loadBargains, 30_000);
-    setInterval(loadPendingWorkers, 20_000);
+   
     setInterval(loadReviewSubmissions, 20_000);
     setInterval(loadConversations, 15_000);
     heartbeatInterval = setInterval(() => {
