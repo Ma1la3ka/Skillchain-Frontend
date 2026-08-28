@@ -504,8 +504,9 @@ function renderRecommendedWorkers(container, workers, basedOnTrade) {
     }
   } catch (e) {}
 
-  const pd     = paymentDetails || job;
-  const amount = Number(pd.amount || job.amount || 0);
+  const pd         = paymentDetails || job;
+const amount     = Number(pd.amount || job.amount || 0);
+const clientPays = Number(pd.client_pays || job.client_pays || amount);
     let applicants = [];
   if (job.status === 'open') {
     try {
@@ -592,46 +593,47 @@ function renderRecommendedWorkers(container, workers, basedOnTrade) {
     }
 
     // Escrow section
-    let escrowSection = '';
-    if (['assigned', 'pending_verification'].includes(job.status)) {
-      const hasAccount = !!pd.collection_account_number;
-      const funded = pd.escrow_paid || false;
+    // Escrow section
+let escrowSection = '';
+if (['assigned', 'pending_verification'].includes(job.status)) {
+  const hasAccount = !!pd.collection_account_number;
+  const funded = pd.escrow_paid || false;
 
-      if (funded) {
-        escrowSection = `
-          <div class="notice notice--success" style="display:flex;align-items:center;gap:10px">
-            <span style="color:var(--success)">${ic('check')}</span>
-            <div><p style="font-weight:700;color:var(--success);font-size:.85rem">Escrow Funded</p>
-            <p style="font-size:.76rem;color:var(--text-3)">₦${amount.toLocaleString()} received — worker can now complete the job</p></div>
-          </div>`;
-      } else if (hasAccount) {
-        const isCheckoutUrl = pd.collection_account_number.startsWith('http');
-        escrowSection = isCheckoutUrl ? `
-          <div class="notice notice--warning">
-            <p class="notice__label">${ic('alert')} Payment required — fund escrow to unlock job</p>
-            <p style="margin-bottom:12px">Pay exactly <strong style="color:var(--text)">₦${amount.toLocaleString()}</strong> to fund escrow. The worker can only start after payment is confirmed.</p>
-            <a href="${pd.collection_account_number}" target="_blank" class="btn btn--primary btn--wide" style="margin-bottom:8px;text-decoration:none">Pay ₦${amount.toLocaleString()} now</a>
-            <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
-          </div>` : `
-          <div class="notice notice--warning">
-            <p class="notice__label">${ic('alert')} Awaiting payment — transfer to fund escrow</p>
-            <div class="acct-box">
-              <p class="acct-box__label">Bank</p>
-              <p class="acct-box__bank">${pd.collection_bank_name || 'GTBank'}</p>
-              <p class="acct-box__label">Account Number</p>
-              <p class="acct-box__num">${pd.collection_account_number}</p>
-            </div>
-            <button onclick="copyAccNum('${pd.collection_account_number}')" class="btn btn--secondary btn--wide btn--sm" style="margin-bottom:8px">${ic('copy')} Copy Account Number</button>
-            <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
-          </div>`;
-      } else {
-        escrowSection = `
-          <div class="notice notice--neutral">
-            <p style="color:var(--text-2)">Payment account not generated yet.</p>
-            <button onclick="retryPaymentAccount(${job.id})" class="btn btn--secondary btn--sm" style="margin-top:8px">${ic('refresh')} Generate Payment Account</button>
-          </div>`;
-      }
-    }
+  if (funded) {
+    escrowSection = `
+      <div class="notice notice--success" style="display:flex;align-items:center;gap:10px">
+        <span style="color:var(--success)">${ic('check')}</span>
+        <div><p style="font-weight:700;color:var(--success);font-size:.85rem">Escrow Funded</p>
+        <p style="font-size:.76rem;color:var(--text-3)">₦${clientPays.toLocaleString()} received — worker can now complete the job</p></div>
+      </div>`;
+  } else if (hasAccount) {
+    const isCheckoutUrl = pd.collection_account_number.startsWith('http');
+    escrowSection = isCheckoutUrl ? `
+      <div class="notice notice--warning">
+        <p class="notice__label">${ic('alert')} Payment required — fund escrow to unlock job</p>
+        <p style="margin-bottom:12px">Pay exactly <strong style="color:var(--text)">₦${clientPays.toLocaleString()}</strong> to fund escrow. The worker can only start after payment is confirmed.</p>
+        <a href="${pd.collection_account_number}" target="_blank" class="btn btn--primary btn--wide" style="margin-bottom:8px;text-decoration:none">Pay ₦${clientPays.toLocaleString()} now</a>
+        <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
+      </div>` : `
+      <div class="notice notice--warning">
+        <p class="notice__label">${ic('alert')} Awaiting payment — transfer to fund escrow</p>
+        <div class="acct-box">
+          <p class="acct-box__label">Bank</p>
+          <p class="acct-box__bank">${pd.collection_bank_name || 'GTBank'}</p>
+          <p class="acct-box__label">Account Number</p>
+          <p class="acct-box__num">${pd.collection_account_number}</p>
+        </div>
+        <button onclick="copyAccNum('${pd.collection_account_number}')" class="btn btn--secondary btn--wide btn--sm" style="margin-bottom:8px">${ic('copy')} Copy Account Number</button>
+        <button onclick="verifyPaymentDemo(${job.id})" class="btn btn--success btn--wide btn--sm">${ic('refresh')} Verify Payment (Demo)</button>
+      </div>`;
+  } else {
+    escrowSection = `
+      <div class="notice notice--neutral">
+        <p style="color:var(--text-2)">Payment account not generated yet.</p>
+        <button onclick="retryPaymentAccount(${job.id})" class="btn btn--secondary btn--sm" style="margin-top:8px">${ic('refresh')} Generate Payment Account</button>
+      </div>`;
+  }
+}
 
     // Rating section
     const canRate = ['verified', 'paid'].includes(job.status) && job.distance_meters != null && Number(job.distance_meters) <= 100;
