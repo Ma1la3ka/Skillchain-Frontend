@@ -2247,11 +2247,19 @@ async function rejectBargainWithPrompt(jobId, bargainId) {
   const data = await res.json();
   if (data.success) {
     await loadJobs();
+    const refreshedJob = allJobs.find(j => j.id === jobId);
+
     if (action === 'assign') {
-      modalOverlay.classList.remove('is-open');
-      Swal.fire({ title: 'Worker assigned', text: 'Worker has been assigned and notified.', icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme() });
+      await Swal.fire({
+        title: 'Worker assigned!',
+        text: 'Fund escrow now so the worker can start. They can only submit proof of presence once payment is confirmed.',
+        icon: 'success',
+        confirmButtonColor: '#E85C00',
+        confirmButtonText: 'Fund Escrow',
+        ...swalTheme()
+      });
+      if (refreshedJob) openJobModal(refreshedJob);   // lands straight on the escrow section
     } else {
-      const refreshedJob = allJobs.find(j => j.id === jobId);
       if (refreshedJob) openJobModal(refreshedJob);   // re-render modal, minus the declined applicant
       Swal.fire({ title: 'Applicant declined', text: 'They have been notified.', icon: 'success', timer: 1200, showConfirmButton: false, confirmButtonColor: '#E85C00', ...swalTheme() });
     }
@@ -2259,8 +2267,6 @@ async function rejectBargainWithPrompt(jobId, bargainId) {
     Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
   }
 }
-  
-
   
 let conversationsPollInterval = null;
 
