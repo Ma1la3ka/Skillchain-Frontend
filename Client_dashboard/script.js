@@ -1305,6 +1305,28 @@ async function openWorkerPublicProfile(workerId) {
     }
   }
 
+
+  let feePreviewTimeout = null;
+document.getElementById('job-amount')?.addEventListener('input', function () {
+  clearTimeout(feePreviewTimeout);
+  const line = document.getElementById('fee-preview-line');
+  const val = Number(this.value);
+
+  if (!val || val < 500) { if (line) line.style.display = 'none'; return; }
+
+  feePreviewTimeout = setTimeout(async () => {
+    try {
+      const res = await fetch(`${FLASK}/api/client/fee-preview?amount=${val}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && line) {
+        line.textContent = `You pay: ₦${data.you_pay.toLocaleString()} · Artisan gets: ₦${data.artisan_gets.toLocaleString()}`;
+        line.style.display = 'block';
+      }
+    } catch (e) { console.error('fee-preview:', e); }
+  }, 350);
+});
+
   /* ══════════════════════════════════════════════
      POST JOB FORM
   ══════════════════════════════════════════════ */
