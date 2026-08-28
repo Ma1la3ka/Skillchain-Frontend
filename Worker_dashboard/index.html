@@ -313,26 +313,60 @@
     </div>
 
     <div class="wallet-card" id="wallet-card">
-      <div class="wallet-card__top">
-        <div class="wallet-card__icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.8"/></svg></div>
-        <div>
-          <p class="wallet-card__label">Squad Wallet</p>
-          <p style="font-size:.8rem;color:rgba(242,241,238,.65);margin-top:1px" id="wallet-bank">—</p>
-        </div>
-        <span class="wallet-card__status" id="wallet-status" style="display:none"><span class="wallet-dot"></span> Active</span>
-      </div>
-      <div class="wallet-card__num" id="wallet-num">Wallet not linked yet</div>
-      <div class="wallet-card__foot">
-        <div>
-          <p class="wallet-card__hint-label">Withdrawal Hub</p>
-          <p class="wallet-card__hint">Payments from verified jobs land here instantly</p>
-        </div>
-        <button class="wallet-card__withdraw" onclick="openWithdrawModal()">
-          Withdraw to Bank
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
+  <!-- Holographic shimmer overlay -->
+  <div class="paycard-shimmer"></div>
+
+  <!-- Top row: chip + contactless + network badge -->
+  <div class="paycard-top">
+    <div class="paycard-chip">
+      <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
+        <rect x="1" y="1" width="26" height="20" rx="4" stroke="rgba(212,175,55,.6)" stroke-width="1.5"/>
+        <path d="M8 1v20M14 1v20M20 1v20M1 7h26M1 15h26" stroke="rgba(212,175,55,.35)" stroke-width="1"/>
+        <rect x="8" y="7" width="6" height="8" rx="1" fill="rgba(212,175,55,.15)"/>
+      </svg>
     </div>
+    <div class="paycard-contactless">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.8">
+        <path d="M8.5 8.5c1.5-1.5 4-1.5 5.5 0M6 6c3-3 8-3 11 0M11 11c.5-.5 1.5-.5 2 0"/>
+      </svg>
+    </div>
+    <div class="paycard-network">SKILLCHAIN</div>
+  </div>
+
+  <!-- Balance display like a card number -->
+  <div class="paycard-balance-row">
+    <span class="paycard-currency">₦</span>
+    <span class="paycard-balance" id="paycard-balance">0.00</span>
+  </div>
+  <p class="paycard-balance-label">Available Balance</p>
+
+  <!-- Card details footer -->
+  <div class="paycard-footer">
+    <div class="paycard-detail">
+      <span class="paycard-detail-label">ARTISAN</span>
+      <span class="paycard-detail-val" id="paycard-name">WORKER</span>
+    </div>
+    <div class="paycard-detail">
+      <span class="paycard-detail-label">VALID THRU</span>
+      <span class="paycard-detail-val">∞/∞</span>
+    </div>
+    <div class="paycard-detail paycard-detail--escrow">
+      <span class="paycard-detail-label">IN ESCROW</span>
+      <span class="paycard-detail-val" id="paycard-escrow">₦0</span>
+    </div>
+  </div>
+
+  <!-- Withdraw button integrated into card -->
+  <button class="paycard-withdraw" onclick="openWithdrawModal()">
+    <span>Withdraw to Bank</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6"/>
+    </svg>
+  </button>
+
+  <!-- Decorative corner accent -->
+  <div class="paycard-accent-line"></div>
+</div>
 
     <div class="dash-cards">
       <div class="dash-card trust-card">

@@ -577,7 +577,7 @@ const clientPays = Number(pd.client_pays || job.client_pays || amount);
             <button class="btn btn--danger" onclick="reviewWorker(${job.id}, ${job.worker_id}, 'decline')">${ic('x')} Decline</button>
           </div>
         </div>`;
-    } else if (job.status === 'verified') {
+    } else if (job.status === 'pending_verification') {
       const deadline = job.review_deadline ? new Date(job.review_deadline) : null;
       const deadlineStr = deadline ? deadline.toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
       reviewSection = `
