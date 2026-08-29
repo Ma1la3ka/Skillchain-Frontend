@@ -514,24 +514,22 @@ function renderConversationsList(conversations) {
   /* ══════════════════════════════════════════════
      WALLET CARD (overview — kept for backward compat)
   ══════════════════════════════════════════════ */
-  function renderEarningsOverview(profile) {
+function renderEarningsOverview(profile) {
   const container = document.getElementById('earnings-overview');
   if (!container) return;
 
-  const available = profile.escrow_balance != null
-    ? parseFloat(profile.escrow_balance)
-    : Math.max(0, allMyJobs
-        .filter(j => j.status === 'paid')
-        .reduce((s, j) => s + parseFloat(j.amount || 0), 0)
-        - parseFloat(profile.total_withdrawn || 0));
+  // SOURCE OF TRUTH: calculate from allMyJobs, not the stale DB cache
+  const totalEarned = allMyJobs
+    .filter(j => j.status === 'paid')
+    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+
+  const available = Math.max(0, totalEarned - parseFloat(profile.total_withdrawn || 0));
 
   const pending = allMyJobs
     .filter(j => ['assigned', 'pending_verification', 'verified'].includes(j.status))
     .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
 
-  const totalEarned = allMyJobs
-    .filter(j => j.status === 'paid')
-    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+  const jobsDone = allMyJobs.filter(j => j.status === 'paid').length;
 
   const hasBank = profile.bank_account_no && profile.bank_code;
 
@@ -552,7 +550,7 @@ function renderConversationsList(conversations) {
         </div>
         <div class="earnings-card__meta-item">
           <span class="earnings-card__meta-label">Jobs Done</span>
-          <span class="earnings-card__meta-value">${profile.jobs_completed || 0}</span>
+          <span class="earnings-card__meta-value">${jobsDone}</span>
         </div>
       </div>
       <div class="earnings-card__actions">
@@ -577,7 +575,7 @@ function renderConversationsList(conversations) {
       <div class="stat-tile">
         <div class="stat-tile__icon stat-tile__icon--jobs">✓</div>
         <div class="stat-tile__label">Completed</div>
-        <div class="stat-tile__value">${profile.jobs_completed || 0}</div>
+        <div class="stat-tile__value">${jobsDone}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-tile__icon stat-tile__icon--rating">★</div>
@@ -623,7 +621,6 @@ function renderConversationsList(conversations) {
     </div>
   `;
 }
-
 // Helper for monthly earnings
 function getThisMonthEarnings() {
   const now = new Date();
@@ -636,20 +633,20 @@ function getThisMonthEarnings() {
   /* ══════════════════════════════════════════════
      STATS + LIFECYCLE + SPARKLINE
   ══════════════════════════════════════════════ */
-  function renderStats(profile) {
+function renderStats(profile) {
     profile = profile || {};
     const done   = allMyJobs.filter(j => ['verified','paid'].includes(j.status)).length;
     const active = allMyJobs.filter(j => ['assigned','pending_review','pending_verification'].includes(j.status)).length;
 
-    const availableBalance = profile.escrow_balance != null
-  ? parseFloat(profile.escrow_balance)
-  : Math.max(0, allMyJobs
-      .filter(j => j.status === 'paid')
-      .reduce((s,j) => s + parseFloat(j.amount||0), 0)
-      - parseFloat(profile.total_withdrawn || 0));
+    // Calculate from actual jobs, not the stale DB cache
+    const totalEarned = allMyJobs
+        .filter(j => j.status === 'paid')
+        .reduce((s,j) => s + parseFloat(j.amount||0), 0);
+    
+    const availableBalance = Math.max(0, totalEarned - parseFloat(profile.total_withdrawn || 0));
     const pendingEscrow    = allMyJobs.filter(j => ['assigned','pending_verification','verified'].includes(j.status)).reduce((s,j) => s + parseFloat(j.amount), 0);
 
-    document.getElementById('stat-done').textContent   = profile.jobs_completed ?? done;
+    document.getElementById('stat-done').textContent   = done;
     document.getElementById('stat-active').textContent = active;
 
     const balEl  = document.getElementById('stat-earned');
@@ -662,7 +659,7 @@ function getThisMonthEarnings() {
 
     const sub = document.getElementById('welcome-sub');
     if (sub) {
-      const trustMsg = (profile.jobs_completed || 0) === 0 ? 'Your trust score is building up.' : 'Keep up the great work.';
+      const trustMsg = done === 0 ? 'Your trust score is building up.' : 'Keep up the great work.';
       sub.innerHTML = active > 0
         ? `You have <strong>${active}</strong> active job${active === 1 ? '' : 's'} awaiting completion. ${trustMsg}`
         : `No active jobs right now. ${trustMsg}`;
@@ -678,22 +675,6 @@ function getThisMonthEarnings() {
 
     renderLifecycle();
     renderSparkline();
-  }
-
-  const LIFECYCLE_LABELS = ['Assigned','In Progress','Review','Done'];
-  function renderLifecycle() {
-    let step = 0;
-    if (allMyJobs.some(j => j.status === 'pending_verification')) step = 2;
-    else if (allMyJobs.some(j => j.status === 'assigned'))        step = 1;
-    else if (allMyJobs.some(j => ['verified','paid'].includes(j.status))) step = 3;
-    const el = document.getElementById('lifecycle-row');
-    if (!el) return;
-    el.innerHTML = LIFECYCLE_LABELS.map((label, i) => {
-      const cls     = i < step ? 'lifecycle-step--done' : i === step ? 'lifecycle-step--active' : '';
-      const content = i < step ? ic('check') : (i + 1);
-      const conn    = i < LIFECYCLE_LABELS.length - 1 ? `<div class="lifecycle-connector ${i < step ? 'is-done' : ''}"></div>` : '';
-      return `<div class="lifecycle-step ${cls}"><div class="lifecycle-dot">${content}</div><span class="lifecycle-step__label">${label}</span></div>${conn}`;
-    }).join('');
   }
 
   function renderSparkline() {
