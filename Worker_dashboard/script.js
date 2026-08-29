@@ -1161,12 +1161,12 @@ function renderBargainBox(slot, job) {
     const { value: formValues } = await Swal.fire({
       title: 'Edit Profile',
       html: `
-        <input id="ep-phone" class="wd-field" placeholder="Phone number (e.g. 08012345678)" value="${p.phone||''}">
-        <textarea id="ep-bio" class="wd-field" rows="3" placeholder="Short bio — what you do, experience…" style="resize:vertical">${p.bio||''}</textarea>
-        <input id="ep-skills" class="wd-field" placeholder="Skills (comma-separated, e.g. Wiring, Solar, Inverter)" value="${(Array.isArray(p.top_skills)?p.top_skills:[]).join(', ')}">`
-        <button type="button" onclick="Swal.close(); openPinModal();" class="btn btn--secondary btn--wide" style="margin-top:8px">
+  <input id="ep-phone" class="wd-field" placeholder="Phone number (e.g. 08012345678)" value="${p.phone||''}">
+  <textarea id="ep-bio" class="wd-field" rows="3" ...>${p.bio||''}</textarea>
+  <input id="ep-skills" class="wd-field" ... value="...">
+  <button type="button" onclick="Swal.close(); openPinModal();" class="btn btn--secondary btn--wide" style="margin-top:8px">
     🔒 Change Withdraw PIN
-       </button>`,
+  </button>`,
       focusConfirm: false, showCancelButton: true,
       confirmButtonText:'Save Changes', confirmButtonColor:'#E85C00', cancelButtonColor:'#9A968E',
       ...swalTheme(),
