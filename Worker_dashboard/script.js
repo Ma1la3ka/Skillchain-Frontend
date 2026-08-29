@@ -1163,7 +1163,10 @@ function renderBargainBox(slot, job) {
       html: `
         <input id="ep-phone" class="wd-field" placeholder="Phone number (e.g. 08012345678)" value="${p.phone||''}">
         <textarea id="ep-bio" class="wd-field" rows="3" placeholder="Short bio — what you do, experience…" style="resize:vertical">${p.bio||''}</textarea>
-        <input id="ep-skills" class="wd-field" placeholder="Skills (comma-separated, e.g. Wiring, Solar, Inverter)" value="${(Array.isArray(p.top_skills)?p.top_skills:[]).join(', ')}">`,
+        <input id="ep-skills" class="wd-field" placeholder="Skills (comma-separated, e.g. Wiring, Solar, Inverter)" value="${(Array.isArray(p.top_skills)?p.top_skills:[]).join(', ')}">`
+        <button type="button" onclick="Swal.close(); openPinModal();" class="btn btn--secondary btn--wide" style="margin-top:8px">
+    🔒 Change Withdraw PIN
+       </button>`,
       focusConfirm: false, showCancelButton: true,
       confirmButtonText:'Save Changes', confirmButtonColor:'#E85C00', cancelButtonColor:'#9A968E',
       ...swalTheme(),
@@ -1520,6 +1523,13 @@ async function openPinModal(onComplete) {
     confirmButtonColor: '#E85C00',
     showCancelButton: true,
     cancelButtonColor: '#9A968E',
+    didOpen: () => {
+      document.getElementById('forgot-pin-link')?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        Swal.close();
+        await requestPinReset();
+      });
+    },
     ...swalTheme(),
     preConfirm: () => {
       const p1 = document.getElementById('pin-new').value;
@@ -1552,6 +1562,38 @@ async function openPinModal(onComplete) {
     Swal.fire({ title: 'Network error', icon: 'error', ...swalTheme() });
   }
 }
+
+async function requestPinReset() {
+  await fetch(`${FLASK}/api/worker/forgot-pin`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ email: user.email })
+  });
+
+  const { value: formValues, isConfirmed } = await Swal.fire({
+    title: 'Reset Withdraw PIN',
+    html: `
+      <p style="font-size:.82rem;color:var(--text-2);margin-bottom:14px;text-align:left">Check your email for a 6-digit code.</p>
+      <input id="rp-token" class="wd-field" placeholder="6-digit code" maxlength="6" inputmode="numeric">
+      <input type="password" id="rp-new-pin" class="wd-field" placeholder="New PIN (4–6 digits)" maxlength="6" inputmode="numeric">`,
+    confirmButtonText: 'Reset PIN', confirmButtonColor: '#E85C00',
+    showCancelButton: true, ...swalTheme(),
+    preConfirm: () => {
+      const token = document.getElementById('rp-token').value.trim();
+      const pin   = document.getElementById('rp-new-pin').value.trim();
+      if (!token || !pin) { Swal.showValidationMessage('Both fields are required'); return false; }
+      return { token, pin };
+    }
+  });
+  if (!isConfirmed || !formValues) return;
+
+  const res  = await fetch(`${FLASK}/api/worker/reset-pin`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ email: user.email, token: formValues.token, new_pin: formValues.pin })
+  });
+  const data = await res.json();
+  Swal.fire({ title: data.success ? 'PIN reset' : 'Error', text: data.message, icon: data.success ? 'success' : 'error', confirmButtonColor: '#E85C00', ...swalTheme() });
+}
+window.requestPinReset = requestPinReset;
 
 window.openPinModal = openPinModal;
 window.dismissPinBanner = dismissPinBanner;
