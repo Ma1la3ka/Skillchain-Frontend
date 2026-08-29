@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════════
    SKILLCHAIN — Landing Page Interactions
+   Everything here is CSS transforms/opacity + IntersectionObserver.
+   No canvas, no WebGL, no per-frame JS loop — cheap on any phone.
 ═══════════════════════════════════════════════════ */
 
 function initNavScroll() {
@@ -34,7 +36,22 @@ function initMobileNav() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 }
 
-function initHowSteps() {
+function initSmoothScroll() {
+  document.querySelectorAll('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href');
+      if (href.length < 2) return;
+      const t = document.querySelector(href);
+      if (!t) return;
+      e.preventDefault();
+      t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
+/* the ticket stepper: as each step crosses the trigger line, mark
+   everything above it "done" (stamped) and the current one "active" */
+function initStepper() {
   const steps = document.querySelectorAll('.js-step');
   if (!steps.length) return;
   let deepest = -1;
@@ -50,7 +67,7 @@ function initHowSteps() {
         if (i === deepest) s.classList.add('is-active');
       });
     });
-  }, { threshold: 0.6, rootMargin: '-80px 0px -120px 0px' });
+  }, { threshold: 0.6, rootMargin: '-70px 0px -100px 0px' });
 
   steps.forEach((s) => obs.observe(s));
 }
@@ -68,24 +85,13 @@ function initRevealGroup(selector, parentSelector, delayStep) {
   obs.observe(parent || items[0]);
 }
 
-function initSmoothScroll() {
-  document.querySelectorAll('a[href^="#"]').forEach((a) => {
-    a.addEventListener('click', (e) => {
-      const href = a.getAttribute('href');
-      if (href.length < 2) return;
-      const t = document.querySelector(href);
-      if (!t) return;
-      e.preventDefault();
-      t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
-}
-
-function initManifestCycle() {
-  const rows = document.querySelectorAll('.js-mrow');
+/* live receipts wall — cycles the highlighted row, pauses off-screen */
+function initReceiptCycle() {
+  const rows = document.querySelectorAll('.js-receipt');
   if (!rows.length) return;
   let current = 0;
   rows[0].classList.add('is-active');
+  let interval = null;
 
   function advance() {
     rows[current].classList.remove('is-active');
@@ -93,16 +99,16 @@ function initManifestCycle() {
     rows[current].classList.add('is-active');
   }
 
+  const list = rows[0].closest('.receipt-list');
   const obs = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
-      const interval = setInterval(advance, 2600);
-      const cleanup = new IntersectionObserver((e) => { if (!e[0].isIntersecting) clearInterval(interval); });
-      cleanup.observe(rows[0].closest('.manifest-list'));
-      obs.disconnect();
+      if (!interval) interval = setInterval(advance, 2500);
+    } else if (interval) {
+      clearInterval(interval);
+      interval = null;
     }
-  }, { threshold: 0.4 });
-
-  obs.observe(rows[0].closest('.manifest-list'));
+  }, { threshold: 0.35 });
+  obs.observe(list);
 }
 
 function initContactModal() {
@@ -131,12 +137,12 @@ function initContactModal() {
 
     if (name.trim().length < 3) {
       result.textContent = 'Please enter your full name.';
-      result.style.color = '#c0392b';
+      result.style.color = '#C1391F';
       return;
     }
     if (message.trim().length < 10) {
       result.textContent = 'Message is too short — please give more detail.';
-      result.style.color = '#c0392b';
+      result.style.color = '#C1391F';
       return;
     }
 
@@ -156,16 +162,16 @@ function initContactModal() {
         const data = await response.json();
         if (response.status === 200) {
           result.textContent = 'Message sent successfully.';
-          result.style.color = '#1f7a4d';
+          result.style.color = '#1E7145';
           form.reset();
         } else {
           result.textContent = data.message || 'Something went wrong.';
-          result.style.color = '#c0392b';
+          result.style.color = '#C1391F';
         }
       })
       .catch(() => {
         result.textContent = 'Network error — please try again.';
-        result.style.color = '#c0392b';
+        result.style.color = '#C1391F';
       })
       .finally(() => {
         submitBtn.disabled = false;
@@ -177,10 +183,9 @@ function initContactModal() {
 document.addEventListener('DOMContentLoaded', () => {
   initNavScroll();
   initMobileNav();
-  initHowSteps();
-  initRevealGroup('.js-diffitem', '.diff__grid', 100);
-  initRevealGroup('.js-talentcard', '.talent__grid', 70);
   initSmoothScroll();
-  initManifestCycle();
+  initStepper();
+  initRevealGroup('.js-engine', '.engines__grid', 90);
+  initReceiptCycle();
   initContactModal();
 });

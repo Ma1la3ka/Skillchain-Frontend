@@ -3,43 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SkillChain — Verified Artisans, Zero Middlemen</title>
-<meta name="description" content="SkillChain connects clients with GPS-verified artisans across Nigeria. Escrow-backed payment, released only when the work is proven on-site.">
+<title>Skillchain — Book the Work. See It Stamped.</title>
+<meta name="description" content="Skillchain runs Nigeria's daily labour and skilled artisan economy on one trust system: escrow-backed pay, released only when the job is proven done.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<canvas id="chain-canvas" aria-hidden="true"></canvas>
 <div class="grain" aria-hidden="true"></div>
 
-<div class="hud" id="hud" aria-hidden="true">
-  <span class="hud__label">TRACKING</span>
-  <span class="hud__code">SC-2026-0847</span>
-  <span class="hud__bar"><span class="hud__bar-fill" id="hud-fill"></span></span>
-  <span class="hud__pct" id="hud-pct">00%</span>
-</div>
+<!-- shared SVG defs: the ink-texture filter used by the stamp, and the
+     Skillchain mark itself — a scalloped seal (like a real ink stamp)
+     punched through by a single check stroke. Defined once, reused via
+     <use> in the nav and footer so the logo never drifts out of sync. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="inkTexture">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="noise" seed="7"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2"/>
+    </filter>
+    <symbol id="sc-mark" viewBox="0 0 32 32">
+      <path d="M16,1.8 18.26,4.62 21.43,2.88 22.44,6.35 26.04,5.96 25.65,9.56 29.12,10.57 27.38,13.74 30.2,16 27.38,18.26 29.12,21.43 25.65,22.44 26.04,26.04 22.44,25.65 21.43,29.12 18.26,27.38 16,30.2 13.74,27.38 10.57,29.12 9.56,25.65 5.96,26.04 6.35,22.44 2.88,21.43 4.62,18.26 1.8,16 4.62,13.74 2.88,10.57 6.35,9.56 5.96,5.96 9.56,6.35 10.57,2.88 13.74,4.62Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M10.2,16.4 14,20.4 21.8,10.8" fill="none" stroke="#C1391F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
 
 <!-- NAV -->
 <nav class="nav" id="sc-nav">
   <a href="/" class="nav-logo">
-    <span class="nav-logo__mark">
-      <svg viewBox="0 0 28 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="9" cy="10" rx="7.4" ry="5.2" transform="rotate(-32 9 10)" stroke="#E8590C" stroke-width="2.6"/>
-        <ellipse cx="19" cy="10" rx="7.4" ry="5.2" transform="rotate(-32 19 10)" stroke="#16130E" stroke-width="2.6"/>
-      </svg>
-    </span>
-    <span class="nav-logo__text">Skill<em>Chain</em></span>
+    <svg class="nav-logo__mark" width="27" height="27" viewBox="0 0 32 32" aria-hidden="true"><use href="#sc-mark"/></svg>
+    <span class="nav-logo__text">Skill<i>chain</i></span>
   </a>
   <div class="nav-links" id="sc-nav-links">
-    <a href="#how" class="nav-link">How it Works</a>
-    <a href="#trades" class="nav-link">Trades</a>
-    <a href="#artisans" class="nav-link">Find Artisans</a>
+    <a href="#flow" class="nav-link">How it Works</a>
+    <a href="#engines" class="nav-link">DailyEarn &amp; Artisan</a>
+    <a href="#wall" class="nav-link">Live Jobs</a>
     <div class="nav-sep"></div>
     <a href="/login" class="nav-link">Log in</a>
-    <a href="/register" class="btn btn--orange btn--sm">Get started</a>
+    <a href="/register" class="btn btn--red btn--sm">Get Started</a>
   </div>
   <button class="nav-hamburger" id="sc-hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="sc-nav-links">
     <span></span><span></span><span></span>
@@ -50,303 +54,284 @@
 <section class="hero">
   <div class="hero__inner">
     <div class="hero__col">
-      <div class="hero__badge">
-        <span class="hero__badge-dot"></span>
-        GPS-verified · Escrow protected · Certified across Africa
-      </div>
+      <span class="eyebrow">Nigeria's informal economy, on the record</span>
 
       <h1 class="hero__title">
-        Hire skilled hands.<br>
-        Every link<br>
-        <em class="accent">verified.</em>
+        Get paid<br>
+        for work<br>
+        <em>you can prove.</em>
       </h1>
 
       <p class="hero__sub">
-        SkillChain puts you in direct contact with vetted plumbers, electricians, welders and more. Read what past clients say, check their certification, then watch the job move from posted to paid — with proof at every link.
+        Skillchain runs two things at once: DailyEarn, same-day work for the motor park and the estate gate, and Skillchain Artisan, certified trades booked through the brand, not a phone number. Every job on either side moves the same way — posted, escrowed, done, stamped, paid.
       </p>
 
       <div class="hero__actions">
-        <a href="/register?role=client" class="btn btn--orange btn--lg">
-          Hire an Artisan
-          <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <a href="/register?role=client" class="btn btn--red btn--lg">
+          Book a Job
+          <svg class="btn__arrow" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
-        <a href="/register?role=artisan" class="btn btn--outline btn--lg">Join as Artisan</a>
+        <a href="/register?role=worker" class="btn btn--outline btn--lg">Start Earning Today</a>
       </div>
 
-      <div class="hero__trust">
-        <div class="hero__trust-item"><span class="hero__trust-val">12K+</span><span class="hero__trust-lbl">Verified artisans</span></div>
-        <div class="hero__trust-dot"></div>
-        <div class="hero__trust-item"><span class="hero__trust-val">₦840M+</span><span class="hero__trust-lbl">Paid out to workers</span></div>
-        <div class="hero__trust-dot"></div>
-        <div class="hero__trust-item"><span class="hero__trust-val">4.9★</span><span class="hero__trust-lbl">Platform rating</span></div>
+      <div class="hero__proof">
+        <span class="hero__proof-line"><strong>80M+</strong> daily workers</span>
+        <span class="hero__proof-line"><strong>20M+</strong> skilled artisans</span>
+        <span class="hero__proof-line"><strong>0</strong> platforms serving both — until now</span>
       </div>
     </div>
 
-    <div class="hero__col hero__col--proof">
-      <div class="proof-slip">
-        <div class="proof-slip__row">
-          <span class="proof-slip__label">Job</span>
-          <span class="proof-slip__val">Inverter installation</span>
+    <div class="hero__col hero__col--ticket">
+      <div class="docket">
+        <div class="docket__top">
+          <div class="docket__row">
+            <span class="docket__label">Docket</span>
+            <span class="docket__val">SC–2026–08471</span>
+          </div>
+          <div class="docket__row">
+            <span class="docket__label">Zone</span>
+            <span class="docket__val">Ikeja, Lagos</span>
+          </div>
+          <div class="docket__job">Ceiling fan install</div>
+          <div class="docket__who">Dispatched to Chinedu O. · Gold contractor</div>
         </div>
-        <div class="proof-slip__row">
-          <span class="proof-slip__label">Artisan</span>
-          <span class="proof-slip__val">Chukwuemeka E. · Electrician</span>
+        <div class="docket__perf"></div>
+        <div class="docket__bottom">
+          <div class="docket__amount">
+            <span class="docket__amount-lbl">Escrow released</span>
+            <span class="docket__amount-val">₦8,000</span>
+          </div>
+          <span class="stamp"><span class="stamp__dot"></span>VERIFIED · PAID</span>
         </div>
-        <div class="proof-slip__row">
-          <span class="proof-slip__label">Location lock</span>
-          <span class="proof-slip__val proof-slip__val--mono">6.5244°N, 3.3792°E</span>
-        </div>
-        <div class="proof-slip__divider"></div>
-        <div class="proof-slip__status">
-          <span class="proof-slip__status-dot"></span>
-          GPS-confirmed on-site — escrow released
-        </div>
-        <div class="proof-slip__stub">₦8,000 · Settled in 4s</div>
       </div>
     </div>
   </div>
 
   <div class="scroll-cue" aria-hidden="true">
-    <span>Scroll to follow a job through the chain</span>
+    <span>Scroll to see how the docket moves</span>
     <svg viewBox="0 0 12 18" width="10" height="15"><path d="M6 1v14M1 10l5 5 5-5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </div>
 </section>
 
 <!-- TRADES MARQUEE -->
-<div class="marquee-wrap" id="trades" aria-label="Supported trades">
+<div class="marquee-wrap" aria-label="Categories covered">
   <div class="marquee-track" aria-hidden="true">
-    <span>ELECTRICIAN</span><i>·</i><span>PLUMBER</span><i>·</i><span>WELDER</span><i>·</i><span>MASON</span><i>·</i><span>CARPENTER</span><i>·</i><span>PAINTER</span><i>·</i><span>TILER</span><i>·</i><span>AC TECHNICIAN</span><i>·</i><span>GENERATOR REPAIR</span><i>·</i><span>BOREHOLE DRILLING</span><i>·</i><span>ROOFING</span><i>·</i>
-    <span>ELECTRICIAN</span><i>·</i><span>PLUMBER</span><i>·</i><span>WELDER</span><i>·</i><span>MASON</span><i>·</i><span>CARPENTER</span><i>·</i><span>PAINTER</span><i>·</i><span>TILER</span><i>·</i><span>AC TECHNICIAN</span><i>·</i><span>GENERATOR REPAIR</span><i>·</i>
+    <span>LOADING</span><i>·</i><span>CLEANING</span><i>·</i><span>CAR WASH</span><i>·</i><span>LAUNDRY</span><i>·</i><span>SITE LABOUR</span><i>·</i><span>DELIVERY</span><i>·</i><span>ELECTRICAL</span><i>·</i><span>PLUMBING</span><i>·</i><span>CARPENTRY</span><i>·</i><span>TAILORING</span><i>·</i><span>WELDING</span><i>·</i>
+    <span>LOADING</span><i>·</i><span>CLEANING</span><i>·</i><span>CAR WASH</span><i>·</i><span>LAUNDRY</span><i>·</i><span>SITE LABOUR</span><i>·</i><span>DELIVERY</span><i>·</i><span>ELECTRICAL</span><i>·</i><span>PLUMBING</span><i>·</i><span>CARPENTRY</span><i>·</i><span>TAILORING</span><i>·</i><span>WELDING</span><i>·</i>
   </div>
 </div>
 
-<!-- LIVE MANIFEST -->
-<section class="manifest">
-  <div class="manifest__inner">
-    <div class="manifest__head">
-      <span class="eyebrow">LIVE ON THE CHAIN</span>
-      <h2 class="manifest__title">Five artisans, moving right now.</h2>
+<!-- TWO ENGINES -->
+<section class="engines" id="engines">
+  <div class="engines__inner">
+    <div class="engines__head">
+      <span class="eyebrow">Two boards, one platform</span>
+      <h2 class="engines__title">Not one marketplace.<br>Two, built for how work actually happens here.</h2>
+      <p class="engines__sub">A daily worker needs cash today and no gatekeeping. A client hiring a plumber needs a guarantee, not a stranger's phone number. Skillchain refuses to force both into the same broken model.</p>
     </div>
 
-    <div class="manifest__ticker">
-      <span class="manifest__ticker-dot"></span>
-      3 jobs matched in Ikeja in the last hour
-    </div>
+    <div class="engines__grid">
+      <div class="engine-board engine-board--chalk js-engine">
+        <span class="engine-board__tag">Zero barrier · same-day pay</span>
+        <h3 class="engine-board__title">DailyEarn</h3>
+        <p class="engine-board__desc">Phone number, selfie, location — that's onboarding. No CV, no interview. NIN checks run quietly in the background, voice prompts run in Yoruba, Igbo and Hausa, and a USSD line covers workers with no smartphone at all.</p>
+        <div class="engine-board__stats">
+          <div><div class="engine-board__stat-val">₦250k+</div><div class="engine-board__stat-lbl">Monthly, multi-category worker</div></div>
+          <div><div class="engine-board__stat-val">90 days</div><div class="engine-board__stat-lbl">To first credit signal</div></div>
+        </div>
+        <ul class="engine-board__list">
+          <li>Live "I've arrived" check-in with photo, before anyone opens the gate</li>
+          <li>Escrow pays into the DailyEarn Wallet the moment the client approves</li>
+          <li>Withdraw to any bank, OPay or Palmpay in minutes</li>
+        </ul>
+        <a href="/register?role=worker" class="btn btn--outline-inv btn--sm">Join DailyEarn</a>
+      </div>
 
-    <div class="manifest-list">
-      <div class="manifest-row js-mrow" data-index="0">
-        <span class="manifest-row__status manifest-row__status--live"></span>
-        <span class="manifest-row__name">Chukwuemeka Eze</span>
-        <span class="manifest-row__trade">Electrician · Lagos</span>
-        <span class="manifest-row__meta">★ 4.9 · 138 jobs</span>
-        <span class="manifest-row__rate">₦8,000<em>/day</em></span>
-        <span class="manifest-row__dist">0.8km</span>
-      </div>
-      <div class="manifest-row js-mrow" data-index="1">
-        <span class="manifest-row__status manifest-row__status--live"></span>
-        <span class="manifest-row__name">Aminu Garba</span>
-        <span class="manifest-row__trade">Plumber · Abuja</span>
-        <span class="manifest-row__meta">★ 5.0 · 92 jobs</span>
-        <span class="manifest-row__rate">₦6,000<em>/day</em></span>
-        <span class="manifest-row__dist">1.2km</span>
-      </div>
-      <div class="manifest-row js-mrow" data-index="2">
-        <span class="manifest-row__status manifest-row__status--live"></span>
-        <span class="manifest-row__name">Taiwo Adeyemi</span>
-        <span class="manifest-row__trade">Mason · Ibadan</span>
-        <span class="manifest-row__meta">★ 4.8 · 201 jobs</span>
-        <span class="manifest-row__rate">₦7,000<em>/day</em></span>
-        <span class="manifest-row__dist">2.1km</span>
-      </div>
-      <div class="manifest-row js-mrow" data-index="3">
-        <span class="manifest-row__status manifest-row__status--away"></span>
-        <span class="manifest-row__name">Biodun Okafor</span>
-        <span class="manifest-row__trade">Carpenter · Port Harcourt</span>
-        <span class="manifest-row__meta">★ 4.7 · 74 jobs</span>
-        <span class="manifest-row__rate">₦9,000<em>/day</em></span>
-        <span class="manifest-row__dist">3.4km</span>
-      </div>
-      <div class="manifest-row js-mrow" data-index="4">
-        <span class="manifest-row__status manifest-row__status--live"></span>
-        <span class="manifest-row__name">Ngozi Obi</span>
-        <span class="manifest-row__trade">Painter · Enugu</span>
-        <span class="manifest-row__meta">★ 4.9 · 56 jobs</span>
-        <span class="manifest-row__rate">₦5,000<em>/day</em></span>
-        <span class="manifest-row__dist">4.7km</span>
+      <div class="engine-board engine-board--sign js-engine">
+        <span class="engine-board__tag">Vetted · brand-owned · enterprise-ready</span>
+        <h3 class="engine-board__title">Skillchain Artisan</h3>
+        <p class="engine-board__desc">You book Skillchain, not an individual — that's the whole fix. We set the price, dispatch a certified contractor, and stand behind the work. No number exchange, no bypass, no negotiation at the door.</p>
+        <div class="engine-board__stats">
+          <div><div class="engine-board__stat-val">₦10k+</div><div class="engine-board__stat-lbl">Pipe repair, fixed price</div></div>
+          <div><div class="engine-board__stat-val">3 tiers</div><div class="engine-board__stat-lbl">Bronze, Silver, Gold contractors</div></div>
+        </div>
+        <ul class="engine-board__list">
+          <li>Upload a photo or video — AI scopes the job before anyone is dispatched</li>
+          <li>Completion video required before escrow releases a naira</li>
+          <li>Disputed work gets a replacement contractor, on us</li>
+        </ul>
+        <a href="/register?role=client" class="btn btn--outline-inv btn--sm">Book an Artisan</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="how" id="how">
-  <div class="how__inner">
-    <div class="how__head">
-      <span class="eyebrow">THE CHAIN OF CUSTODY</span>
-      <h2 class="how__title">Five links. No surprises.</h2>
-      <p class="how__sub">Every job follows the same sequence, and every link has to hold before payment moves to the next. Nothing skips ahead.</p>
+<!-- HOW IT MOVES -->
+<section class="flow" id="flow">
+  <div class="flow__inner">
+    <div class="flow__head">
+      <span class="eyebrow">The docket trail</span>
+      <h2 class="flow__title">Five stamps.<br>No shortcuts.</h2>
+      <p class="flow__sub">Every job, on either side of Skillchain, moves through the same five checkpoints. Money only moves forward — never sideways, never on a promise.</p>
     </div>
 
-    <div class="ledger">
-      <div class="ledger__row js-step" data-step="0">
-        <span class="ledger__num">01</span>
-        <div class="ledger__body">
-          <strong>Post the job</strong>
-          <p>Drop a pin, describe the work. Takes under three minutes. We match you to nearby verified artisans, usually within the hour.</p>
+    <div class="stepper">
+      <div class="step js-step">
+        <span class="step__num">01</span>
+        <div class="step__body">
+          <strong>Job is posted</strong>
+          <p>Client or employer drops the job — a fan install, a cleaning run, a delivery. Matched to nearby workers or contractors, usually within the hour.</p>
         </div>
+        <span class="step__mark">✓</span>
       </div>
-      <div class="ledger__row js-step" data-step="1">
-        <span class="ledger__num">02</span>
-        <div class="ledger__body">
-          <strong>Lock payment in escrow</strong>
-          <p>Money moves into escrow before any work starts, via Squad. Neither side can touch it until the job is confirmed complete.</p>
+      <div class="step js-step">
+        <span class="step__num">02</span>
+        <div class="step__body">
+          <strong>Payment locked in escrow</strong>
+          <p>The naira moves into Skillchain's escrow before anyone leaves for site. Neither side can touch it until the job is confirmed complete.</p>
         </div>
+        <span class="step__mark">✓</span>
       </div>
-      <div class="ledger__row js-step" data-step="2">
-        <span class="ledger__num">03</span>
-        <div class="ledger__body">
-          <strong>Artisan travels to site</strong>
-          <p>They head to your pinned location. You're notified as they approach — no waiting in the dark about whether anyone is coming.</p>
+      <div class="step js-step">
+        <span class="step__num">03</span>
+        <div class="step__body">
+          <strong>Worker or contractor arrives</strong>
+          <p>A check-in ping fires on arrival — photo, NIN status, timestamp. The client knows exactly who's at the gate before opening it.</p>
         </div>
+        <span class="step__mark">✓</span>
       </div>
-      <div class="ledger__row js-step" data-step="3">
-        <span class="ledger__num">04</span>
-        <div class="ledger__body">
-          <strong>GPS proof recorded</strong>
-          <p>A ten-second on-site video, GPS locked to that exact moment. Within 100m of your pin, presence is verified. No match, no payout.</p>
+      <div class="step js-step">
+        <span class="step__num">04</span>
+        <div class="step__body">
+          <strong>Proof of work goes on record</strong>
+          <p>A completion photo or short video is logged against the docket. The client reviews it in-app — no argument about what was actually done.</p>
         </div>
+        <span class="step__mark">✓</span>
       </div>
-      <div class="ledger__row js-step" data-step="4">
-        <span class="ledger__num ledger__num--done">✓</span>
-        <div class="ledger__body">
-          <strong>Escrow releases automatically</strong>
-          <p>The geofence passes, and payment moves to the artisan's virtual account instantly — no delay, no one skimming a cut in between.</p>
+      <div class="step js-step">
+        <span class="step__num">05</span>
+        <div class="step__body">
+          <strong>Docket is stamped, escrow releases</strong>
+          <p>Once approved, payout hits the wallet instantly — withdrawable to any bank or mobile money account within minutes.</p>
         </div>
+        <span class="step__mark">✓</span>
       </div>
     </div>
 
-    <div class="how__cta">
-      <a href="/register" class="btn btn--orange btn--lg">
+    <div class="flow__cta">
+      <a href="/register" class="btn btn--ink btn--lg">
         Post a Job
-        <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="btn__arrow" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <span class="how__cta-note">Most jobs matched within 2 hours</span>
+      <span class="flow__cta-note">Most jobs matched within 2 hours</span>
     </div>
   </div>
 </section>
 
-<!-- WHY DIFFERENT -->
-<section class="diff">
-  <div class="diff__inner">
-    <div class="diff__head">
-      <h2 class="diff__title">What actually makes this different.</h2>
-      <p class="diff__sub">Not a new coat of paint on the same old agency model. Three structural things that change how trust and payment work.</p>
+<!-- LIVE RECEIPTS WALL -->
+<section class="wall" id="wall">
+  <div class="wall__inner">
+    <div class="wall__head">
+      <div>
+        <span class="eyebrow">On the books right now</span>
+        <h2 class="wall__title">Today's dockets.</h2>
+      </div>
+      <span class="wall__ticker">
+        <span class="wall__ticker-dot"></span>
+        6 jobs stamped in Lagos in the last hour
+      </span>
     </div>
 
-    <div class="diff__grid">
-      <div class="diff__item js-diffitem">
-        <div class="diff__mark">
-          <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <h3>Reputation earned, not self-declared</h3>
-        <p>Every rating is assembled from GPS-confirmed jobs, client reviews, and peer vouches. You can't buy a good score here — you earn it, job by job.</p>
+    <div class="receipt-list">
+      <div class="receipt-row js-receipt">
+        <span class="receipt-row__dot receipt-row__dot--live"></span>
+        <span class="receipt-row__name">Ngozi Balogun</span>
+        <span class="receipt-row__what">Laundry &amp; ironing · DailyEarn</span>
+        <span class="receipt-row__meta">Surulere · 0.6km</span>
+        <span class="receipt-row__amt">₦2,000<em>/job</em></span>
       </div>
-
-      <div class="diff__item js-diffitem">
-        <div class="diff__mark diff__mark--fill">
-          <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><path d="M12 2a5 5 0 0 1 5 5c0 4-5 11-5 11S7 11 7 7a5 5 0 0 1 5-5z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="7" r="1.8" fill="currentColor"/></svg>
-        </div>
-        <h3>Proof of presence, not a promise</h3>
-        <p>The artisan records video on-site with GPS locked to that moment. If the coordinates don't match your pin, payment doesn't move — no override, no argument.</p>
+      <div class="receipt-row js-receipt">
+        <span class="receipt-row__dot receipt-row__dot--live"></span>
+        <span class="receipt-row__name">Chinedu Okonkwo</span>
+        <span class="receipt-row__what">Ceiling fan install · Skillchain Artisan</span>
+        <span class="receipt-row__meta">Ikeja · Gold contractor</span>
+        <span class="receipt-row__amt">₦8,000</span>
       </div>
-
-      <div class="diff__item js-diffitem">
-        <div class="diff__mark">
-          <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><rect x="3" y="6" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        </div>
-        <h3>Payment moves when work is confirmed</h3>
-        <p>Escrow sits untouched until proof passes. Then it moves automatically, in seconds, into the artisan's account. Neither side has to trust the other to follow through.</p>
+      <div class="receipt-row js-receipt">
+        <span class="receipt-row__dot receipt-row__dot--live"></span>
+        <span class="receipt-row__name">Amaka Idris</span>
+        <span class="receipt-row__what">Site labour, block loading · DailyEarn</span>
+        <span class="receipt-row__meta">Yaba · 1.4km</span>
+        <span class="receipt-row__amt">₦3,000<em>/job</em></span>
+      </div>
+      <div class="receipt-row js-receipt">
+        <span class="receipt-row__dot receipt-row__dot--away"></span>
+        <span class="receipt-row__name">Femi Adewale</span>
+        <span class="receipt-row__what">Pipe repair · Skillchain Artisan</span>
+        <span class="receipt-row__meta">Lekki · Silver contractor</span>
+        <span class="receipt-row__amt">₦10,000</span>
+      </div>
+      <div class="receipt-row js-receipt">
+        <span class="receipt-row__dot receipt-row__dot--live"></span>
+        <span class="receipt-row__name">Tunde Bakare</span>
+        <span class="receipt-row__what">Food delivery run · DailyEarn</span>
+        <span class="receipt-row__meta">Ojota · 2.1km</span>
+        <span class="receipt-row__amt">₦2,500<em>/job</em></span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ARTISANS -->
-<section class="talent" id="artisans">
-  <div class="talent__inner">
-    <div class="talent__head">
-      <h2 class="talent__title">Verified. Available. Ready.</h2>
-      <a href="/explore" class="talent__browse">
-        Browse all 12K+ artisans
-        <svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
+<!-- CHALKBOARD STATS -->
+<section class="chalk">
+  <div class="chalk__inner">
+    <div class="chalk__head">
+      <span class="eyebrow eyebrow--inv">The market nobody built for</span>
+      <h2 class="chalk__title">Two economies, running in the open, unrecorded.</h2>
+      <p class="chalk__sub">Every major African city has the same demographic split as Lagos. This is the size of what's been running on cash and word of mouth alone.</p>
     </div>
 
-    <div class="talent__grid">
-      <div class="talent-card js-talentcard">
-        <div class="talent-card__top"><div class="talent-card__avatar" style="background:#c8b8a8;"></div><span class="avail">AVAILABLE</span></div>
-        <div class="talent-card__name">Chukwuemeka Eze</div>
-        <div class="talent-card__trade">Electrician</div>
-        <div class="talent-card__location">Ikeja, Lagos</div>
-        <div class="talent-card__tags"><span>Wiring</span><span>Solar</span><span>Inverter</span></div>
-        <div class="talent-card__foot"><span class="rating">★ 4.9 · 138 jobs</span><span class="rate">₦8k/day</span></div>
+    <div class="chalk__grid">
+      <div class="chalk__cell">
+        <div class="chalk__val">80M+</div>
+        <div class="chalk__lbl">Daily informal workers across Africa</div>
       </div>
-      <div class="talent-card talent-card--featured js-talentcard">
-        <div class="talent-card__top"><div class="talent-card__avatar" style="background:#a8b8c8;"></div><span class="avail">AVAILABLE</span></div>
-        <div class="talent-card__name">Aminu Garba</div>
-        <div class="talent-card__trade">Plumber</div>
-        <div class="talent-card__location">Wuse, Abuja</div>
-        <div class="talent-card__tags"><span>Pipes</span><span>Borehole</span><span>Tanks</span></div>
-        <div class="talent-card__foot"><span class="rating">★ 5.0 · 92 jobs</span><span class="rate">₦6k/day</span></div>
+      <div class="chalk__cell">
+        <div class="chalk__val">20M+</div>
+        <div class="chalk__lbl">Skilled artisans in Nigeria alone</div>
       </div>
-      <div class="talent-card js-talentcard">
-        <div class="talent-card__top"><div class="talent-card__avatar" style="background:#b8a8c8;"></div><span class="avail">AVAILABLE</span></div>
-        <div class="talent-card__name">Taiwo Adeyemi</div>
-        <div class="talent-card__trade">Mason</div>
-        <div class="talent-card__location">Ring Road, Ibadan</div>
-        <div class="talent-card__tags"><span>Blocks</span><span>Plastering</span></div>
-        <div class="talent-card__foot"><span class="rating">★ 4.8 · 201 jobs</span><span class="rate">₦7k/day</span></div>
+      <div class="chalk__cell">
+        <div class="chalk__val">$12B+</div>
+        <div class="chalk__lbl">Combined addressable market</div>
       </div>
-      <div class="talent-card js-talentcard">
-        <div class="talent-card__top"><div class="talent-card__avatar" style="background:#b8c8a8;"></div><span class="avail">AVAILABLE</span></div>
-        <div class="talent-card__name">Biodun Okafor</div>
-        <div class="talent-card__trade">Carpenter</div>
-        <div class="talent-card__location">GRA, Port Harcourt</div>
-        <div class="talent-card__tags"><span>Furniture</span><span>Roofing</span></div>
-        <div class="talent-card__foot"><span class="rating">★ 4.7 · 74 jobs</span><span class="rate">₦9k/day</span></div>
+      <div class="chalk__cell">
+        <div class="chalk__val">18–24mo</div>
+        <div class="chalk__lbl">Window before a global player enters</div>
       </div>
-      <div class="talent-card js-talentcard">
-        <div class="talent-card__top"><div class="talent-card__avatar" style="background:#c8a8b8;"></div><span class="avail">AVAILABLE</span></div>
-        <div class="talent-card__name">Ngozi Obi</div>
-        <div class="talent-card__trade">Painter</div>
-        <div class="talent-card__location">Independence Layout, Enugu</div>
-        <div class="talent-card__tags"><span>Interior</span><span>Exterior</span></div>
-        <div class="talent-card__foot"><span class="rating">★ 4.9 · 56 jobs</span><span class="rate">₦5k/day</span></div>
-      </div>
-      <div class="talent-card talent-card--featured js-talentcard">
-        <div class="talent-card__top"><div class="talent-card__avatar" style="background:#a8c8b8;"></div><span class="avail">AVAILABLE</span></div>
-        <div class="talent-card__name">Suleiman Yusuf</div>
-        <div class="talent-card__trade">AC Technician</div>
-        <div class="talent-card__location">Kano Municipal</div>
-        <div class="talent-card__tags"><span>Install</span><span>Repair</span><span>Gas Refill</span></div>
-        <div class="talent-card__foot"><span class="rating">★ 5.0 · 113 jobs</span><span class="rate">₦10k/day</span></div>
+    </div>
+
+    <div class="chalk__quote">
+      <span class="chalk__quote-mark">"</span>
+      <div>
+        <p>I don't need a certificate. I need work today, and I need to be paid today.</p>
+        <span>A DailyEarn worker, on why the platform had to start with cash, not credentials</span>
       </div>
     </div>
   </div>
 </section>
 
 <!-- DARK CTA -->
-<section class="cta-dark">
-  <div class="cta-dark__inner">
-    <span class="eyebrow eyebrow--light">FINAL LINK</span>
-    <h2 class="cta-dark__title">Your next artisan is<br><em class="accent">already in the chain.</em></h2>
-    <p class="cta-dark__sub">Post a job in under three minutes. We match you to a GPS-verified artisan near you, usually within the hour.</p>
-    <div class="cta-dark__actions">
-      <a href="/register" class="btn btn--orange btn--lg">
-        Post a Job
-        <svg viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<section class="cta">
+  <div class="cta__inner">
+    <span class="eyebrow">Two doors in, one system behind them</span>
+    <h2 class="cta__title">Whichever side<br>you're on, <em>get it stamped.</em></h2>
+    <p class="cta__sub">Post a job in under three minutes, or start picking up work today. Either way, the docket moves the same way — and nobody gets paid until it's proven.</p>
+    <div class="cta__actions">
+      <a href="/register?role=client" class="btn btn--red btn--lg">
+        Book a Job
+        <svg class="btn__arrow" viewBox="0 0 16 16" fill="none" width="14" height="14"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <a href="/register?role=artisan" class="btn btn--dark-outline btn--lg">Join as Artisan</a>
+      <a href="/register?role=worker" class="btn btn--outline-inv btn--lg">Start Earning Today</a>
     </div>
   </div>
 </section>
@@ -356,28 +341,26 @@
   <div class="footer__inner">
     <div class="footer__brand">
       <a href="/" class="nav-logo">
-        <span class="nav-logo__mark">
-          <svg viewBox="0 0 28 20" fill="none"><ellipse cx="9" cy="10" rx="7.4" ry="5.2" transform="rotate(-32 9 10)" stroke="#E8590C" stroke-width="2.6"/><ellipse cx="19" cy="10" rx="7.4" ry="5.2" transform="rotate(-32 19 10)" stroke="#fff" stroke-width="2.6"/></svg>
-        </span>
-        <span class="nav-logo__text footer-logo-text">Skill<em>Chain</em></span>
+        <svg class="nav-logo__mark" width="27" height="27" viewBox="0 0 32 32" aria-hidden="true"><use href="#sc-mark"/></svg>
+        <span class="nav-logo__text footer-logo-text">Skill<i>chain</i></span>
       </a>
-      <p class="footer__tagline">The verified artisan platform.<br>No middlemen. No inflated fees.</p>
+      <p class="footer__tagline">Africa's daily labour and skilled artisan economy, on one trust system. No middlemen. No unpaid promises.</p>
     </div>
     <div class="footer__cols">
       <div class="footer__col">
-        <span class="footer__col-label">PLATFORM</span>
-        <a href="/register">Find Artisans</a>
-        <a href="/register">Post a Job</a>
-        <a href="#how">How it Works</a>
+        <span class="footer__col-label">Platform</span>
+        <a href="/register?role=worker">DailyEarn</a>
+        <a href="/register?role=client">Skillchain Artisan</a>
+        <a href="#flow">How it Works</a>
         <a href="/register">For Businesses</a>
       </div>
       <div class="footer__col">
-        <span class="footer__col-label">COMPANY</span>
+        <span class="footer__col-label">Company</span>
         <a href="https://hamzlabs.com">About</a>
         <a href="https://hamzlabs.com">Blog</a>
       </div>
       <div class="footer__col">
-        <span class="footer__col-label">SUPPORT</span>
+        <span class="footer__col-label">Support</span>
         <a href="#" id="footer-contact">Help Center</a>
         <a href="#">Trust &amp; Safety</a>
         <a href="#">Terms</a>
@@ -386,7 +369,7 @@
     </div>
   </div>
   <div class="footer__bottom">
-    <span>© 2026 SkillChain · Built by <strong>HAMZ Labs</strong></span>
+    <span>© 2026 Skillchain · Built by <strong>HAMZ Labs</strong></span>
   </div>
 </footer>
 
@@ -395,7 +378,7 @@
   <div class="modal-box" id="modal-box">
     <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
     <div class="modal-header">
-      <h5 class="modal-title">Get in touch with <span class="accent">HAMZ Labs</span></h5>
+      <h5 class="modal-title">Get in touch with <em>HAMZ Labs</em></h5>
       <p class="modal-sub">Let's build the future together.</p>
     </div>
     <form id="contact-form">
@@ -415,14 +398,12 @@
       <div id="result" class="form-result"></div>
       <button type="submit" id="submit-btn" class="btn-submit">
         <span>Send Message</span>
-        <span class="btn-arrow">→</span>
+        <span>→</span>
       </button>
     </form>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="chain.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
