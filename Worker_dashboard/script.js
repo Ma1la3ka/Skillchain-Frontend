@@ -673,7 +673,6 @@ function renderStats(profile) {
       else pill.style.display = 'none';
     }
 
-    renderLifecycle();
     renderSparkline();
   }
 
