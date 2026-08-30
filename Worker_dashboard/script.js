@@ -518,18 +518,25 @@ function renderEarningsOverview(profile) {
   const container = document.getElementById('earnings-overview');
   if (!container) return;
 
-  // SOURCE OF TRUTH: calculate from allMyJobs, not the stale DB cache
   const totalEarned = allMyJobs
     .filter(j => j.status === 'paid')
-    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+    .reduce((s, j) => s + parseFloat(j.artisan_gets || j.amount || 0), 0);
 
   const available = Math.max(0, totalEarned - parseFloat(profile.total_withdrawn || 0));
 
   const pending = allMyJobs
     .filter(j => ['assigned', 'pending_verification', 'verified'].includes(j.status))
-    .reduce((s, j) => s + parseFloat(j.amount || 0), 0);
+    .reduce((s, j) => s + parseFloat(j.artisan_gets || j.amount || 0), 0);
 
   const jobsDone = allMyJobs.filter(j => j.status === 'paid').length;
+
+  // ── NEW: wire the paycard ──
+  const paycardBal = document.getElementById('paycard-balance');
+  const paycardEsc = document.getElementById('paycard-escrow');
+  const paycardName = document.getElementById('paycard-name');
+  if (paycardBal)  paycardBal.textContent  = available.toLocaleString(undefined, { minimumFractionDigits: 2 });
+  if (paycardEsc)  paycardEsc.textContent  = '₦' + pending.toLocaleString();
+  if (paycardName) paycardName.textContent = (user.name || 'Worker').toUpperCase();
 
   const hasBank = profile.bank_account_no && profile.bank_code;
 
@@ -674,7 +681,25 @@ function renderStats(profile) {
     }
 
     renderSparkline();
+    renderLifecycle();
   }
+
+
+  const LIFECYCLE_LABELS = ['Assigned','In Progress','Review','Done'];
+function renderLifecycle() {
+  let step = 0;
+  if (allMyJobs.some(j => j.status === 'pending_verification')) step = 2;
+  else if (allMyJobs.some(j => j.status === 'assigned'))        step = 1;
+  else if (allMyJobs.some(j => ['verified','paid'].includes(j.status))) step = 3;
+  const el = document.getElementById('lifecycle-row');
+  if (!el) return;
+  el.innerHTML = LIFECYCLE_LABELS.map((label, i) => {
+    const cls     = i < step ? 'lifecycle-step--done' : i === step ? 'lifecycle-step--active' : '';
+    const content = i < step ? ic('check') : (i + 1);
+    const conn    = i < LIFECYCLE_LABELS.length - 1 ? `<div class="lifecycle-connector ${i < step ? 'is-done' : ''}"></div>` : '';
+    return `<div class="lifecycle-step ${cls}"><div class="lifecycle-dot">${content}</div><span class="lifecycle-step__label">${label}</span></div>${conn}`;
+  }).join('');
+}
 
   function renderSparkline() {
     const el = document.getElementById('sparkline-bars');
