@@ -1374,7 +1374,7 @@ async function resendBargainAt(jobId, price) {
     if (!container || !profile) return;
     const jobs  = profile.jobs_completed || 0;
     const trust = parseFloat(profile.trust_score || 0);
-    const tier  = getCertTier(jobs, trust);
+    const tier = profile.cert_tier || 'bronze';
     container.innerHTML = `
       <button class="cert-trigger-btn cert-trigger-btn--${tier}" onclick="openCertModal()">
         ${ic('shield').replace('width="46" height="46"','width="16" height="16"')} View My ${TIER_LABEL[tier].replace(' Certified','').replace(' Verified','')} Certificate
@@ -1419,6 +1419,35 @@ async function resendBargainAt(jobId, price) {
       document.head.appendChild(s);
     });
   }
+
+async function checkShopLocation() {
+  const p = user.profile || {};
+  if (!p.shop_lat || !p.shop_lng) showShopLocationBanner();
+}
+
+function showShopLocationBanner() {
+  if (sessionStorage.getItem('shoploc-banner-dismissed')) return;
+  if (document.getElementById('shoploc-banner')) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'shoploc-banner';
+  banner.innerHTML = `
+    <div style="position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#E85C00,#ffb066);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:16px;font-size:0.9rem;font-weight:500;box-shadow:0 4px 20px rgba(232,92,0,0.3);">
+      <span style="display:inline-flex;align-items:center;gap:6px">${ic('pin')} Set your shop location so clients can find and hire you nearby.</span>
+      <button onclick="showView('profile'); document.getElementById('shoploc-banner')?.remove(); document.body.style.paddingTop='';" style="background:#fff;color:#E85C00;border:none;padding:8px 18px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;white-space:nowrap;">Set Location</button>
+      <button onclick="dismissShopLocationBanner()" style="background:transparent;color:rgba(255,255,255,0.85);border:none;font-size:1.2rem;cursor:pointer;padding:4px;">✕</button>
+    </div>`;
+  document.body.style.paddingTop = document.getElementById('pin-banner') ? '104px' : '52px';
+  document.body.appendChild(banner);
+}
+
+function dismissShopLocationBanner() {
+  document.getElementById('shoploc-banner')?.remove();
+  document.body.style.paddingTop = document.getElementById('pin-banner') ? '52px' : '';
+  sessionStorage.setItem('shoploc-banner-dismissed', '1');
+}
+window.dismissShopLocationBanner = dismissShopLocationBanner;
+
 
   async function downloadCertificate() {
     const btn = document.getElementById('cert-download-btn');
@@ -1955,6 +1984,7 @@ document.addEventListener('keydown', e => {
     await Promise.all([loadProfile(), loadMyJobs()]);
     if (user.profile) renderStats(user.profile);
     checkWithdrawPin();
+    checkShopLocation();
     setInterval(loadMyJobs, 15_000);
     setInterval(loadConversations, 15_000);
     heartbeatInterval = setInterval(() => {

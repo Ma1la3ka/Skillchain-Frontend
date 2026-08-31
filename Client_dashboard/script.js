@@ -866,7 +866,7 @@ async function openWorkerPublicProfile(workerId) {
   // ── Certificate block (built BEFORE the innerHTML string) ──
   const jobs   = w.jobs_completed || 0;
   const trust  = parseFloat(w.trust_score || 0);
-  const tier   = jobs >= 20 && trust >= 4 ? 'gold' : jobs >= 5 && trust >= 3 ? 'silver' : 'bronze';
+  const tier = w.cert_tier || 'bronze';
 
   const TIER_PALETTE = {
     bronze:{ bg:'linear-gradient(145deg,#2C1A08,#1A0F05)', accent:'#D4822A', accent2:'#F0A84A', badge:'linear-gradient(135deg,#C97B28,#E8A050)', border:'rgba(212,130,42,.4)', inner:'rgba(212,130,42,.12)', label:'#F5C98A', sub:'rgba(245,201,138,.6)', metric:'rgba(212,130,42,.15)', skill:'rgba(212,130,42,.18)' },
@@ -914,20 +914,27 @@ async function openWorkerPublicProfile(workerId) {
         <p style="font-size:.76rem;color:${p.sub};line-height:1.5">${tierDesc}</p>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 22px">
-        <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
-          <div style="font-family:monospace;font-size:1.3rem;font-weight:700;color:${p.accent2};line-height:1;margin-bottom:4px">${jobs}</div>
-          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Jobs Done</div>
-        </div>
-        <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
-          <div style="font-family:monospace;font-size:1.3rem;font-weight:700;color:${p.accent2};line-height:1;margin-bottom:4px">${trust.toFixed(1)}</div>
-          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Trust Score</div>
-        </div>
-        <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:.95rem;letter-spacing:1px;margin-bottom:4px">${stars}</div>
-          <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Rating</div>
-        </div>
-      </div>
+      ${w.shop_lat && w.shop_lng ? `
+  <div style="padding:0 22px 12px">
+    <a href="${getDirectionsUrl(w.shop_lat, w.shop_lng)}" target="_blank"
+       class="btn btn--secondary btn--wide" style="text-decoration:none;display:block;text-align:center">
+      ${ic('pin')} Get Directions to Shop
+    </a>
+  </div>` : ''}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 22px">
+  <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
+    <div style="font-family:monospace;font-size:1.3rem;font-weight:700;color:${p.accent2};line-height:1;margin-bottom:4px">${jobs}</div>
+    <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Jobs Done</div>
+  </div>
+  <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
+    <div style="font-family:monospace;font-size:1.3rem;font-weight:700;color:${p.accent2};line-height:1;margin-bottom:4px">${trust.toFixed(1)}</div>
+    <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Trust Score</div>
+  </div>
+  <div style="background:${p.metric};border:1px solid ${p.inner};border-radius:10px;padding:12px;text-align:center">
+    <div style="font-size:.95rem;letter-spacing:1px;margin-bottom:4px">${stars}</div>
+    <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:${p.sub}">Rating</div>
+  </div>
+</div>
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 22px 16px">
         ${skills.map(s=>`<span style="background:${p.skill};border:1px solid ${p.inner};border-radius:6px;padding:3px 10px;font-size:.7rem;font-weight:600;color:${p.label}">${s}</span>`).join('')}
@@ -1712,9 +1719,7 @@ const certInner = document.getElementById('wp-cert-inner');
 if (certStrip && certInner) {
   const jobs  = data.jobs_completed || 0;
   const trust = parseFloat(data.trust_score || 0);
-  const tier  = jobs >= 20 && trust >= 4 ? 'gold'
-              : jobs >= 5  && trust >= 3 ? 'silver'
-              : 'bronze';
+  const tier = data.cert_tier || 'bronze';
   const TIER_PALETTE = {
     bronze:{ bg:'linear-gradient(145deg,#2C1A08,#1A0F05)', accent:'#D4822A', accent2:'#F0A84A', badge:'linear-gradient(135deg,#C97B28,#E8A050)', border:'rgba(212,130,42,.4)', inner:'rgba(212,130,42,.12)', label:'#F5C98A', sub:'rgba(245,201,138,.6)', metric:'rgba(212,130,42,.15)', skill:'rgba(212,130,42,.18)' },
     silver:{ bg:'linear-gradient(145deg,#141820,#0D1118)', accent:'#8CA0BE', accent2:'#B0C4DE', badge:'linear-gradient(135deg,#6B80A0,#9AAFC8)', border:'rgba(140,160,190,.4)', inner:'rgba(140,160,190,.1)', label:'#C8D8EE', sub:'rgba(200,216,238,.6)', metric:'rgba(140,160,190,.15)', skill:'rgba(140,160,190,.18)' },
@@ -1816,6 +1821,14 @@ if (certStrip && certInner) {
                        font-weight:600;color:${p.label}">${s}</span>
         `).join('')}
       </div>
+
+      ${data.shop_lat && data.shop_lng ? `
+  <div style="padding:0 22px 12px">
+    <a href="${getDirectionsUrl(data.shop_lat, data.shop_lng)}" target="_blank"
+       class="btn btn--secondary btn--wide" style="text-decoration:none;display:block;text-align:center">
+      ${ic('pin')} Get Directions to Shop
+    </a>
+  </div>` : ''}
       <div style="display:flex;align-items:flex-end;justify-content:space-between;
                   padding:14px 22px 20px;border-top:1px solid ${p.inner}">
         <div style="font-family:monospace;line-height:1.65">
@@ -1939,6 +1952,10 @@ function showWPSkeleton() {
   document.getElementById('wp-ratings-section').style.display = 'none';
   document.getElementById('wp-media-section').style.display   = 'none';
   document.getElementById('wp-empty').style.display           = 'none';
+}
+
+function getDirectionsUrl(destLat, destLng) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
 }
 
 /* ── Close ── */
