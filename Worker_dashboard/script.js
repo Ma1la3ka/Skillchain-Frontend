@@ -647,8 +647,8 @@ function renderStats(profile) {
 
     // Calculate from actual jobs, not the stale DB cache
     const totalEarned = allMyJobs
-        .filter(j => j.status === 'paid')
-        .reduce((s,j) => s + parseFloat(j.amount||0), 0);
+    .filter(j => j.status === 'paid')
+    .reduce((s,j) => s + parseFloat(j.artisan_gets || j.amount || 0), 0);
     
     const availableBalance = Math.max(0, totalEarned - parseFloat(profile.total_withdrawn || 0));
     const pendingEscrow    = allMyJobs.filter(j => ['assigned','pending_verification','verified'].includes(j.status)).reduce((s,j) => s + parseFloat(j.amount), 0);

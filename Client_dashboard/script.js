@@ -3,7 +3,7 @@
 
   const FLASK      = 'https://skillchain-backend-gce5.onrender.com';
   window.FLASK = FLASK;
-  const RETRY_HOST = 'https://bullion-crushing-trickster.ngrok-free.dev';
+
   const LOGIN_PAGE = '/Login/index.html';
   const SESSION_DUR = 30 * 60 * 1000;
 
@@ -114,10 +114,11 @@
     btn.disabled = true;
     btn.innerHTML = `${ic('refresh')} Processing…`;
 
-    fetch(`${RETRY_HOST}/api/client/retry-payment/${jobId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    })
+    fetch(`${FLASK}/api/client/retry-payment/${jobId}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include'
+})
       .then(r => r.json())
       .then(res => {
         if (res.status === 200 || res.success === true) {
@@ -1839,11 +1840,12 @@ if (certStrip && certInner) {
   const overlay = document.getElementById('wp-overlay');
   let jid = overlay.dataset.jobId;
   const workerName = data.name;
+  let formValues; // ← declared here now, outside the if-block
 
   if (!jid) {
     // No job context — this is a cold outreach from Find Workers.
     // Create a private invite first so there's a job_id to hang the chat on.
-    const { value: formValues, isConfirmed } = await Swal.fire({
+    const result = await Swal.fire({
       title: `Start a conversation with ${workerName}`,
       html: `
         <input id="dh-title" class="field__input" placeholder="What do you need done?" style="width:100%;margin-bottom:10px">
@@ -1865,7 +1867,8 @@ if (certStrip && certInner) {
         return { title, amount, address };
       }
     });
-    if (!isConfirmed || !formValues) return;
+    if (!result.isConfirmed || !result.value) return;
+    formValues = result.value; // ← assigned here, still visible after the if-block
 
     try {
       const res = await fetch(`${FLASK}/api/client/direct-hire`, {
