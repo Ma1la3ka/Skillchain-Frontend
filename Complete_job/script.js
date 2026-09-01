@@ -245,9 +245,13 @@
       if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
 
       mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
-      });
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  }
+});
 
       const preview = $('video-preview');
       preview.srcObject = mediaStream;
@@ -260,7 +264,7 @@
     } catch (e) {
       console.error('Camera error:', e);
       let msg = e.message;
-      if (e.name === 'NotAllowedError')  msg = 'Camera permission denied. Please allow camera access and try again.';
+      if (e.name === 'NotAllowedError')  msg = 'Camera/microphone permission denied. Please allow both and try again.';
       if (e.name === 'NotFoundError')    msg = 'No camera found on this device.';
       if (e.name === 'NotReadableError') msg = 'Camera is in use by another app.';
       Swal.fire({ title: 'Camera error', text: msg, icon: 'error', confirmButtonColor: '#e85c00', background: '#171513', color: '#f3efe9' });

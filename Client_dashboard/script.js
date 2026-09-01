@@ -638,17 +638,18 @@ if (['assigned', 'pending_verification'].includes(job.status)) {
 }
 
     // Rating section
-    const canRate = ['verified', 'paid'].includes(job.status) && job.distance_meters != null && Number(job.distance_meters) <= 100;
+    const isFar = job.distance_meters != null && Number(job.distance_meters) > 100;
     const alreadyRated = job.client_rating != null;
     let ratingSection = '';
     if (['verified', 'paid'].includes(job.status)) {
-      if (!canRate) {
+      const distanceNote = isFar ? `
+        <div class="notice notice--warning" style="margin-bottom:10px">
+          <p>${ic('alert')} Note: worker was not within the GPS boundary (${Math.round(job.distance_meters)}m away).</p>
+        </div>` : '';
+
+      if (alreadyRated) {
         ratingSection = `
-          <div class="notice notice--danger" style="margin-top:16px">
-            <p style="color:var(--danger)">${ic('alert')} Rating is disabled — worker was not within the GPS boundary (${job.distance_meters ? Math.round(job.distance_meters) + 'm away' : 'no GPS data'}).</p>
-          </div>`;
-      } else if (alreadyRated) {
-        ratingSection = `
+          ${distanceNote}
           <div class="notice notice--success" style="margin-top:16px">
             <p class="notice__label" style="color:var(--text-3)">Your Rating</p>
             <p style="color:var(--warning);font-size:1.1rem;letter-spacing:2px">${ICON.star.repeat(job.client_rating)}${ICON.starEmpty.repeat(5 - job.client_rating)}</p>
@@ -656,6 +657,7 @@ if (['assigned', 'pending_verification'].includes(job.status)) {
           </div>`;
       } else {
         ratingSection = `
+          ${distanceNote}
           <div class="notice notice--success" style="margin-top:16px">
             <p class="notice__label">Rate This Worker</p>
             <div class="star-row" id="star-row">
