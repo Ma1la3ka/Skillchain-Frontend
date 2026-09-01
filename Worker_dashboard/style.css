@@ -413,6 +413,13 @@ svg{ display:block; }
 .lifecycle-connector{ flex:1; height:1.5px; background:var(--border-strong); margin-top:12px; min-width:8px; }
 .lifecycle-connector.is-done{ background:var(--accent); }
 
+.quick-gig-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:.72rem; font-weight:700; color:var(--warning);
+  background:var(--warning-dim); border:1px solid rgba(217,119,6,.25);
+  padding:5px 11px; border-radius:99px; margin-top:14px; width:fit-content;
+}
+
 /* Earnings overview */
 .earn-balance{ margin-bottom:6px; }
 .earn-balance__val{ font-family:var(--font-display); font-size:1.9rem; font-weight:800; letter-spacing:-.02em; }

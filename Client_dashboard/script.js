@@ -331,7 +331,9 @@ document.querySelectorAll('.gig-chip--price').forEach(chip => {
     const canDelete = job.status === 'open';
     return `
       <div class="job-card" data-job-id="${job.id}">
-        <div class="job-card__icon">${tradeIcon(job.trade)}</div>
+        <div class="job-card__icon">${job.job_type === 'quick_gig'
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>'
+          : tradeIcon(job.trade)}</div>
         <div class="job-card__info">
           <p class="job-card__title">${job.title}</p>
           <div class="job-card__meta">

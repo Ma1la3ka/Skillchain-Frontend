@@ -336,7 +336,7 @@
   <!-- Balance display like a card number -->
 <div class="paycard-balance-row">
   <span class="paycard-currency">₦</span>
-  <span class="earn-balance__hint" id="paycard-balance">0.00</span>
+  <span class="paycard-balance" id="paycard-balance">0.00</span>
 </div>
 <p class="paycard-balance-label">Available Balance</p>
 
@@ -388,7 +388,7 @@
         </span>
       </div>
 
-      <div class="dash-card">
+        <div class="dash-card">
         <p class="dash-card__label">Jobs Performance</p>
         <div class="perf-boxes">
           <div class="perf-box"><p class="perf-box__val" id="stat-done">—</p><p class="perf-box__label">Completed</p></div>
@@ -398,6 +398,7 @@
           <p class="lifecycle__label">Task Lifecycle</p>
           <div class="lifecycle-row" id="lifecycle-row"></div>
         </div>
+        <p class="quick-gig-badge" id="quick-gig-badge" style="display:none"></p>
       </div>
 
       <div class="dash-card">
@@ -445,9 +446,14 @@
 </section>
 
   <!-- ══ FIND JOBS ══════════════════════════════ -->
-  <section class="view" id="view-find-jobs">
+      <section class="view" id="view-find-jobs">
     <div class="page-header">
       <div><p class="page-eyebrow">Opportunities</p><h1 class="page-header__title">Find Jobs</h1></div>
+    </div>
+    <div class="filter-tabs" id="find-jobs-type-filter">
+      <button class="filter-tab is-active" data-jobtype="all">All Jobs</button>
+      <button class="filter-tab" data-jobtype="skilled">Skilled</button>
+      <button class="filter-tab" data-jobtype="quick_gig">⚡ Quick Gigs</button>
     </div>
     <div class="search-bar">
       <div class="search-bar__field search-bar__field--grow">
@@ -489,7 +495,7 @@
     <div class="page-header">
       <div><p class="page-eyebrow">Your Work</p><h1 class="page-header__title">My Active Tasks</h1></div>
     </div>
-    <div class="filter-tabs">
+    <div class="filter-tabs" id="my-jobs-filter-tabs">
       <button class="filter-tab is-active" data-filter="all">All</button>
       <button class="filter-tab" data-filter="assigned">Assigned</button>
       <button class="filter-tab" data-filter="pending_verification">Pending</button>

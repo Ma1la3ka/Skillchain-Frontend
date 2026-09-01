@@ -21,12 +21,13 @@
   const burger       = document.getElementById('burger');
   const navItems     = document.querySelectorAll('.nav-item');
   const views        = document.querySelectorAll('.view');
-  const filterBtns   = document.querySelectorAll('.filter-tab');
+  const filterBtns   = document.querySelectorAll('#my-jobs-filter-tabs .filter-tab');
   const modalOverlay = document.getElementById('modal-overlay');
   const modalClose   = document.getElementById('modal-close');
   const modalBody    = document.getElementById('modal-body');
   const workerModalOverlay = document.getElementById('worker-modal-overlay');
   const workerModalBody    = document.getElementById('worker-modal-body');
+  
   /* ══════════════════════════════════════════════
      ICON LIBRARY
   ══════════════════════════════════════════════ */
@@ -490,6 +491,8 @@ function renderConversationsList(conversations) {
     } catch (e) { console.error('loadMyJobs:', e); }
   }
 
+    let currentJobTypeFilter = 'all';
+
   async function loadOpenJobs() {
     const query = (document.getElementById('job-search-text')?.value || '').trim();
     const trade = document.getElementById('job-search-trade')?.value || '';
@@ -498,7 +501,8 @@ function renderConversationsList(conversations) {
     try {
       const params = new URLSearchParams({ user_id: user.id });
       if (query) params.append('q', query);
-      if (trade) params.append('trade', trade);
+      if (trade && currentJobTypeFilter !== 'quick_gig') params.append('trade', trade);
+      if (currentJobTypeFilter !== 'all') params.append('job_type', currentJobTypeFilter);
       const res  = await fetch(`${FLASK}/api/worker/open-jobs?${params}`, { credentials: 'include' });
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
@@ -512,6 +516,17 @@ function renderConversationsList(conversations) {
   document.getElementById('btn-search-jobs')?.addEventListener('click', loadOpenJobs);
   document.getElementById('job-search-text')?.addEventListener('keydown', e => { if (e.key === 'Enter') loadOpenJobs(); });
   document.getElementById('job-search-trade')?.addEventListener('change', loadOpenJobs);
+
+  document.querySelectorAll('#find-jobs-type-filter .filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#find-jobs-type-filter .filter-tab').forEach(t => t.classList.remove('is-active'));
+      tab.classList.add('is-active');
+      currentJobTypeFilter = tab.dataset.jobtype;
+      const tradeField = document.getElementById('job-search-trade')?.closest('.search-bar__field');
+      if (tradeField) tradeField.style.display = currentJobTypeFilter === 'quick_gig' ? 'none' : '';
+      loadOpenJobs();
+    });
+  });
 
   /* ══════════════════════════════════════════════
      STATUS BADGES
@@ -604,6 +619,17 @@ function renderStats(profile) {
       else pill.style.display = 'none';
     }
 
+    const gigBadge = document.getElementById('quick-gig-badge');
+    if (gigBadge) {
+      const gigCount = profile.quick_gigs_completed || 0;
+      if (gigCount > 0) {
+        gigBadge.style.display = 'inline-flex';
+        gigBadge.innerHTML = `⚡ ${gigCount} Quick Gig${gigCount === 1 ? '' : 's'} Completed`;
+      } else {
+        gigBadge.style.display = 'none';
+      }
+    }
+
     renderSparkline();
     renderLifecycle();
   }
@@ -652,7 +678,9 @@ function renderLifecycle() {
     else if (job.status === 'verified')       rightBtn = `<span class="awaiting-tag">${ic('clock')} Awaiting Client Review</span>`;
     return `
       <div class="job-card" data-job-id="${job.id}">
-        <div class="job-card__icon">${tradeIcon(job.trade)}</div>
+        <div class="job-card__icon">${job.job_type === 'quick_gig'
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>'
+          : tradeIcon(job.trade)}</div>
         <div class="job-card__info">
           <p class="job-card__title">${job.title}</p>
           <div class="job-card__meta">${statusBadge(job.status)}<span>${ic('pin')} ${job.site_address||'—'}</span><span>${date}</span></div>
@@ -720,7 +748,9 @@ function renderLifecycle() {
     const date = new Date(job.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short' });
     return `
       <div class="job-card job-card--open" data-job-id="${job.id}">
-        <div class="job-card__icon">${tradeIcon(job.trade)}</div>
+        <div class="job-card__icon">${job.job_type === 'quick_gig'
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>'
+          : tradeIcon(job.trade)}</div>
         <div class="job-card__info">
           <p class="job-card__title">${job.title}</p>
           <div class="job-card__meta">
