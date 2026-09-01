@@ -194,6 +194,23 @@
       </div>
     </div>
 
+    <div class="job-type-chooser" id="job-type-chooser">
+  <button type="button" class="job-type-card is-active" data-type="skilled" id="card-skilled">
+    <span class="job-type-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a4 4 0 00-5.6 5.1L3 17.5V21h3.5l6.1-6.1a4 4 0 005.1-5.6l-2.6 2.6-2-2 2.6-2.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+    <span class="job-type-card__body">
+      <span class="job-type-card__title">Skilled Job</span>
+      <span class="job-type-card__desc">Hire a vetted artisan — plumber, electrician, carpenter — for a specific task at your address.</span>
+    </span>
+  </button>
+  <button type="button" class="job-type-card" data-type="quick_gig" id="card-quick-gig">
+    <span class="job-type-card__icon job-type-card__icon--gig"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+    <span class="job-type-card__body">
+      <span class="job-type-card__title">Quick Gig <span class="job-type-card__pill">Same-day</span></span>
+      <span class="job-type-card__desc">Need extra hands today — loading, cleaning, car wash, laundry, delivery. Post it and get help fast.</span>
+    </span>
+  </button>
+</div>
+
     <div class="pj-steps">
       <div class="pj-step pj-step--active" id="pj-step-1"><span class="pj-step__num">1</span><span class="pj-step__label">Job Details</span></div>
       <div class="pj-step__connector"></div>
@@ -230,30 +247,52 @@
           </div>
 
           <div class="form-row form-row--2">
-            <div class="field">
-              <label class="field__label" for="job-trade">Trade Required</label>
-              <div class="field__wrap field__wrap--select">
-                <select class="field__input field__input--select" id="job-trade" name="trade">
-                  <option value="">Select trade…</option>
-                  <option>Mechanic</option><option>Electrician</option><option>Plumber</option>
-                  <option>Carpenter</option><option>Painter</option><option>Welder</option>
-                  <option>Tailor</option><option>Mason</option><option>HVAC Technician</option><option>Other</option>
-                </select>
-                <span class="field__chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <div id="field-type-slot">
+              <div class="field" id="field-trade">
+                <label class="field__label" for="job-trade">Trade Required</label>
+                <div class="field__wrap field__wrap--select">
+                  <select class="field__input field__input--select" id="job-trade" name="trade">
+                    <option value="">Select trade…</option>
+                    <option>Mechanic</option><option>Electrician</option><option>Plumber</option>
+                    <option>Carpenter</option><option>Painter</option><option>Welder</option>
+                    <option>Tailor</option><option>Mason</option><option>HVAC Technician</option><option>Other</option>
+                  </select>
+                  <span class="field__chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                </div>
+              </div>
+              <div class="field" id="field-gig-category" style="display:none">
+                <label class="field__label">What kind of help? <span class="field__req">*</span></label>
+                <div class="gig-chip-row" id="gig-category-chips">
+                  <button type="button" class="gig-chip" data-cat="Loading">📦 Loading</button>
+                  <button type="button" class="gig-chip" data-cat="Cleaning">🧹 Cleaning</button>
+                  <button type="button" class="gig-chip" data-cat="Car Wash">🚗 Car Wash</button>
+                  <button type="button" class="gig-chip" data-cat="Laundry">👕 Laundry</button>
+                  <button type="button" class="gig-chip" data-cat="Site Labour">🏗️ Site Labour</button>
+                  <button type="button" class="gig-chip" data-cat="Delivery">🛵 Delivery</button>
+                  <button type="button" class="gig-chip" data-cat="Other">⚡ Other</button>
+                </div>
+                <p class="field__error" id="err-gig-category"></p>
               </div>
             </div>
+
             <div class="field">
               <label class="field__label" for="job-amount">Budget (₦) <span class="field__req">*</span></label>
+              <div class="gig-chip-row" id="gig-price-chips" style="display:none">
+                <button type="button" class="gig-chip gig-chip--price" data-price="1500">₦1,500</button>
+                <button type="button" class="gig-chip gig-chip--price" data-price="2000">₦2,000</button>
+                <button type="button" class="gig-chip gig-chip--price" data-price="2500">₦2,500</button>
+                <button type="button" class="gig-chip gig-chip--price" data-price="3000">₦3,000</button>
+                <button type="button" class="gig-chip gig-chip--price" data-price="custom">Custom</button>
+              </div>
               <div class="field__wrap field__wrap--prefix">
                 <span class="field__prefix">₦</span>
                 <input class="field__input field__input--prefixed" type="number" id="job-amount" name="amount" placeholder="15,000" min="100" required>
               </div>
-              <p class="field__hint">Minimum ₦100</p>
+              <p class="field__hint" id="amount-hint">Minimum ₦100</p>
               <p id="fee-preview-line" style="font-size:.8rem;color:var(--text-3);margin-top:6px;display:none"></p>
               <p class="field__error" id="err-amount"></p>
             </div>
           </div>
-        </div>
 
         <div class="pj-divider"><div class="icon-sq stat-card__icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.3 7-11.5A7 7 0 0 0 5 9.5C5 14.7 12 21 12 21z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="currentColor" stroke-width="2"/></svg></div></div>
 

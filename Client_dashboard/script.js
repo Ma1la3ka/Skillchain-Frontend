@@ -151,6 +151,60 @@
     }
   });
 
+  /* ══ Job type chooser (Skilled vs Quick Gig) ══ */
+let currentJobType = 'skilled';
+let selectedGigCategory = '';
+
+const cardSkilled    = document.getElementById('card-skilled');
+const cardGig         = document.getElementById('card-quick-gig');
+const fieldTrade      = document.getElementById('field-trade');
+const fieldGigCat     = document.getElementById('field-gig-category');
+const gigPriceChips   = document.getElementById('gig-price-chips');
+const amountInputEl   = document.getElementById('job-amount');
+const amountHintEl    = document.getElementById('amount-hint');
+const titleInputEl    = document.getElementById('job-title');
+
+function setJobType(type) {
+  currentJobType = type;
+  cardSkilled.classList.toggle('is-active', type === 'skilled');
+  cardGig.classList.toggle('is-active', type === 'quick_gig');
+  fieldTrade.style.display    = type === 'skilled' ? '' : 'none';
+  fieldGigCat.style.display   = type === 'quick_gig' ? '' : 'none';
+  gigPriceChips.style.display = type === 'quick_gig' ? 'flex' : 'none';
+  amountHintEl.textContent    = type === 'quick_gig' ? 'Pick a price or enter your own — minimum ₦500' : 'Minimum ₦100';
+  amountInputEl.min           = type === 'quick_gig' ? 500 : 100;
+  if (type === 'skilled') {
+    selectedGigCategory = '';
+    document.querySelectorAll('.gig-chip[data-cat]').forEach(c => c.classList.remove('is-active'));
+  }
+}
+cardSkilled?.addEventListener('click', () => setJobType('skilled'));
+cardGig?.addEventListener('click', () => setJobType('quick_gig'));
+
+document.querySelectorAll('.gig-chip[data-cat]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.gig-chip[data-cat]').forEach(c => c.classList.remove('is-active'));
+    chip.classList.add('is-active');
+    selectedGigCategory = chip.dataset.cat;
+    document.getElementById('err-gig-category').textContent = '';
+    if (!titleInputEl.value.trim()) titleInputEl.value = `Need help with ${selectedGigCategory.toLowerCase()}`;
+  });
+});
+
+document.querySelectorAll('.gig-chip--price').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.gig-chip--price').forEach(c => c.classList.remove('is-active'));
+    chip.classList.add('is-active');
+    if (chip.dataset.price === 'custom') {
+      amountInputEl.value = '';
+      amountInputEl.focus();
+    } else {
+      amountInputEl.value = chip.dataset.price;
+      amountInputEl.dispatchEvent(new Event('input')); // triggers fee-preview
+    }
+  });
+});
+
   // ── Navigation ──
   function showView(viewId) {
     views.forEach(v => v.classList.remove('is-active'));
@@ -248,13 +302,15 @@
   }
 
   function cancelPostJob() {
-    document.getElementById('post-job-form').reset();
-    clearLocation();
-    mediaFiles = [];
-    renderMediaPreviews();
-    ['err-title', 'err-amount', 'err-address'].forEach(id => { document.getElementById(id).textContent = ''; });
-    showView('overview');
-  }
+  document.getElementById('post-job-form').reset();
+  clearLocation();
+  mediaFiles = [];
+  renderMediaPreviews();
+  setJobType('skilled');
+  document.querySelectorAll('.gig-chip').forEach(c => c.classList.remove('is-active'));
+  ['err-title', 'err-amount', 'err-address', 'err-gig-category'].forEach(id => { document.getElementById(id).textContent = ''; });
+  showView('overview');
+}
   document.getElementById('cancel-post-job')?.addEventListener('click', cancelPostJob);
 
   // ── Stats ──
@@ -1373,68 +1429,73 @@ document.getElementById('job-amount')?.addEventListener('input', function () {
      POST JOB FORM
   ══════════════════════════════════════════════ */
   document.getElementById('post-job-form')?.addEventListener('submit', async e => {
-    e.preventDefault();
-    const title   = document.getElementById('job-title').value.trim();
-    const amount  = document.getElementById('job-amount').value;
-    const address = document.getElementById('job-address').value;
+  e.preventDefault();
+  const title   = document.getElementById('job-title').value.trim();
+  const amount  = document.getElementById('job-amount').value;
+  const address = document.getElementById('job-address').value;
 
-    ['err-title', 'err-amount', 'err-address'].forEach(id => { document.getElementById(id).textContent = ''; });
-    let valid = true;
-    if (!title) { document.getElementById('err-title').textContent = 'Job title is required.'; valid = false; }
-    if (!amount || Number(amount) < 100) { document.getElementById('err-amount').textContent = 'Enter a valid amount (min ₦100).'; valid = false; }
-    if (!address) { document.getElementById('err-address').textContent = 'Please pick a location on the map.'; valid = false; }
-    if (!valid) return;
+  ['err-title', 'err-amount', 'err-address', 'err-gig-category'].forEach(id => { document.getElementById(id).textContent = ''; });
+  let valid = true;
+  if (!title) { document.getElementById('err-title').textContent = 'Job title is required.'; valid = false; }
+  const minAmt = currentJobType === 'quick_gig' ? 500 : 100;
+  if (!amount || Number(amount) < minAmt) { document.getElementById('err-amount').textContent = `Enter a valid amount (min ₦${minAmt}).`; valid = false; }
+  if (!address) { document.getElementById('err-address').textContent = 'Please pick a location on the map.'; valid = false; }
+  if (currentJobType === 'quick_gig' && !selectedGigCategory) { document.getElementById('err-gig-category').textContent = 'Pick what kind of help you need.'; valid = false; }
+  if (!valid) return;
 
-    const btn = document.getElementById('post-job-btn');
-    const text = document.getElementById('post-job-text');
-    const spin = document.getElementById('post-job-spinner');
-    text.style.display = 'none'; spin.style.display = 'inline-block'; btn.disabled = true;
+  const btn = document.getElementById('post-job-btn');
+  const text = document.getElementById('post-job-text');
+  const spin = document.getElementById('post-job-spinner');
+  text.style.display = 'none'; spin.style.display = 'inline-block'; btn.disabled = true;
 
-    const formData = new FormData();
-    formData.append('user_id', user.id);
-    formData.append('role', 'client');
-    formData.append('title', title);
-    formData.append('description', document.getElementById('job-desc').value.trim());
-    formData.append('trade', document.getElementById('job-trade').value);
-    formData.append('amount', amount);
-    formData.append('site_address', address);
-    formData.append('site_lat', document.getElementById('job-lat').value);
-    formData.append('site_lng', document.getElementById('job-lng').value);
-    mediaFiles.forEach((file, i) => formData.append(`media_${i}`, file));
+  const formData = new FormData();
+  formData.append('user_id', user.id);
+  formData.append('role', 'client');
+  formData.append('title', title);
+  formData.append('description', document.getElementById('job-desc').value.trim());
+  formData.append('trade', currentJobType === 'quick_gig' ? selectedGigCategory : document.getElementById('job-trade').value);
+  formData.append('job_type', currentJobType);
+  formData.append('amount', amount);
+  formData.append('site_address', address);
+  formData.append('site_lat', document.getElementById('job-lat').value);
+  formData.append('site_lng', document.getElementById('job-lng').value);
+  mediaFiles.forEach((file, i) => formData.append(`media_${i}`, file));
 
-    try {
-      const res  = await fetch(`${FLASK}/api/client/post-job`, { method: 'POST', body: formData, credentials: 'include' });
-      const data = await res.json();
+  try {
+    const res  = await fetch(`${FLASK}/api/client/post-job`, { method: 'POST', body: formData, credentials: 'include' });
+    const data = await res.json();
 
-            if (data.success) {
-        document.getElementById('post-job-form').reset();
-        clearLocation();
-        mediaFiles = [];
-        renderMediaPreviews();
-        await loadJobs();
-        showView('my-jobs');
-        renderJobsList(allJobs);
-        Swal.fire({
-          title: 'Job Posted',
-          text: 'Your job is live. Fund escrow only after a worker is assigned and you agree on a final price.',
-          icon: 'success',
-          confirmButtonColor: '#E85C00',
-          ...swalTheme()
-        });
-      }else {
-        const errs = data.errors || {};
-        if (errs.title)   document.getElementById('err-title').textContent   = errs.title;
-        if (errs.amount)  document.getElementById('err-amount').textContent  = errs.amount;
-        if (errs.address) document.getElementById('err-address').textContent = errs.address;
-        if (errs.general) Swal.fire({ title: 'Error', text: errs.general, icon: 'error', ...swalTheme() });
-      }
-    } catch (err) {
-      console.error('Post job error:', err);
-      Swal.fire({ title: 'Network error', text: 'Could not reach the server.', icon: 'error', ...swalTheme() });
-    } finally {
-      text.style.display = 'inline'; spin.style.display = 'none'; btn.disabled = false;
+    if (data.success) {
+      document.getElementById('post-job-form').reset();
+      clearLocation();
+      mediaFiles = [];
+      renderMediaPreviews();
+      setJobType('skilled');
+      document.querySelectorAll('.gig-chip').forEach(c => c.classList.remove('is-active'));
+      await loadJobs();
+      showView('my-jobs');
+      renderJobsList(allJobs);
+      Swal.fire({
+        title: 'Job Posted',
+        text: 'Your job is live. Fund escrow only after a worker is assigned and you agree on a final price.',
+        icon: 'success',
+        confirmButtonColor: '#E85C00',
+        ...swalTheme()
+      });
+    } else {
+      const errs = data.errors || {};
+      if (errs.title)   document.getElementById('err-title').textContent   = errs.title;
+      if (errs.amount)  document.getElementById('err-amount').textContent  = errs.amount;
+      if (errs.address) document.getElementById('err-address').textContent = errs.address;
+      if (errs.general) Swal.fire({ title: 'Error', text: errs.general, icon: 'error', ...swalTheme() });
     }
-  });
+  } catch (err) {
+    console.error('Post job error:', err);
+    Swal.fire({ title: 'Network error', text: 'Could not reach the server.', icon: 'error', ...swalTheme() });
+  } finally {
+    text.style.display = 'inline'; spin.style.display = 'none'; btn.disabled = false;
+  }
+});
 
   /* ══════════════════════════════════════════════
      FIND WORKERS
