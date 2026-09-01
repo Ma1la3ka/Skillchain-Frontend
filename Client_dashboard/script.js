@@ -14,6 +14,7 @@
   // ── Map state ──
   let map = null, marker = null, mapReady = false;
   let selectedLat = null, selectedLng = null;
+  let accuracyCircle = null;
   let heartbeatInterval = null;
   // ── Media state ──
   let mediaFiles = [];
@@ -1160,11 +1161,23 @@ async function openWorkerPublicProfile(workerId) {
     });
   }
 
-  async function setLocation(lat, lng, addressOverride, iconObj) {
+  async function setLocation(lat, lng, addressOverride, iconObj, accuracyMeters) {
     selectedLat = lat; selectedLng = lng;
     const icon = iconObj || makeOrangeIcon();
     if (marker) marker.setLatLng([lat, lng]); else marker = L.marker([lat, lng], { icon }).addTo(map);
     map.panTo([lat, lng]);
+
+    // ── Accuracy circle ──
+    if (accuracyCircle) { map.removeLayer(accuracyCircle); accuracyCircle = null; }
+    if (accuracyMeters) {
+      accuracyCircle = L.circle([lat, lng], {
+        radius: accuracyMeters,
+        color: '#E85C00',
+        fillColor: '#E85C00',
+        fillOpacity: 0.12,
+        weight: 1
+      }).addTo(map);
+    }
 
     let address = addressOverride;
     if (!address) {
@@ -1179,7 +1192,9 @@ async function openWorkerPublicProfile(workerId) {
     document.getElementById('job-lat').value = lat.toFixed(6);
     document.getElementById('job-lng').value = lng.toFixed(6);
     document.getElementById('address-display-text').textContent = address;
-    document.getElementById('address-display-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('address-display-coords').textContent = accuracyMeters
+      ? `${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracyMeters)}m)`
+      : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     document.getElementById('address-display').style.display = 'flex';
     document.getElementById('map-hint').classList.add('is-hidden');
     document.getElementById('err-address').textContent = '';
@@ -1188,7 +1203,7 @@ async function openWorkerPublicProfile(workerId) {
     card.classList.remove('address-display--pulse');
     void card.offsetWidth;
     card.classList.add('address-display--pulse');
-  }
+}
 
   function clearLocation() {
     selectedLat = null; selectedLng = null;
@@ -1203,13 +1218,30 @@ async function openWorkerPublicProfile(workerId) {
     if (!navigator.geolocation) { Swal.fire({ title: 'Geolocation not supported', icon: 'error', ...swalTheme() }); return; }
     const btn = document.getElementById('btn-my-loc');
     btn.style.opacity = '.5';
-    navigator.geolocation.getCurrentPosition(
-      async pos => { btn.style.opacity = ''; await setLocation(pos.coords.latitude, pos.coords.longitude); map.setZoom(16); },
-      err => { btn.style.opacity = ''; Swal.fire({ title: 'Could not get location', text: err.message, icon: 'error', ...swalTheme() }); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
 
+    let bestPos = null;
+    const watchId = navigator.geolocation.watchPosition(
+      pos => {
+        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+          bestPos = pos;
+          setLocation(pos.coords.latitude, pos.coords.longitude, null, null, pos.coords.accuracy);
+        }
+      },
+      err => { /* non-fatal during polling */ },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+    );
+
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      btn.style.opacity = '';
+
+      if (!bestPos) {
+        Swal.fire({ title: 'Could not get location', text: 'Try again, or search/tap the map instead.', icon: 'error', ...swalTheme() });
+        return;
+      }
+      map.setZoom(16);
+    }, 5000);
+});
   // ── Address search ──
   let searchTimeout = null;
   const searchInput   = document.getElementById('location-search-input');

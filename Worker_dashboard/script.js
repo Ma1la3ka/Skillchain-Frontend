@@ -12,6 +12,7 @@
   let activeFilter = 'all';
   let user         = null;
   let shopMap = null, shopMarker = null, shopMapReady = false;
+  let shopAccuracyCircle = null;
   let shopSelectedLat = null, shopSelectedLng = null;
   let heartbeatInterval = null;
 
@@ -131,11 +132,23 @@
     setTimeout(() => shopMap.invalidateSize(), 50);
   }
 
-  async function setShopLocation(lat, lng, addressOverride) {
+  async function setShopLocation(lat, lng, addressOverride, accuracyMeters) {
     shopSelectedLat = lat; shopSelectedLng = lng;
     if (shopMarker) shopMarker.setLatLng([lat, lng]);
     else shopMarker = L.marker([lat, lng], { icon: makeShopIcon() }).addTo(shopMap);
     shopMap.panTo([lat, lng]);
+
+    // ── Accuracy circle ──
+    if (shopAccuracyCircle) { shopMap.removeLayer(shopAccuracyCircle); shopAccuracyCircle = null; }
+    if (accuracyMeters) {
+      shopAccuracyCircle = L.circle([lat, lng], {
+        radius: accuracyMeters,
+        color: '#E85C00',
+        fillColor: '#E85C00',
+        fillOpacity: 0.12,
+        weight: 1
+      }).addTo(shopMap);
+    }
 
     let address = addressOverride;
     if (!address) {
@@ -147,11 +160,13 @@
     }
 
     document.getElementById('shop-address-text').textContent = address;
-    document.getElementById('shop-address-coords').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    document.getElementById('shop-address-coords').textContent = accuracyMeters
+      ? `${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracyMeters)}m)`
+      : `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
     document.getElementById('shop-address-display').style.display = 'block';
     document.getElementById('shop-map-hint').style.display = 'none';
     window._shopAddressPending = address;
-  }
+}
 
   function clearShopLocation() {
     shopSelectedLat = null; shopSelectedLng = null;
@@ -168,20 +183,36 @@
     const orig = btn.innerHTML;
     btn.innerHTML = '<span class="spinner spinner--dark" style="width:12px;height:12px;display:inline-block;vertical-align:-1px;margin-right:6px"></span>Locating…';
     btn.disabled = true;
-    navigator.geolocation.getCurrentPosition(
-      async pos => {
-        btn.innerHTML = orig; btn.disabled = false;
-        if (!shopMapReady) initShopMap();
-        await setShopLocation(pos.coords.latitude, pos.coords.longitude);
-        shopMap.setZoom(16);
+
+    let bestPos = null;
+    const watchId = navigator.geolocation.watchPosition(
+      pos => {
+        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+          bestPos = pos;
+          // Live-update the map as accuracy improves, so it doesn't feel frozen
+          if (!shopMapReady) initShopMap();
+          setShopLocation(pos.coords.latitude, pos.coords.longitude, null, pos.coords.accuracy);
+        }
       },
-      err => {
-        btn.innerHTML = orig; btn.disabled = false;
-        Swal.fire({ title: 'Could not get location', text: err.message, icon: 'error', ...swalTheme() });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      err => { /* individual errors during polling are non-fatal — only the final timeout matters */ },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
     );
-  });
+
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      btn.innerHTML = orig; btn.disabled = false;
+
+      if (!bestPos) {
+        Swal.fire({
+          title: 'Could not get location',
+          text: 'Try again, or search/tap the map to set your shop location manually.',
+          icon: 'error', ...swalTheme()
+        });
+        return;
+      }
+      shopMap.setZoom(16);
+    }, 5000);
+});
 
   let shopSearchTimeout = null;
   document.getElementById('shop-location-search-input')?.addEventListener('input', function () {
