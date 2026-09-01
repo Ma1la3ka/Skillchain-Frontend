@@ -1674,8 +1674,9 @@ window.dismissPinBanner = dismissPinBanner;
   window.openChatThread = openChatThread;
   window.openClientPublicProfile = openClientPublicProfile;
   window.acceptClientOffer = acceptClientOffer;
-window.rejectClientOffer = rejectClientOffer;
-
+  window.rejectClientOffer = rejectClientOffer;
+  window.showView = showView;
+  
   let currentChatJobId = null;
 let currentChatOtherId = null;
 let chatPollInterval = null;
