@@ -458,7 +458,6 @@ function renderConversationsList(conversations) {
       const data = await res.json();
       user.profile = data;
       renderTrustCard(data.trust_score, data.jobs_completed);
-      renderEarningsOverview(data);
     } catch (e) {
       console.error('loadProfile:', e);
       renderTrustCard(user.trust_score || 0, user.jobs_completed || 0);
