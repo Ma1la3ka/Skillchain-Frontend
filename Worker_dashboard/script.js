@@ -542,123 +542,7 @@ function renderConversationsList(conversations) {
     });
   }
 
-  /* ══════════════════════════════════════════════
-     WALLET CARD (overview — kept for backward compat)
-  ══════════════════════════════════════════════ */
-function renderEarningsOverview(profile) {
-  const container = document.getElementById('earnings-overview');
-  if (!container) return;
 
-  const totalEarned = allMyJobs
-    .filter(j => j.status === 'paid')
-    .reduce((s, j) => s + parseFloat(j.artisan_gets || j.amount || 0), 0);
-
-  const available = Math.max(0, totalEarned - parseFloat(profile.total_withdrawn || 0));
-
-  const pending = allMyJobs
-    .filter(j => ['assigned', 'pending_verification', 'verified'].includes(j.status))
-    .reduce((s, j) => s + parseFloat(j.artisan_gets || j.amount || 0), 0);
-
-  const jobsDone = allMyJobs.filter(j => j.status === 'paid').length;
-
-  // ── NEW: wire the paycard ──
-  const paycardBal = document.getElementById('paycard-balance');
-  const paycardEsc = document.getElementById('paycard-escrow');
-  const paycardName = document.getElementById('paycard-name');
-  if (paycardBal)  paycardBal.textContent  = available.toLocaleString(undefined, { minimumFractionDigits: 2 });
-  if (paycardEsc)  paycardEsc.textContent  = '₦' + pending.toLocaleString();
-  if (paycardName) paycardName.textContent = (user.name || 'Worker').toUpperCase();
-
-  const hasBank = profile.bank_account_no && profile.bank_code;
-
-  container.innerHTML = `
-    <div class="earnings-card">
-      <div class="earnings-card__label">Available Balance</div>
-      <div class="earnings-card__amount">
-        <span>₦</span>${available.toLocaleString()}
-      </div>
-      <div class="earnings-card__meta">
-        <div class="earnings-card__meta-item">
-          <span class="earnings-card__meta-label">Total Earned</span>
-          <span class="earnings-card__meta-value">₦${totalEarned.toLocaleString()}</span>
-        </div>
-        <div class="earnings-card__meta-item">
-          <span class="earnings-card__meta-label">In Escrow</span>
-          <span class="earnings-card__meta-value" style="color: var(--verified);">₦${pending.toLocaleString()}</span>
-        </div>
-        <div class="earnings-card__meta-item">
-          <span class="earnings-card__meta-label">Jobs Done</span>
-          <span class="earnings-card__meta-value">${jobsDone}</span>
-        </div>
-      </div>
-      <div class="earnings-card__actions">
-        ${available >= 100 ? `
-          <button class="btn-earnings btn-earnings--primary" onclick="openWithdrawModal()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            Withdraw to Bank
-          </button>
-        ` : `
-          <button class="btn-earnings btn-earnings--primary" disabled style="opacity:0.5;cursor:not-allowed;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 3v18M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            Min. ₦100 to withdraw
-          </button>
-        `}
-        <button class="btn-earnings btn-earnings--ghost" onclick="showView('earnings')">
-          View History →
-        </button>
-      </div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-tile">
-        <div class="stat-tile__icon stat-tile__icon--jobs">✓</div>
-        <div class="stat-tile__label">Completed</div>
-        <div class="stat-tile__value">${jobsDone}</div>
-      </div>
-      <div class="stat-tile">
-        <div class="stat-tile__icon stat-tile__icon--rating">★</div>
-        <div class="stat-tile__label">Trust Score</div>
-        <div class="stat-tile__value">${parseFloat(profile.trust_score || 0).toFixed(1)}<span style="font-size:0.6em;color:var(--text-faint)">/5</span></div>
-      </div>
-      <div class="stat-tile">
-        <div class="stat-tile__icon stat-tile__icon--balance">₦</div>
-        <div class="stat-tile__label">This Month</div>
-        <div class="stat-tile__value">₦${getThisMonthEarnings().toLocaleString()}</div>
-      </div>
-    </div>
-
-    <div class="quick-actions">
-      <a class="quick-action" onclick="showView('find-jobs')">
-        <div class="quick-action__icon">${ic('search')}</div>
-        <div class="quick-action__text">
-          <span class="quick-action__title">Find Jobs</span>
-          <span class="quick-action__sub">Browse available work</span>
-        </div>
-      </a>
-      <a class="quick-action" onclick="showView('my-jobs')">
-        <div class="quick-action__icon">${ic('box')}</div>
-        <div class="quick-action__text">
-          <span class="quick-action__title">My Jobs</span>
-          <span class="quick-action__sub">${allMyJobs.filter(j => ['assigned','pending_review'].includes(j.status)).length} active</span>
-        </div>
-      </a>
-      <a class="quick-action" onclick="showView('profile')">
-        <div class="quick-action__icon">${ic('user')}</div>
-        <div class="quick-action__text">
-          <span class="quick-action__title">Profile</span>
-          <span class="quick-action__sub">Edit skills & shop</span>
-        </div>
-      </a>
-      <a class="quick-action" onclick="openCertModal()">
-        <div class="quick-action__icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M8 4h8v6a4 4 0 01-8 0V4z" stroke="currentColor" stroke-width="1.8"/><path d="M8 6H5a2 2 0 000 4h1M16 6h3a2 2 0 010 4h-1" stroke="currentColor" stroke-width="1.8"/><path d="M10 15v2h4v-2" stroke="currentColor" stroke-width="1.8"/><path d="M8 20h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
-        <div class="quick-action__text">
-          <span class="quick-action__title">Certificate</span>
-          <span class="quick-action__sub">Download proof</span>
-        </div>
-      </a>
-    </div>
-  `;
-}
 // Helper for monthly earnings
 function getThisMonthEarnings() {
   const now = new Date();
@@ -691,6 +575,16 @@ function renderStats(profile) {
     const hintEl = document.getElementById('stat-earned-hint');
     if (balEl)  { balEl.textContent = '₦' + availableBalance.toLocaleString(); balEl.classList.toggle('earn-balance__val--neg', availableBalance < 0); }
     if (hintEl)   hintEl.textContent = availableBalance < 0 ? 'Platform fee deduction pending' : 'Available for withdrawal';
+
+        // NEW — wire up the paycard
+    const paycardBalEl = document.getElementById('paycard-balance');
+    if (paycardBalEl) paycardBalEl.textContent = availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+    const paycardEscEl = document.getElementById('paycard-escrow');
+    if (paycardEscEl) paycardEscEl.textContent = '₦' + pendingEscrow.toLocaleString();
+
+    const paycardNameEl = document.getElementById('paycard-name');
+    if (paycardNameEl) paycardNameEl.textContent = (user.name || 'Worker').toUpperCase();
 
     const escEl = document.getElementById('stat-escrow');
     if (escEl) escEl.textContent = '₦' + pendingEscrow.toLocaleString();
