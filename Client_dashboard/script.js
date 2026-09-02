@@ -774,9 +774,18 @@ if (['assigned', 'pending_verification'].includes(job.status)) {
   <div class="modal-field"><p class="modal-field__label">Description</p><p class="modal-field__val">${job.description || '—'}</p></div>
   <div class="modal-field"><p class="modal-field__label">Site Address</p><p class="modal-field__val">${ic('pin')} ${job.site_address || '—'}</p></div>
   <div class="modal-field"><p class="modal-field__label">Trade</p><p class="modal-field__val">${job.trade || '—'}</p></div>
-  <div class="modal-field"><p class="modal-field__label">Worker</p><p class="modal-field__val">${job.worker_name
+    <div class="modal-field"><p class="modal-field__label">Worker</p><p class="modal-field__val">${job.worker_name
     ? `<a href="#" onclick="openWorkerPublicProfile(${job.worker_id})">${job.worker_name}</a> · ${job.worker_trust ?? '—'} trust`
     : 'No worker assigned yet'}</p></div>
+  ${job.work_location_type === 'worker_shop' && job.worker_shop_lat && job.worker_shop_lng ? `
+    <div class="notice notice--info" style="margin-top:10px">
+      <p class="notice__label">${ic('pin')} Job Location</p>
+      <p>This job is being done at the worker's shop${job.worker_shop_address ? ': ' + job.worker_shop_address : ''}.</p>
+      <a href="${getDirectionsUrl(job.worker_shop_lat, job.worker_shop_lng)}" target="_blank"
+         class="btn btn--secondary btn--wide" style="margin-top:10px;text-decoration:none;text-align:center;display:block">
+        ${ic('pin')} Get Directions to Worker's Shop
+      </a>
+    </div>` : ''}
   ${bargainSection}
   ${applicantsSection}
   <div class="modal-divider"></div>
