@@ -1650,6 +1650,43 @@ async function openWorkerProfileModal(workerId, jobId, jobTitle) {
   }
 }
 
+let vvHandler = null;
+
+function attachKeyboardHandler() {
+  if (!window.visualViewport) return;
+  const modal = document.getElementById('chat-modal');
+  if (!modal) return;
+
+  vvHandler = () => {
+    if (window.innerWidth > 640) return; // desktop unaffected
+    const vv = window.visualViewport;
+    modal.style.height = vv.height + 'px';
+    modal.style.transform = `translateY(${vv.offsetTop}px)`;
+    const messages = document.getElementById('chat-messages');
+    if (messages) messages.scrollTop = messages.scrollHeight;
+  };
+
+  window.visualViewport.addEventListener('resize', vvHandler);
+  window.visualViewport.addEventListener('scroll', vvHandler);
+}
+
+function detachKeyboardHandler() {
+  if (window.visualViewport && vvHandler) {
+    window.visualViewport.removeEventListener('resize', vvHandler);
+    window.visualViewport.removeEventListener('scroll', vvHandler);
+  }
+  vvHandler = null;
+  const modal = document.getElementById('chat-modal');
+  if (modal) { modal.style.height = ''; modal.style.transform = ''; }
+}
+
+document.getElementById('chat-input')?.addEventListener('focus', () => {
+  setTimeout(() => {
+    const messages = document.getElementById('chat-messages');
+    if (messages) messages.scrollTop = messages.scrollHeight;
+  }, 300);
+});
+
 /* ── Render profile data ── */
 function renderWorkerProfile(data, workerId) {
   // ── Avatar ──
@@ -2680,6 +2717,7 @@ async function openChatThread(jobId, otherId, otherName, jobTitle) {
 
   clearInterval(chatPollInterval);
   chatPollInterval = setInterval(loadChatMessages, 5000);
+  attachKeyboardHandler();
 
     // ADD at end of openChatThread:
   if (currentChatJobId && currentChatOtherId) {
@@ -2719,8 +2757,8 @@ function closeChatThread() {
   chatPollInterval = null;
   currentChatJobId = null;
   currentChatOtherId = null;
+  detachKeyboardHandler();
 }
-
 document.getElementById('chat-modal-close')?.addEventListener('click', closeChatThread);
 document.getElementById('chat-modal-overlay')?.addEventListener('click', e => {
   if (e.target.id === 'chat-modal-overlay') closeChatThread();

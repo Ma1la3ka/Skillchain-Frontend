@@ -1604,6 +1604,43 @@ window.dismissPinBanner = dismissPinBanner;
 let currentChatOtherId = null;
 let chatPollInterval = null;
 
+let vvHandler = null;
+
+function attachKeyboardHandler() {
+  if (!window.visualViewport) return;
+  const modal = document.getElementById('chat-modal');
+  if (!modal) return;
+
+  vvHandler = () => {
+    if (window.innerWidth > 640) return; // desktop unaffected
+    const vv = window.visualViewport;
+    modal.style.height = vv.height + 'px';
+    modal.style.transform = `translateY(${vv.offsetTop}px)`;
+    const messages = document.getElementById('chat-messages');
+    if (messages) messages.scrollTop = messages.scrollHeight;
+  };
+
+  window.visualViewport.addEventListener('resize', vvHandler);
+  window.visualViewport.addEventListener('scroll', vvHandler);
+}
+
+function detachKeyboardHandler() {
+  if (window.visualViewport && vvHandler) {
+    window.visualViewport.removeEventListener('resize', vvHandler);
+    window.visualViewport.removeEventListener('scroll', vvHandler);
+  }
+  vvHandler = null;
+  const modal = document.getElementById('chat-modal');
+  if (modal) { modal.style.height = ''; modal.style.transform = ''; }
+}
+
+document.getElementById('chat-input')?.addEventListener('focus', () => {
+  setTimeout(() => {
+    const messages = document.getElementById('chat-messages');
+    if (messages) messages.scrollTop = messages.scrollHeight;
+  }, 300);
+});
+
 async function openChatThread(jobId, otherId) {
 
   document.getElementById('modal-overlay')?.classList.remove('is-open');
@@ -1622,6 +1659,7 @@ async function openChatThread(jobId, otherId) {
 
   clearInterval(chatPollInterval);
   chatPollInterval = setInterval(loadChatMessages, 5000);
+  attachKeyboardHandler();
 }
 
 function closeChatThread() {
@@ -1630,6 +1668,7 @@ function closeChatThread() {
   chatPollInterval = null;
   currentChatJobId = null;
   currentChatOtherId = null;
+  detachKeyboardHandler();
 }
 
 document.getElementById('chat-modal-close')?.addEventListener('click', closeChatThread);
