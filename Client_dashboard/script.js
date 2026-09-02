@@ -2535,6 +2535,54 @@ function renderConversationsList(conversations) {
   });
 }
 
+/* ══ Emoji picker ══ */
+const EMOJI_LIST = [
+  '😀','😂','🥰','😍','😊','😉','😎','🤔','😅','😭',
+  '😢','😡','🙏','👍','👎','👏','🙌','💪','🤝','✌️',
+  '❤️','🔥','⭐','✅','❌','⏰','📍','💰','💵','🎉',
+  '👋','🙂','😴','😱','🤗','😇','🥲','😌','🚗','🏠',
+  '🛠️','📦','🧹','👕','🛵','🏗️','✨','🙌','😬','🤞'
+];
+
+function toggleEmojiPanel() {
+  const panel = document.getElementById('emoji-panel');
+  const btn   = document.getElementById('chat-emoji-btn');
+  if (!panel) return;
+  const opening = !panel.classList.contains('is-open');
+  panel.classList.toggle('is-open', opening);
+  btn?.classList.toggle('is-active', opening);
+  if (opening && !panel.dataset.built) {
+    panel.innerHTML = EMOJI_LIST.map(e => `<button type="button" class="emoji-panel__btn">${e}</button>`).join('');
+    panel.dataset.built = '1';
+    panel.querySelectorAll('.emoji-panel__btn').forEach(b => {
+      b.addEventListener('click', () => insertEmoji(b.textContent));
+    });
+  }
+}
+
+function insertEmoji(emoji) {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const start = input.selectionStart ?? input.value.length;
+  const end   = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+  const pos = start + emoji.length;
+  input.setSelectionRange(pos, pos);
+  input.focus();
+}
+
+document.getElementById('chat-emoji-btn')?.addEventListener('click', e => {
+  e.stopPropagation();
+  toggleEmojiPanel();
+});
+document.addEventListener('click', e => {
+  const panel = document.getElementById('emoji-panel');
+  const btn   = document.getElementById('chat-emoji-btn');
+  if (panel?.classList.contains('is-open') && !panel.contains(e.target) && e.target !== btn) {
+    panel.classList.remove('is-open');
+    btn?.classList.remove('is-active');
+  }
+});
 
   /* ══════════════════════════════════════════════
      DEMO PAYMENT VERIFY/* ══ CLIENT PROFILE ══════════════════════════════ */
@@ -2758,6 +2806,7 @@ function closeChatThread() {
   currentChatJobId = null;
   currentChatOtherId = null;
   detachKeyboardHandler();
+  document.getElementById('emoji-panel')?.classList.remove('is-open');
 }
 document.getElementById('chat-modal-close')?.addEventListener('click', closeChatThread);
 document.getElementById('chat-modal-overlay')?.addEventListener('click', e => {
