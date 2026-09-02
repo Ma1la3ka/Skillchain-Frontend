@@ -1652,32 +1652,25 @@ async function openWorkerProfileModal(workerId, jobId, jobTitle) {
 
 let vvHandler = null;
 
+function scrollChatToBottom() {
+  const messages = document.getElementById('chat-messages');
+  if (messages) messages.scrollTop = messages.scrollHeight;
+}
+
 function attachKeyboardHandler() {
   if (!window.visualViewport) return;
-  const modal = document.getElementById('chat-modal');
-  if (!modal) return;
-
   vvHandler = () => {
     if (window.innerWidth > 640) return; // desktop unaffected
-    const vv = window.visualViewport;
-    modal.style.height = vv.height + 'px';
-    modal.style.transform = `translateY(${vv.offsetTop}px)`;
-    const messages = document.getElementById('chat-messages');
-    if (messages) messages.scrollTop = messages.scrollHeight;
+    scrollChatToBottom();
   };
-
   window.visualViewport.addEventListener('resize', vvHandler);
-  window.visualViewport.addEventListener('scroll', vvHandler);
 }
 
 function detachKeyboardHandler() {
   if (window.visualViewport && vvHandler) {
     window.visualViewport.removeEventListener('resize', vvHandler);
-    window.visualViewport.removeEventListener('scroll', vvHandler);
   }
   vvHandler = null;
-  const modal = document.getElementById('chat-modal');
-  if (modal) { modal.style.height = ''; modal.style.transform = ''; }
 }
 
 document.getElementById('chat-input')?.addEventListener('focus', () => {
