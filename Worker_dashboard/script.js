@@ -682,7 +682,7 @@ function renderLifecycle() {
           ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>'
           : tradeIcon(job.trade)}</div>
         <div class="job-card__info">
-          <p class="job-card__title">${job.title}</p>
+          <p class="job-card__title">${job.title}${job.job_type === 'quick_gig' ? ' <span class="badge" style="background:var(--warning-dim);color:var(--warning);vertical-align:middle;margin-left:4px">⚡ Quick Gig</span>' : ''}</p>
           <div class="job-card__meta">${statusBadge(job.status)}<span>${ic('pin')} ${job.site_address||'—'}</span><span>${date}</span></div>
         </div>
         <div class="job-card__right">
@@ -751,8 +751,8 @@ function renderLifecycle() {
         <div class="job-card__icon">${job.job_type === 'quick_gig'
           ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>'
           : tradeIcon(job.trade)}</div>
-        <div class="job-card__info">
-          <p class="job-card__title">${job.title}</p>
+          <div class="job-card__info">
+          <p class="job-card__title">${job.title}${job.job_type === 'quick_gig' ? ' <span class="badge" style="background:var(--warning-dim);color:var(--warning);vertical-align:middle;margin-left:4px">⚡ Quick Gig</span>' : ''}</p>
           <div class="job-card__meta">
             <span>${job.trade||'General'}</span>
             <span>${ic('pin')} ${job.site_address||'—'}</span>
@@ -760,11 +760,15 @@ function renderLifecycle() {
             ${job.client_name ? `<span>${ic('user')} ${job.client_name}</span>` : ''}
           </div>
         </div>
-        <div class="job-card__right">
+       <div class="job-card__right">
           <span class="job-card__amount">₦${Number(job.amount).toLocaleString()}</span>
-          <button class="accept-btn" data-job-id="${job.id}">View & Accept</button>
-        </div>
-      </div>`;
+          ${job.slots_needed > 1 ? `<span class="job-card__amount-hint">${job.slots_filled}/${job.slots_needed} spots filled</span>` : ''}
+          ${job.my_gig_status === 'pending'
+            ? `<span class="awaiting-tag">${ic('clock')} Request Sent</span>`
+            : job.my_gig_status === 'assigned'
+            ? `<span class="awaiting-tag" style="color:var(--success)">${ic('check')} You're Assigned</span>`
+            : `<button class="accept-btn" data-job-id="${job.id}">View & ${job.slots_needed > 1 ? 'Request' : 'Accept'}</button>`}
+        </div>`;
   }
 
   function attachOpenJobListeners(container) {
@@ -1660,6 +1664,52 @@ function scrollChatToBottom() {
   if (messages) messages.scrollTop = messages.scrollHeight;
 }
 
+/* ══ Reply / tag a message ══ */
+let replyTarget = null; // { id, senderName, text }
+
+function setReplyTarget(id, senderName, text) {
+  replyTarget = { id, senderName, text };
+  const bar = document.getElementById('chat-reply-preview');
+  document.getElementById('chat-reply-name').textContent = senderName;
+  document.getElementById('chat-reply-text').textContent = text;
+  bar.style.display = 'flex';
+  document.getElementById('chat-input')?.focus();
+}
+
+function clearReplyTarget() {
+  replyTarget = null;
+  const bar = document.getElementById('chat-reply-preview');
+  if (bar) bar.style.display = 'none';
+}
+
+document.getElementById('chat-reply-close')?.addEventListener('click', clearReplyTarget);
+
+// Long-press (mobile) / right-click-free single click (desktop) to reply
+let pressTimer = null;
+document.getElementById('chat-messages')?.addEventListener('touchstart', e => {
+  const bubble = e.target.closest('.chat-bubble');
+  if (!bubble) return;
+  pressTimer = setTimeout(() => {
+    bubble.classList.add('is-pressed');
+    navigator.vibrate?.(15);
+    const mine = bubble.classList.contains('chat-bubble--mine');
+    const text = bubble.dataset.rawText || bubble.textContent.trim();
+    setReplyTarget(bubble.dataset.msgId, mine ? 'You' : (document.getElementById('chat-header-name')?.textContent || 'Them'), text.slice(0, 80));
+    setTimeout(() => bubble.classList.remove('is-pressed'), 200);
+  }, 450);
+}, { passive: true });
+document.getElementById('chat-messages')?.addEventListener('touchend', () => clearTimeout(pressTimer));
+document.getElementById('chat-messages')?.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+// Desktop convenience: double-click a bubble to reply
+document.getElementById('chat-messages')?.addEventListener('dblclick', e => {
+  const bubble = e.target.closest('.chat-bubble');
+  if (!bubble) return;
+  const mine = bubble.classList.contains('chat-bubble--mine');
+  const text = bubble.dataset.rawText || bubble.textContent.trim();
+  setReplyTarget(bubble.dataset.msgId, mine ? 'You' : (document.getElementById('chat-header-name')?.textContent || 'Them'), text.slice(0, 80));
+});
+
 function attachKeyboardHandler() {
   if (!window.visualViewport) return;
   vvHandler = () => {
@@ -1779,9 +1829,13 @@ function renderChatMessages(messages) {
       html += `<div class="chat-date-divider"><span>${label}</span></div>`;
       lastDate = msgDate;
     }
-    const mine = m.sender_id === user.id;
+        const mine = m.sender_id === user.id;
     const time = new Date(m.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
-    html += `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}">
+    const quoteHTML = m.reply_preview
+      ? `<span class="chat-bubble__quote">${m.reply_preview.sender_name}: ${m.reply_preview.snippet}</span>`
+      : '';
+    html += `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}" data-msg-id="${m.id}" data-raw-text="${(m.body || '').replace(/"/g, '&quot;')}">
+      ${quoteHTML}
       ${m.body}
       <span class="chat-bubble__time">${time}</span>
     </div>`;
@@ -1796,11 +1850,13 @@ async function sendChatMessage() {
   const body = input.value.trim();
   if (!body || !currentChatJobId || !currentChatOtherId) return;
   input.value = '';
+  const replyId = replyTarget?.id || null;
+  clearReplyTarget();
 
   try {
     await fetch(`${FLASK}/api/chat/send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body })
+      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body, reply_to_message_id: replyId })
     });
     await loadChatMessages();
   } catch (e) {
@@ -2146,12 +2202,14 @@ document.addEventListener('keydown', e => {
   };
 
     window.openWorkerPublicProfile = function(workerId) {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
     Swal.fire({
       title: 'Coming soon',
       text: 'Viewing other artisan profiles will be available in a later update.',
       icon: 'info',
       confirmButtonColor: '#E85C00',
-      ...swalTheme()
+      background: dark ? '#17171A' : '#ffffff',
+      color: dark ? '#F2F1EE' : '#17181B'
     });
   };
 

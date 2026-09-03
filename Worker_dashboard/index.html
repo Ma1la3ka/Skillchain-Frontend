@@ -683,6 +683,16 @@
         Send Price Offer
       </button>
       <div class="emoji-panel" id="emoji-panel"></div>
+            <div class="chat-reply-preview" id="chat-reply-preview" style="display:none">
+        <div class="chat-reply-preview__bar"></div>
+        <div class="chat-reply-preview__body">
+          <p class="chat-reply-preview__name" id="chat-reply-name"></p>
+          <p class="chat-reply-preview__text" id="chat-reply-text"></p>
+        </div>
+        <button type="button" class="chat-reply-preview__close" id="chat-reply-close">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
       <div class="chat-input-row">
         <button type="button" class="chat-emoji-btn" id="chat-emoji-btn" title="Emoji" aria-label="Emoji">🙂</button>
         <input type="text" id="chat-input" placeholder="Message…" class="chat-text-input" autocomplete="off">

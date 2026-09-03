@@ -171,6 +171,7 @@ function setJobType(type) {
   fieldTrade.style.display    = type === 'skilled' ? '' : 'none';
   fieldGigCat.style.display   = type === 'quick_gig' ? '' : 'none';
   gigPriceChips.style.display = type === 'quick_gig' ? 'flex' : 'none';
+  if (fieldGigSlots) fieldGigSlots.style.display = type === 'quick_gig' ? '' : 'none';
   amountHintEl.textContent    = type === 'quick_gig' ? 'Pick a price or enter your own — minimum ₦500' : 'Minimum ₦100';
   amountInputEl.min           = type === 'quick_gig' ? 500 : 100;
   if (type === 'skilled') {
@@ -392,6 +393,17 @@ document.querySelectorAll('.gig-chip--price').forEach(chip => {
     });
   }
 
+  let selectedSlots = 1;
+const fieldGigSlots = document.getElementById('field-gig-slots');
+
+document.querySelectorAll('.gig-chip[data-slots]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.gig-chip[data-slots]').forEach(c => c.classList.remove('is-active'));
+    chip.classList.add('is-active');
+    selectedSlots = parseInt(chip.dataset.slots, 10);
+  });
+});
+
   /* ══════════════════════════════════════════════
      ACTIVE PROJECT TRACKING (stepper)
   ══════════════════════════════════════════════ */
@@ -574,6 +586,13 @@ const clientPays = Number(pd.client_pays || job.client_pays || amount);
       if (aRes.ok) { const ad = await aRes.json(); applicants = ad.applicants || []; }
     } catch (e) {}
   }
+      let gigApplicants = [];
+    if (job.job_type === 'quick_gig' && job.slots_needed > 1 && job.status === 'open') {
+      try {
+        const gRes = await fetch(`${FLASK}/api/client/gig-applicants?job_id=${job.id}&user_id=${user.id}`, { credentials: 'include' });
+        if (gRes.ok) { const gd = await gRes.json(); gigApplicants = gd.applicants || []; }
+      } catch (e) {}
+    }
 
   let applicantsSection = '';
   if (applicants.length) {
@@ -597,6 +616,28 @@ const clientPays = Number(pd.client_pays || job.client_pays || amount);
           </div>`).join('')}
       </div>
       ${applicants.length > 5 ? `<p style="font-size:.75rem;color:var(--text-3);margin-top:8px">+ ${applicants.length - 5} more applicants</p>` : ''}`;
+  }
+
+    let gigApplicantsSection = '';
+  if (gigApplicants.length) {
+    gigApplicantsSection = `
+      <div class="modal-divider"></div>
+      <p class="modal-field__label" style="margin-bottom:6px">Slot Requests (${job.slots_filled || 0}/${job.slots_needed} filled)</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${gigApplicants.map(a => `
+          <div class="applicant-card">
+            <div class="applicant-card__avatar">${a.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
+            <div class="applicant-card__body">
+              <p class="applicant-card__name">${a.name}</p>
+              <p class="applicant-card__meta">${a.trade || 'General'} · ${Number(a.trust_score).toFixed(1)} trust · ${a.jobs_completed} jobs done</p>
+            </div>
+            <div class="applicant-card__actions">
+              <button class="btn btn--secondary" onclick="openWorkerPublicProfile(${a.worker_id})">${ic('user')} View</button>
+              <button class="btn btn--success" onclick="reviewGigWorker(${a.id}, 'assign', ${job.id})">${ic('check')} Assign</button>
+              <button class="btn btn--danger" onclick="reviewGigWorker(${a.id}, 'decline', ${job.id})">${ic('x')} Decline</button>
+            </div>
+          </div>`).join('')}
+      </div>`;
   }
   // ── NEW: build the pending-offers banner ──
   let bargainSection = '';
@@ -788,6 +829,7 @@ if (['assigned', 'pending_verification'].includes(job.status)) {
     </div>` : ''}
   ${bargainSection}
   ${applicantsSection}
+  ${gigApplicantsSection}
   <div class="modal-divider"></div>
   <div class="modal-field"><p class="modal-field__label">Posted</p><p class="modal-field__val">${created}</p></div>
   <div class="modal-field"><p class="modal-field__label">Verified At</p><p class="modal-field__val">${verified}</p></div>
@@ -1466,6 +1508,7 @@ document.getElementById('job-amount')?.addEventListener('input', function () {
   formData.append('description', document.getElementById('job-desc').value.trim());
   formData.append('trade', currentJobType === 'quick_gig' ? selectedGigCategory : document.getElementById('job-trade').value);
   formData.append('job_type', currentJobType);
+  if (currentJobType === 'quick_gig') formData.append('slots_needed', selectedSlots);
   formData.append('amount', amount);
   formData.append('site_address', address);
   formData.append('site_lat', document.getElementById('job-lat').value);
@@ -2065,6 +2108,52 @@ if (certStrip && certInner) {
   };
 }
 
+/* ══ Reply / tag a message ══ */
+let replyTarget = null; // { id, senderName, text }
+
+function setReplyTarget(id, senderName, text) {
+  replyTarget = { id, senderName, text };
+  const bar = document.getElementById('chat-reply-preview');
+  document.getElementById('chat-reply-name').textContent = senderName;
+  document.getElementById('chat-reply-text').textContent = text;
+  bar.style.display = 'flex';
+  document.getElementById('chat-input')?.focus();
+}
+
+function clearReplyTarget() {
+  replyTarget = null;
+  const bar = document.getElementById('chat-reply-preview');
+  if (bar) bar.style.display = 'none';
+}
+
+document.getElementById('chat-reply-close')?.addEventListener('click', clearReplyTarget);
+
+// Long-press (mobile) / right-click-free single click (desktop) to reply
+let pressTimer = null;
+document.getElementById('chat-messages')?.addEventListener('touchstart', e => {
+  const bubble = e.target.closest('.chat-bubble');
+  if (!bubble) return;
+  pressTimer = setTimeout(() => {
+    bubble.classList.add('is-pressed');
+    navigator.vibrate?.(15);
+    const mine = bubble.classList.contains('chat-bubble--mine');
+    const text = bubble.dataset.rawText || bubble.textContent.trim();
+    setReplyTarget(bubble.dataset.msgId, mine ? 'You' : (document.getElementById('chat-header-name')?.textContent || 'Them'), text.slice(0, 80));
+    setTimeout(() => bubble.classList.remove('is-pressed'), 200);
+  }, 450);
+}, { passive: true });
+document.getElementById('chat-messages')?.addEventListener('touchend', () => clearTimeout(pressTimer));
+document.getElementById('chat-messages')?.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+// Desktop convenience: double-click a bubble to reply
+document.getElementById('chat-messages')?.addEventListener('dblclick', e => {
+  const bubble = e.target.closest('.chat-bubble');
+  if (!bubble) return;
+  const mine = bubble.classList.contains('chat-bubble--mine');
+  const text = bubble.dataset.rawText || bubble.textContent.trim();
+  setReplyTarget(bubble.dataset.msgId, mine ? 'You' : (document.getElementById('chat-header-name')?.textContent || 'Them'), text.slice(0, 80));
+});
+
 /* ── Skeleton while loading ── */
 function showWPSkeleton() {
   const avatarEl = document.getElementById('wp-avatar');
@@ -2448,6 +2537,32 @@ async function rejectBargainWithPrompt(jobId, bargainId) {
   }
 }
   
+async function reviewGigWorker(jobWorkerId, action, jobId) {
+  const res = await fetch(`${FLASK}/api/client/review-gig-worker`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    body: JSON.stringify({ job_worker_id: jobWorkerId, user_id: user.id, action })
+  });
+  const data = await res.json();
+  if (data.success) {
+    await loadJobs();
+    const refreshedJob = allJobs.find(j => j.id === jobId);
+    if (action === 'assign') {
+      Swal.fire({
+        title: 'Worker assigned!',
+        text: data.slots_filled >= data.slots_needed
+          ? 'All slots are now filled. This gig is no longer visible to other workers.'
+          : `${data.slots_filled}/${data.slots_needed} slots filled. Escrow funding for this worker is coming in a future update.`,
+        icon: 'success', confirmButtonColor: '#E85C00', ...swalTheme()
+      });
+    } else {
+      Swal.fire({ title: 'Request declined', icon: 'success', timer: 1200, showConfirmButton: false, confirmButtonColor: '#E85C00', ...swalTheme() });
+    }
+    if (refreshedJob) openJobModal(refreshedJob);
+  } else {
+    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+  }
+}
+
 let conversationsPollInterval = null;
 
 async function loadConversations() {
@@ -2868,7 +2983,11 @@ function renderChatMessages(messages) {
     }
     const mine = m.sender_id === user.id;
     const time = new Date(m.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
-    html += `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}">
+    const quoteHTML = m.reply_preview
+      ? `<span class="chat-bubble__quote">${m.reply_preview.sender_name}: ${m.reply_preview.snippet}</span>`
+      : '';
+    html += `<div class="chat-bubble ${mine ? 'chat-bubble--mine' : 'chat-bubble--theirs'}" data-msg-id="${m.id}" data-raw-text="${(m.body || '').replace(/"/g, '&quot;')}">
+      ${quoteHTML}
       ${m.body}
       <span class="chat-bubble__time">${time}</span>
     </div>`;
@@ -2883,11 +3002,13 @@ async function sendChatMessage() {
   const body = input.value.trim();
   if (!body || !currentChatJobId || !currentChatOtherId) return;
   input.value = '';
+  const replyId = replyTarget?.id || null;
+  clearReplyTarget();
 
   try {
     await fetch(`${FLASK}/api/chat/send`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body })
+      body: JSON.stringify({ job_id: currentChatJobId, sender_id: user.id, recipient_id: currentChatOtherId, body, reply_to_message_id: replyId })
     });
     await loadChatMessages();
   } catch (e) {
@@ -3015,6 +3136,7 @@ async function openClientPublicProfile(clientId) {
   window.copyAccNum              = copyAccNum;
   window.respondBargain          = respondBargain;
   window.reviewWorker            = reviewWorker;
+  window.reviewGigWorker = reviewGigWorker;
   window.reviewSubmission        = reviewSubmission;
   window.openJobModalById        = openJobModalById;
   
