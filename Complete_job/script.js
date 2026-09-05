@@ -3,8 +3,10 @@
 
   const FLASK      = 'https://skillchain-backend-gce5.onrender.com';
   const LOGIN_PAGE = '/Login/index.html';
-  const params     = new URLSearchParams(location.search);
-  const JOB_ID     = params.get('job_id');
+  const params        = new URLSearchParams(location.search);
+  const JOB_ID         = params.get('job_id');
+  const JOB_WORKER_ID  = params.get('job_worker_id');
+  const IS_GIG_SLOT    = !!JOB_WORKER_ID;
 
   const userData = JSON.parse(localStorage.getItem('userData') || 'null');
   if (!userData) { location.replace(LOGIN_PAGE); }
@@ -53,23 +55,32 @@
   }
 
   // ── Load job details ──────────────────────────────
-  async function loadJob() {
-    if (!JOB_ID) {
+    async function loadJob() {
+    if (!JOB_ID && !JOB_WORKER_ID) {
       $('job-title-display').textContent   = 'No job ID in URL';
       $('job-address-display').textContent = 'Return to dashboard and click Complete again';
       return;
     }
 
     try {
-      const res  = await fetch(`${FLASK}/api/worker/jobs?user_id=${USER_ID}`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      let src;
+      if (IS_GIG_SLOT) {
+        const res  = await fetch(`${FLASK}/api/worker/my-gig-slots?user_id=${USER_ID}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        src = (data.slots || []).find(s => s.id == JOB_WORKER_ID);
+      } else {
+        const res  = await fetch(`${FLASK}/api/worker/jobs?user_id=${USER_ID}`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        src = (data.jobs || []).find(j => j.id == JOB_ID);
+      }
 
-      jobData = (data.jobs || []).find(j => j.id == JOB_ID);
+      jobData = src;
 
       if (!jobData) {
         $('job-title-display').textContent   = 'Job not found or not assigned to you';
-        $('job-address-display').textContent = `Job ID: ${JOB_ID} — check dashboard`;
+        $('job-address-display').textContent = IS_GIG_SLOT ? `Slot ID: ${JOB_WORKER_ID} — check dashboard` : `Job ID: ${JOB_ID} — check dashboard`;
         return;
       }
 
@@ -97,10 +108,11 @@
   }
 
   // ── Escrow check (also used by poll) ─────────────
-  async function checkEscrow() {
+    async function checkEscrow() {
     try {
+      const idParam = IS_GIG_SLOT ? `job_worker_id=${JOB_WORKER_ID}` : `job_id=${JOB_ID}`;
       const res  = await fetch(
-        `${FLASK}/api/job/escrow-status?job_id=${JOB_ID}&user_id=${USER_ID}&_=${Date.now()}`,
+        `${FLASK}/api/job/escrow-status?${idParam}&user_id=${USER_ID}&_=${Date.now()}`,
         { credentials: 'include' }
       );
       if (!res.ok) return false;
@@ -410,7 +422,8 @@
     }
 
     const fd = new FormData();
-    fd.append('job_id',    JOB_ID);
+    if (IS_GIG_SLOT) fd.append('job_worker_id', JOB_WORKER_ID);
+    else             fd.append('job_id', JOB_ID);
     fd.append('user_id',   USER_ID);
     fd.append('proof_lat', lat);
     fd.append('proof_lng', lng);
@@ -480,7 +493,8 @@
 
       // Always proceed to verification — flagged or not.
       const vFd = new FormData();
-      vFd.append('job_id',     JOB_ID);
+      if (IS_GIG_SLOT) vFd.append('job_worker_id', JOB_WORKER_ID);
+      else             vFd.append('job_id', JOB_ID);
       vFd.append('user_id',    USER_ID);
       vFd.append('worker_lat', lat);
       vFd.append('worker_lng', lng);

@@ -465,12 +465,33 @@ function renderConversationsList(conversations) {
     }
   }
 
-  async function loadMyJobs() {
+    async function loadMyJobs() {
     try {
-      const res     = await fetch(`${FLASK}/api/worker/jobs?user_id=${user.id}`, { credentials: 'include' });
-      if (!res.ok) return;
-      const data    = await res.json();
-      const newJobs = data.jobs || [];
+      const [jobsRes, slotsRes] = await Promise.all([
+        fetch(`${FLASK}/api/worker/jobs?user_id=${user.id}`, { credentials: 'include' }),
+        fetch(`${FLASK}/api/worker/my-gig-slots?user_id=${user.id}`, { credentials: 'include' })
+      ]);
+      if (!jobsRes.ok) return;
+      const data = await jobsRes.json();
+      const regularJobs = data.jobs || [];
+
+      let gigSlots = [];
+      if (slotsRes.ok) {
+        const slotsData = await slotsRes.json();
+        gigSlots = (slotsData.slots || []).map(s => ({
+          ...s,
+          id: `gig_${s.id}`,          // prefixed so it can't collide with a regular job id
+          job_worker_id: s.id,        // keep the real job_workers.id for API calls
+          job_type: 'quick_gig',
+          _isGigSlot: true,
+          site_address: s.site_address || '—',
+        }));
+      }
+
+      const newJobs = [...regularJobs, ...gigSlots].sort(
+        (a, b) => new Date(b.created_at || b.requested_at) - new Date(a.created_at || a.requested_at)
+      );
+
       const removed = allMyJobs.filter(old => !newJobs.find(n => n.id === old.id));
       allMyJobs = newJobs;
 
@@ -670,8 +691,8 @@ function renderLifecycle() {
   /* ══════════════════════════════════════════════
      JOB CARDS
   ══════════════════════════════════════════════ */
-  function myJobCardHTML(job) {
-    const date = new Date(job.created_at).toLocaleDateString('en-NG', { day:'numeric', month:'short' });
+    function myJobCardHTML(job) {
+    const date = new Date(job.created_at || job.requested_at).toLocaleDateString('en-NG', { day:'numeric', month:'short' });
     let rightBtn = '';
     if (job.status === 'assigned')           rightBtn = `<button class="complete-btn" data-job-id="${job.id}">Complete <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
     else if (job.status === 'pending_review') rightBtn = `<span class="awaiting-tag">${ic('clock')} Awaiting Approval</span>`;
@@ -720,18 +741,18 @@ function renderLifecycle() {
     });
   });
 
-  function attachMyJobListeners(container) {
+    function attachMyJobListeners(container) {
     container.querySelectorAll('.job-card').forEach(card => {
       card.addEventListener('click', e => {
         if (e.target.closest('.complete-btn')) return;
-        const job = allMyJobs.find(j => j.id === parseInt(card.dataset.jobId));
+        const job = allMyJobs.find(j => String(j.id) === card.dataset.jobId);
         if (job) openMyJobModal(job);
       });
     });
     container.querySelectorAll('.complete-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        const job = allMyJobs.find(j => j.id === parseInt(btn.dataset.jobId));
+        const job = allMyJobs.find(j => String(j.id) === btn.dataset.jobId);
         if (job) openMyJobModal(job);
       });
     });
@@ -922,7 +943,11 @@ function renderBargainBox(slot, job) {
     const verified = job.verified_at ? new Date(job.verified_at).toLocaleString('en-NG') : '—';
     let actionBtn  = '';
     if (job.status === 'assigned') {
-      actionBtn = `<button class="btn btn--primary btn--wide" id="modal-complete-btn" data-job-id="${job.id}">${ic('pin')} Submit Proof of Presence</button>`;
+      const proofParam = job._isGigSlot
+        ? `job_worker_id=${job.job_worker_id}`
+        : `job_id=${job.id}`;
+      actionBtn = `<button class="btn btn--primary btn--wide" id="modal-complete-btn" data-proof-param="${proofParam}">${ic('pin')} Submit Proof of Presence</button>`;
+    
     } else if (job.status === 'pending_review') {
       actionBtn = `<div class="notice notice--warning"><p class="notice__title">${ic('clock')} Awaiting Client Approval</p><p>The client will assign or decline your application.</p></div>`;
     } else if (job.status === 'verified') {
@@ -945,7 +970,8 @@ function renderBargainBox(slot, job) {
       ${actionBtn ? `<div class="modal-actions">${actionBtn}</div>` : ''}`;
     modalOverlay.classList.add('is-open');
     document.getElementById('modal-complete-btn')?.addEventListener('click', () => {
-      window.location.href = `/Complete_job/index.html?job_id=${document.getElementById('modal-complete-btn').dataset.jobId}`;
+      const param = document.getElementById('modal-complete-btn').dataset.proofParam;
+      window.location.href = `/Complete_job/index.html?${param}`;
     });
   }
 

@@ -598,24 +598,24 @@ const clientPays = Number(pd.client_pays || job.client_pays || amount);
   if (applicants.length) {
     const shown = applicants.slice(0, 5);
     applicantsSection = `
-      <div class="modal-divider"></div>
-      <p class="modal-field__label" style="margin-bottom:10px">Applicants (${applicants.length})</p>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${shown.map(a => `
-          <div class="applicant-card">
-            <div class="applicant-card__avatar">${a.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
-            <div class="applicant-card__body">
-              <p class="applicant-card__name">${a.name}</p>
-              <p class="applicant-card__meta">${a.trade || 'General'} · ${Number(a.trust_score).toFixed(1)} trust · ${a.jobs_completed} jobs done</p>
-            </div>
-            <div class="applicant-card__actions">
-              <button class="btn btn--secondary" onclick="openWorkerPublicProfile(${a.worker_id})">${ic('user')} View</button>
-              <button class="btn btn--success" onclick="reviewWorker(${job.id}, ${a.worker_id}, 'assign')">${ic('check')} Assign</button>
-              <button class="btn btn--danger" onclick="reviewWorker(${job.id}, ${a.worker_id}, 'decline')">${ic('x')} Decline</button>
-            </div>
-          </div>`).join('')}
-      </div>
-      ${applicants.length > 5 ? `<p style="font-size:.75rem;color:var(--text-3);margin-top:8px">+ ${applicants.length - 5} more applicants</p>` : ''}`;
+  <div class="modal-divider"></div>
+  <p class="modal-field__label" style="margin-bottom:10px">Applicants (${applicants.length})</p>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    ${shown.map(a => `
+      <div class="applicant-card" data-worker-id="${a.worker_id}">
+        <div class="applicant-card__avatar">${a.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
+        <div class="applicant-card__body">
+          <p class="applicant-card__name">${a.name}</p>
+          <p class="applicant-card__meta">${a.trade || 'General'} · ${Number(a.trust_score).toFixed(1)} trust · ${a.jobs_completed} jobs done</p>
+        </div>
+        <div class="applicant-card__actions">
+          <button class="btn btn--secondary" onclick="openWorkerPublicProfile(${a.worker_id})">${ic('user')} View</button>
+          <button class="btn btn--success" onclick="reviewWorker(${job.id}, ${a.worker_id}, 'assign')">${ic('check')} Assign</button>
+          <button class="btn btn--danger" onclick="reviewWorker(${job.id}, ${a.worker_id}, 'decline')">${ic('x')} Decline</button>
+        </div>
+      </div>`).join('')}
+  </div>
+  ${applicants.length > 5 ? `<p style="font-size:.75rem;color:var(--text-3);margin-top:8px">+ ${applicants.length - 5} more applicants</p>` : ''}`;
   }
 
     let gigApplicantsSection = '';
@@ -2509,31 +2509,63 @@ async function rejectBargainWithPrompt(jobId, bargainId) {
      WORKER APPLICATION REVIEW
   ══════════════════════════════════════════════ */
   async function reviewWorker(jobId, workerId, action) {
-  const res = await fetch(`${FLASK}/api/client/review-worker`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-    body: JSON.stringify({ job_id: jobId, user_id: user.id, worker_id: workerId, action })
-  });
-  const data = await res.json();
-  if (data.success) {
-    await loadJobs();
-    const refreshedJob = allJobs.find(j => j.id === jobId);
+  if (action === 'decline') {
+    const { isConfirmed } = await Swal.fire({
+      title: 'Decline this applicant?',
+      text: 'They will be notified and removed from this job\'s applicant list.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, decline',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#DC2626',
+      cancelButtonColor: '#9A968E',
+      ...swalTheme()
+    });
+    if (!isConfirmed) return;
+  }
 
-    if (action === 'assign') {
-      await Swal.fire({
-        title: 'Worker assigned!',
-        text: 'Fund escrow now so the worker can start. They can only submit proof of presence once payment is confirmed.',
-        icon: 'success',
-        confirmButtonColor: '#E85C00',
-        confirmButtonText: 'Fund Escrow',
-        ...swalTheme()
-      });
-      if (refreshedJob) openJobModal(refreshedJob);   // lands straight on the escrow section
-    } else {
-      if (refreshedJob) openJobModal(refreshedJob);   // re-render modal, minus the declined applicant
-      Swal.fire({ title: 'Applicant declined', text: 'They have been notified.', icon: 'success', timer: 1200, showConfirmButton: false, confirmButtonColor: '#E85C00', ...swalTheme() });
+  const card = document.querySelector(`.applicant-card[data-worker-id="${workerId}"]`);
+  const buttons = card?.querySelectorAll('button');
+  if (buttons) buttons.forEach(b => b.disabled = true);
+  if (card) card.style.opacity = '0.5';
+
+  try {
+    const res = await fetch(`${FLASK}/api/client/review-worker`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ job_id: jobId, user_id: user.id, worker_id: workerId, action })
+    });
+
+    if (!res.ok) {
+      if (card) { card.style.opacity = ''; buttons?.forEach(b => b.disabled = false); }
+      Swal.fire({ title: 'Server error', text: `Something went wrong (${res.status}). Please try again.`, icon: 'error', ...swalTheme() });
+      return;
     }
-  } else {
-    Swal.fire({ title: 'Error', text: data.message, icon: 'error', ...swalTheme() });
+
+    const data = await res.json();
+    if (data.success) {
+      if (card) card.remove();
+      await loadJobs();
+      const refreshedJob = allJobs.find(j => j.id === jobId);
+
+      if (action === 'assign') {
+        await Swal.fire({
+          title: 'Worker assigned!',
+          text: 'Fund escrow now so the worker can start.',
+          icon: 'success', confirmButtonColor: '#E85C00', confirmButtonText: 'Fund Escrow', ...swalTheme()
+        });
+        if (refreshedJob) openJobModal(refreshedJob);
+      } else {
+        Swal.fire({ title: 'Applicant declined', text: 'They have been notified.', icon: 'success', timer: 1200, showConfirmButton: false, confirmButtonColor: '#E85C00', ...swalTheme() });
+        if (refreshedJob) openJobModal(refreshedJob);
+      }
+    } else {
+      if (card) { card.style.opacity = ''; buttons?.forEach(b => b.disabled = false); }
+      Swal.fire({ title: data.already_resolved ? 'Already resolved' : 'Error', text: data.message, icon: data.already_resolved ? 'info' : 'error', ...swalTheme() });
+      if (data.already_resolved) { if (card) card.remove(); await loadJobs(); }
+    }
+  } catch (e) {
+    if (card) { card.style.opacity = ''; buttons?.forEach(b => b.disabled = false); }
+    Swal.fire({ title: 'Network error', text: 'Could not reach the server.', icon: 'error', ...swalTheme() });
   }
 }
   
