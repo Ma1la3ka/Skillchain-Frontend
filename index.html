@@ -14,10 +14,6 @@
 
 <div class="grain" aria-hidden="true"></div>
 
-<!-- shared SVG defs: the ink-texture filter used by the stamp, and the
-     Skillchain mark itself — a scalloped seal (like a real ink stamp)
-     punched through by a single check stroke. Defined once, reused via
-     <use> in the nav and footer so the logo never drifts out of sync. -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <filter id="inkTexture">
@@ -25,9 +21,9 @@
       <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2"/>
     </filter>
     <symbol id="sc-mark" viewBox="0 0 32 32">
-      <path d="M16,1.8 18.26,4.62 21.43,2.88 22.44,6.35 26.04,5.96 25.65,9.56 29.12,10.57 27.38,13.74 30.2,16 27.38,18.26 29.12,21.43 25.65,22.44 26.04,26.04 22.44,25.65 21.43,29.12 18.26,27.38 16,30.2 13.74,27.38 10.57,29.12 9.56,25.65 5.96,26.04 6.35,22.44 2.88,21.43 4.62,18.26 1.8,16 4.62,13.74 2.88,10.57 6.35,9.56 5.96,5.96 9.56,6.35 10.57,2.88 13.74,4.62Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-      <path d="M10.2,16.4 14,20.4 21.8,10.8" fill="none" stroke="#C1391F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </symbol>
+  <path d="M16,3 A13,13 0 0,1 16,29 A6.5,6.5 0 0,1 16,16 A6.5,6.5 0 0,0 16,3 Z M16,9.5 a2.3,2.3 0 1,0 0.01,0 Z" fill-rule="evenodd" fill="var(--ochre)"/>
+  <path d="M16,3 A13,13 0 0,0 16,29 A6.5,6.5 0 0,0 16,16 A6.5,6.5 0 0,1 16,3 Z M16,22.5 a2.3,2.3 0 1,0 0.01,0 Z" fill-rule="evenodd" fill="currentColor"/>
+</symbol>
   </defs>
 </svg>
 

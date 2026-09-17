@@ -1,96 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkillChain — Log In</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="/Login/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skillchain — Log In</title>
+<meta name="description" content="Log in to Skillchain. Escrow-backed pay, released only when the job is proven done.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
-  <!-- NAV -->
-  <header class="navbar">
-    <!-- Logo -->
-    <div class="logo-container">
-      <svg class="logo-icon" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="logo-text">SkillChain</span>
-    </div>
+<div class="grain" aria-hidden="true"></div>
 
-    <!-- Desktop + mobile dropdown nav -->
-    <nav class="nav-links" id="sc-nav-links">
-      <a href="/register">Find Workers</a>
-      <a href="/login">Log in</a>
-      <a href="/register" class="btn-signup">Sign up</a>
-    </nav>
+<!-- shared logo mark — same two-tone interlocking-S symbol as the main site.
+     Defined once, reused via <use> so nav + footer never drift out of sync. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="sc-mark" viewBox="0 0 32 32">
+      <path d="M16,3 A13,13 0 0,1 16,29 A6.5,6.5 0 0,1 16,16 A6.5,6.5 0 0,0 16,3 Z M16,9.5 a2.3,2.3 0 1,0 0.01,0 Z" fill-rule="evenodd" fill="var(--ochre)"/>
+      <path d="M16,3 A13,13 0 0,0 16,29 A6.5,6.5 0 0,0 16,16 A6.5,6.5 0 0,1 16,3 Z M16,22.5 a2.3,2.3 0 1,0 0.01,0 Z" fill-rule="evenodd" fill="currentColor"/>
+    </symbol>
+  </defs>
+</svg>
 
-    <!-- Hamburger (mobile) -->
-    <button class="nav-hamburger" id="sc-hamburger" aria-label="Menu" aria-expanded="false" aria-controls="sc-nav-links">
-      <span></span><span></span><span></span>
-    </button>
-  </header>
+<!-- NAV -->
+<nav class="nav" id="sc-nav">
+  <a href="/" class="nav-logo">
+    <svg class="nav-logo__mark" width="27" height="27" viewBox="0 0 32 32" aria-hidden="true"><use href="#sc-mark"/></svg>
+    <span class="nav-logo__text">Skill<i>chain</i></span>
+  </a>
+  <div class="nav-links" id="sc-nav-links">
+    <a href="/register" class="nav-link">Find Workers</a>
+    <a href="/login" class="nav-link">Log in</a>
+    <div class="nav-sep"></div>
+    <a href="/register" class="btn btn--red btn--sm">Sign up</a>
+  </div>
+  <button class="nav-hamburger" id="sc-hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="sc-nav-links">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
 
-  <!-- MAIN -->
-  <main class="login-container">
+<!-- MAIN -->
+<main class="login-container">
 
-    <div class="welcome-section">
-      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <h1>Welcome back</h1>
-      <p>Log in to your SkillChain account</p>
-    </div>
+  <div class="welcome-section">
+    <svg class="welcome-mark" width="46" height="46" viewBox="0 0 32 32" aria-hidden="true"><use href="#sc-mark"/></svg>
+    <h1>Welcome back</h1>
+    <p>Log in to pick up where the last docket left off.</p>
+  </div>
 
-    <div class="login-card">
-      <form id="loginForm" method="post" action="javascript:void(0);">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" placeholder="name@example.com" required autocomplete="email">
+  <div class="login-card">
+    <form id="loginForm" method="post" action="javascript:void(0);">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="name@example.com" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+          <button type="button" id="toggle-pw" aria-label="Toggle password visibility">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/></svg>
+          </button>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="password">Password</label>
-          <div class="pw-wrap">
-            <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
-            <button type="button" id="toggle-pw" aria-label="Toggle password visibility">👁</button>
-          </div>
-        </div>
+      <button type="submit" class="btn-signin" id="submit-btn">
+        <span id="submit-text">Sign In</span>
+        <span id="submit-spinner"></span>
+      </button>
+    </form>
 
-        <button type="submit" class="btn-signin" id="submit-btn">
-          <span id="submit-text">Sign In</span>
-          <span id="submit-spinner"></span>
-        </button>
+    <p class="signup-link">Don't have an account? <a href="/register">Sign up</a></p>
+    <a href="/forgot-password" class="form-footer__forgot">Forgot password?</a>
+  </div>
 
-      </form>
+</main>
 
-      <p class="signup-link">Don't have an account? <a href="/register">Sign up</a></p>
-      <a href="/forgot-password" class="form-footer__forgot">Forgot password?</a>
-    </div>
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer__brand">
+    <a href="/" class="nav-logo">
+      <svg class="nav-logo__mark" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sc-mark"/></svg>
+      <span class="nav-logo__text footer-logo-text">Skill<i>chain</i></span>
+    </a>
+    <p class="footer__tagline">Marketplace for informal workers. Proof of work unlocks payment.</p>
+  </div>
+  <div class="footer__bottom">© 2026 Skillchain · Built by <strong>HAMZ Labs</strong></div>
+</footer>
 
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="footer">
-    <div class="footer-logo">
-      <svg class="nav-logo__icon" viewBox="0 0 24 24" fill="none">
-        <path d="M12 2L4 6v6c0 5.25 3.5 10.15 8 11.35C16.5 22.15 20 17.25 20 12V6l-8-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span>SkillChain</span>
-    </div>
-    <p>Marketplace for informal workers. Proof of Life verification unlocks payment.</p>
-    <p>© 2026 SkillChain. All rights reserved.</p>
-  </footer>
-
-  <script src="/Login/script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
