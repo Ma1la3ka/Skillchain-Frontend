@@ -128,6 +128,12 @@
   workerRadio.addEventListener('change', updateRole);
   clientRadio.addEventListener('change', updateRole);
 
+  /* ── Phone field — digits only, strips letters/commas/symbols as you type ── */
+  phoneInput.addEventListener('input', () => {
+    phoneInput.value = phoneInput.value.replace(/[^0-9]/g, '').slice(0, 11);
+  });
+  phoneInput.setAttribute('inputmode', 'numeric');
+
   /* ── Step 1 → 2 ───────────────────────────────────── */
   next1Btn.addEventListener('click', () => {
     if (!workerRadio.checked && !clientRadio.checked) {
