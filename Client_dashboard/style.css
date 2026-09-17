@@ -112,7 +112,7 @@ svg{ display:block; }
 }
 .sidebar__logo-mark{
   width:34px; height:34px; border-radius:9px;
-  background:transparent;
+  background:var(--accent); color:#fff;
   display:grid; place-items:center; flex-shrink:0;
 }
 .sidebar__logo-text{ display:flex; flex-direction:column; line-height:1.2; }
